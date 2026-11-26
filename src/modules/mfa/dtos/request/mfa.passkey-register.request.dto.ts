@@ -10,9 +10,9 @@ export const MfaPasskeyRegisterRequestSchema =
                 'Challenge token of the passkey registration options, at most 128 characters',
             example: 'c07c5f0d6d0c4c6db1f6a6d38f5ce8fa',
         }),
-        name: z.string().trim().min(1).max(50).meta({
+        name: z.string().trim().toLowerCase().min(1).max(50).meta({
             description: 'Name of the passkey, at most 50 characters',
-            example: 'iPhone',
+            example: 'iphone',
         }),
         registrationResponse: MfaPasskeyRegistrationResponseSchema.meta({
             description:

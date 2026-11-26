@@ -3,7 +3,7 @@ import { UserUpdateProfileRequestSchema } from '@modules/user/dtos/request/user.
 
 describe('UserUpdateProfileRequestSchema', () => {
     const payload = {
-        name: 'John Doe',
+        name: 'john doe',
         countryId: '507f1f77bcf86cd799439012',
         gender: EnumUserGender.male,
     };
@@ -87,13 +87,13 @@ describe('UserUpdateProfileRequestSchema', () => {
         ]);
     });
 
-    it('trims the name and rejects a whitespace-only name', () => {
+    it('trims and lower-cases the name and rejects a whitespace-only name', () => {
         expect(
             UserUpdateProfileRequestSchema.parse({
                 ...payload,
-                name: '  John  ',
+                name: '  John DOE  ',
             }).name
-        ).toBe('John');
+        ).toBe('john doe');
         expect(
             UserUpdateProfileRequestSchema.safeParse({
                 ...payload,

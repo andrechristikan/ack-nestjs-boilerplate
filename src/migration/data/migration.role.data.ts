@@ -8,19 +8,19 @@ import type {
 const RoleData: IMigrationRoleData[] = [
     {
         name: 'superadmin',
-        description: 'Super Admin Role',
+        description: 'super admin role',
         type: EnumRoleType.superAdmin,
         isImmutable: true,
     },
     {
         name: 'admin',
-        description: 'Admin Role',
+        description: 'admin role',
         type: EnumRoleType.admin,
         isImmutable: true,
     },
     {
         name: 'user',
-        description: 'User Role',
+        description: 'user role',
         type: EnumRoleType.user,
         isImmutable: true,
     },

@@ -5,15 +5,24 @@ describe('RoleCreateRequestSchema', () => {
     it('parses name, description, and type into exactly the declared fields', () => {
         const result = RoleCreateRequestSchema.parse({
             name: 'manager',
-            description: 'Team lead role',
+            description: 'team lead role',
             type: EnumRoleType.admin,
         });
 
         expect(result).toEqual({
             name: 'manager',
-            description: 'Team lead role',
+            description: 'team lead role',
             type: EnumRoleType.admin,
         });
+    });
+
+    it('parses with description omitted', () => {
+        const result = RoleCreateRequestSchema.parse({
+            name: 'manager',
+            type: EnumRoleType.admin,
+        });
+
+        expect(result).toEqual({ name: 'manager', type: EnumRoleType.admin });
     });
 
     it('trims and lowercases the name', () => {
@@ -91,13 +100,13 @@ describe('RoleCreateRequestSchema', () => {
         ]);
     });
 
-    it('trims the description', () => {
+    it('trims and lower-cases the description', () => {
         const result = RoleCreateRequestSchema.parse({
             name: 'manager',
-            description: '  Team lead role  ',
+            description: '  Team LEAD role  ',
             type: EnumRoleType.admin,
         });
 
-        expect(result.description).toBe('Team lead role');
+        expect(result.description).toBe('team lead role');
     });
 });

@@ -2,13 +2,13 @@ import { z } from 'zod';
 
 /** @public */
 export const ProjectCreateRequestSchema = z.strictObject({
-    name: z.string().trim().min(1).max(150).meta({
+    name: z.string().trim().toLowerCase().min(1).max(150).meta({
         description: 'Project name',
-        example: 'Website Revamp',
+        example: 'website revamp',
     }),
-    description: z.string().trim().max(500).optional().meta({
+    description: z.string().trim().toLowerCase().max(500).optional().meta({
         description: 'Project description',
-        example: 'Marketing site redesign',
+        example: 'marketing site redesign',
     }),
 });
 

@@ -1,7 +1,7 @@
 import { WorkspaceUpdateRequestSchema } from '@modules/workspace/dtos/request/workspace.update.request.dto';
 
 describe('WorkspaceUpdateRequestSchema', () => {
-    const payload = { name: 'Acme', description: 'Our team workspace' };
+    const payload = { name: 'acme', description: 'our team workspace' };
 
     it('parses a payload into exactly the declared fields', () => {
         const result = WorkspaceUpdateRequestSchema.parse(payload);
@@ -96,13 +96,13 @@ describe('WorkspaceUpdateRequestSchema', () => {
         ]);
     });
 
-    it('trims name and description and rejects a whitespace-only name', () => {
+    it('trims and lower-cases name and description and rejects a whitespace-only name', () => {
         expect(
             WorkspaceUpdateRequestSchema.parse({
-                name: '  Acme  ',
-                description: '  Team  ',
+                name: ' Acme Team ',
+                description: '  Our TEAM  ',
             })
-        ).toEqual({ name: 'Acme', description: 'Team' });
+        ).toEqual({ name: 'acme team', description: 'our team' });
         expect(
             WorkspaceUpdateRequestSchema.safeParse({ ...payload, name: '   ' })
                 .error?.issues

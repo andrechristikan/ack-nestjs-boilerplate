@@ -7,14 +7,14 @@ describe('ApiKeyCreateBaseRequestSchema', () => {
 
     it('parses name, type, startAt, and endAt into exactly the declared fields', () => {
         const result = ApiKeyCreateBaseRequestSchema.parse({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.default,
             startAt,
             endAt,
         });
 
         expect(result).toEqual({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.default,
             startAt,
             endAt,
@@ -23,12 +23,12 @@ describe('ApiKeyCreateBaseRequestSchema', () => {
 
     it('parses with only the required name and type', () => {
         const result = ApiKeyCreateBaseRequestSchema.parse({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.system,
         });
 
         expect(result).toEqual({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.system,
         });
     });
@@ -78,13 +78,13 @@ describe('ApiKeyCreateBaseRequestSchema', () => {
         ]);
     });
 
-    it('trims the name and rejects a whitespace-only name', () => {
+    it('trims and lower-cases the name and rejects a whitespace-only name', () => {
         expect(
             ApiKeyCreateBaseRequestSchema.parse({
-                name: '  Acme  ',
+                name: '  Acme Key  ',
                 type: EnumApiKeyType.default,
             }).name
-        ).toBe('Acme');
+        ).toBe('acme key');
         expect(
             ApiKeyCreateBaseRequestSchema.safeParse({
                 name: '   ',

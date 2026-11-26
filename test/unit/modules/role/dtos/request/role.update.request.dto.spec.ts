@@ -4,12 +4,12 @@ import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.
 describe('RoleUpdateRequestSchema', () => {
     it('parses description and type into exactly the declared fields', () => {
         const result = RoleUpdateRequestSchema.parse({
-            description: 'Team lead role',
+            description: 'team lead role',
             type: EnumRoleType.admin,
         });
 
         expect(result).toEqual({
-            description: 'Team lead role',
+            description: 'team lead role',
             type: EnumRoleType.admin,
         });
     });
@@ -91,12 +91,12 @@ describe('RoleUpdateRequestSchema', () => {
         ]);
     });
 
-    it('trims the description', () => {
+    it('trims and lower-cases the description', () => {
         const result = RoleUpdateRequestSchema.parse({
-            description: '  Team lead role  ',
+            description: '  Team LEAD role  ',
             type: EnumRoleType.admin,
         });
 
-        expect(result.description).toBe('Team lead role');
+        expect(result.description).toBe('team lead role');
     });
 });

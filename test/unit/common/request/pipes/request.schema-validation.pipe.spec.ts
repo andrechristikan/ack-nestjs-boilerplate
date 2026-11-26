@@ -119,6 +119,30 @@ describe('RequestSchemaValidationPipe', () => {
             });
         });
 
+        it.each(['body', 'query'] as const)(
+            'stamps a root issue of a whole-%s binding with the argument type',
+            async type => {
+                const pipe = buildRequestSchemaValidationPipe(true);
+                const metadata: ArgumentMetadata = {
+                    type,
+                    schema: z.strictObject({ a: z.string() }),
+                } as unknown as ArgumentMetadata;
+
+                await expect(
+                    pipe.transform({ a: 'x', extra: 1 }, metadata)
+                ).rejects.toMatchObject({
+                    module: 'request',
+                    statusCode: EnumRequestStatusCodeError.validation,
+                    issues: [
+                        expect.objectContaining({
+                            code: 'unrecognized_keys',
+                            path: [type],
+                        }),
+                    ],
+                });
+            }
+        );
+
         it('leaves an issue with an existing path untouched even with a bound argument name', async () => {
             const pipe = buildRequestSchemaValidationPipe(true);
             const metadata: ArgumentMetadata = {
@@ -154,15 +178,19 @@ describe('RequestSchemaValidationPipe', () => {
     });
 
     describe('stampEmptyIssuePaths', () => {
-        it('returns the issues unchanged when no argument name is bound', () => {
+        it('stamps an empty path and keeps an existing one', () => {
             const pipe = buildRequestSchemaValidationPipe(true);
             const issues: readonly StandardSchemaV1.Issue[] = [
                 { message: 'Required', path: [] },
+                { message: 'Invalid', path: ['a'] },
             ];
 
-            const result = pipe['stampEmptyIssuePaths'](issues, null);
+            const result = pipe['stampEmptyIssuePaths'](issues, 'body');
 
-            expect(result).toBe(issues);
+            expect(result).toEqual([
+                { message: 'Required', path: ['body'] },
+                { message: 'Invalid', path: ['a'] },
+            ]);
         });
     });
 });

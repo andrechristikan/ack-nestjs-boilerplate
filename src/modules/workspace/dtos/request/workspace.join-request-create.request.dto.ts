@@ -9,10 +9,10 @@ export const WorkspaceJoinRequestCreateRequestSchema = z.strictObject({
             'Workspace to request joining; must be isPublic and not soft-deleted',
         example: faker.database.mongodbObjectId(),
     }),
-    message: z.string().trim().max(500).optional().meta({
+    message: z.string().trim().toLowerCase().max(500).optional().meta({
         description:
             'Optional note to the workspace owners/admins reviewing the request',
-        example: faker.lorem.sentence(),
+        example: faker.lorem.sentence().toLowerCase(),
     }),
 });
 

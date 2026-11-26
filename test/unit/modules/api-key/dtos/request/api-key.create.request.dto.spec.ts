@@ -7,14 +7,14 @@ describe('ApiKeyCreateRequestSchema', () => {
 
     it('parses name, type, startAt, and endAt when endAt is at or after startAt', () => {
         const result = ApiKeyCreateRequestSchema.parse({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.default,
             startAt,
             endAt,
         });
 
         expect(result).toEqual({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.default,
             startAt,
             endAt,
@@ -23,14 +23,23 @@ describe('ApiKeyCreateRequestSchema', () => {
 
     it('parses with no date window', () => {
         const result = ApiKeyCreateRequestSchema.parse({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.default,
         });
 
         expect(result).toEqual({
-            name: 'Acme Api Key',
+            name: 'acme api key',
             type: EnumApiKeyType.default,
         });
+    });
+
+    it('trims and lower-cases the name inherited from the base schema', () => {
+        const result = ApiKeyCreateRequestSchema.parse({
+            name: '  Acme Api KEY  ',
+            type: EnumApiKeyType.default,
+        });
+
+        expect(result.name).toBe('acme api key');
     });
 
     it('rejects an endAt before startAt', () => {

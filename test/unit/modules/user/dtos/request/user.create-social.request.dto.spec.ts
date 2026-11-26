@@ -7,7 +7,7 @@ import { UserCreateSocialRequestSchema } from '@modules/user/dtos/request/user.c
 describe('UserCreateSocialRequestSchema', () => {
     const payload = {
         username: 'developer123',
-        name: 'John Doe',
+        name: 'john doe',
         countryId: '507f1f77bcf86cd799439012',
         marketing: true,
         cookies: true,
@@ -25,6 +25,15 @@ describe('UserCreateSocialRequestSchema', () => {
         const result = UserCreateSocialRequestSchema.parse(payload);
 
         expect(result).toEqual(payload);
+    });
+
+    it('trims and lower-cases the name inherited from the create schema', () => {
+        const result = UserCreateSocialRequestSchema.parse({
+            ...payload,
+            name: '  John DOE  ',
+        });
+
+        expect(result.name).toBe('john doe');
     });
 
     it('rejects an undeclared email key', () => {

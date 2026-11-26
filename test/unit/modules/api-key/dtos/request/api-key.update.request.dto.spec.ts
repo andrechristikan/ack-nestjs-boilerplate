@@ -3,10 +3,18 @@ import { ApiKeyUpdateRequestSchema } from '@modules/api-key/dtos/request/api-key
 describe('ApiKeyUpdateRequestSchema', () => {
     it('parses name into exactly the declared field', () => {
         const result = ApiKeyUpdateRequestSchema.parse({
-            name: 'Renamed Api Key',
+            name: 'renamed api key',
         });
 
-        expect(result).toEqual({ name: 'Renamed Api Key' });
+        expect(result).toEqual({ name: 'renamed api key' });
+    });
+
+    it('trims and lower-cases the name picked from the base schema', () => {
+        const result = ApiKeyUpdateRequestSchema.parse({
+            name: '  Renamed Api KEY  ',
+        });
+
+        expect(result.name).toBe('renamed api key');
     });
 
     it('rejects a missing name', () => {

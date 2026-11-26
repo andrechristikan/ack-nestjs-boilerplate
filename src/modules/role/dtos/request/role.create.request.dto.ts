@@ -5,9 +5,9 @@ import { RoleUpdateRequestSchema } from '@modules/role/dtos/request/role.update.
 
 /** @public */
 export const RoleCreateRequestSchema = RoleUpdateRequestSchema.extend({
-    description: z.string().trim().max(500).optional().meta({
+    description: z.string().trim().toLowerCase().max(500).optional().meta({
         description: 'Description of role',
-        example: faker.lorem.sentence(),
+        example: faker.lorem.sentence().toLowerCase(),
     }),
     name: z
         .string()

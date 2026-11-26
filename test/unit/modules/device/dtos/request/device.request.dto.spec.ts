@@ -162,6 +162,15 @@ describe('DeviceRequestSchema', () => {
         ]);
     });
 
+    it('trims the name and keeps its case', () => {
+        const result = DeviceRequestSchema.parse({
+            ...payload,
+            name: ' iPhone 15 ',
+        });
+
+        expect(result.name).toBe('iPhone 15');
+    });
+
     it('trims the fingerprint before matching', () => {
         const result = DeviceRequestSchema.parse({
             ...payload,

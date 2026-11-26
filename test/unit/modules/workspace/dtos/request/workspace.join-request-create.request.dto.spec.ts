@@ -3,7 +3,7 @@ import { WorkspaceJoinRequestCreateRequestSchema } from '@modules/workspace/dtos
 describe('WorkspaceJoinRequestCreateRequestSchema', () => {
     const payload = {
         workspaceId: '507f1f77bcf86cd799439011',
-        message: 'Please let me in',
+        message: 'please let me in',
     };
 
     it('parses a payload into exactly the declared fields', () => {
@@ -60,12 +60,12 @@ describe('WorkspaceJoinRequestCreateRequestSchema', () => {
         ]);
     });
 
-    it('trims the message', () => {
+    it('trims and lower-cases the message', () => {
         const result = WorkspaceJoinRequestCreateRequestSchema.parse({
             ...payload,
-            message: '  Please  ',
+            message: '  Please LET me in  ',
         });
 
-        expect(result.message).toBe('Please');
+        expect(result.message).toBe('please let me in');
     });
 });

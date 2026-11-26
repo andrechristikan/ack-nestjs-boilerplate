@@ -5,7 +5,7 @@ describe('UserCreateRequestSchema', () => {
         username: 'developer123',
         email: 'john.doe@example.com',
         roleId: '507f1f77bcf86cd799439011',
-        name: 'John Doe',
+        name: 'john doe',
         countryId: '507f1f77bcf86cd799439012',
     };
 
@@ -64,10 +64,11 @@ describe('UserCreateRequestSchema', () => {
         ]);
     });
 
-    it('trims the name and rejects a whitespace-only name', () => {
+    it('trims and lower-cases the name and rejects a whitespace-only name', () => {
         expect(
-            UserCreateRequestSchema.parse({ ...payload, name: '  John  ' }).name
-        ).toBe('John');
+            UserCreateRequestSchema.parse({ ...payload, name: '  John DOE  ' })
+                .name
+        ).toBe('john doe');
         expect(
             UserCreateRequestSchema.safeParse({ ...payload, name: '   ' }).error
                 ?.issues

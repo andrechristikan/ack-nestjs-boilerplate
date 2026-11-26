@@ -2,8 +2,8 @@ import { ProjectUpdateRequestSchema } from '@modules/project/dtos/request/projec
 
 describe('ProjectUpdateRequestSchema', () => {
     const payload = {
-        name: 'Website Revamp',
-        description: 'Marketing site redesign',
+        name: 'website revamp',
+        description: 'marketing site redesign',
     };
 
     it('parses name and description', () => {
@@ -111,13 +111,13 @@ describe('ProjectUpdateRequestSchema', () => {
         ]);
     });
 
-    it('trims name and description and rejects a whitespace-only name', () => {
+    it('trims and lower-cases name and description and rejects a whitespace-only name', () => {
         expect(
             ProjectUpdateRequestSchema.parse({
-                name: '  Apollo  ',
-                description: '  Moon  ',
+                name: '  Apollo Moon  ',
+                description: '  Moon LANDING  ',
             })
-        ).toEqual({ name: 'Apollo', description: 'Moon' });
+        ).toEqual({ name: 'apollo moon', description: 'moon landing' });
         expect(
             ProjectUpdateRequestSchema.safeParse({ ...payload, name: '   ' })
                 .error?.issues

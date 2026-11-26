@@ -13,7 +13,7 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
     };
     const payload = {
         challengeToken: 'token-quartz',
-        name: 'iPhone',
+        name: 'iphone',
         registrationResponse,
         passkeyChallengeToken: 'reauthentication-token-quartz',
         passkeyResponse: {
@@ -34,6 +34,15 @@ describe('MfaPasskeyRegisterRequestSchema', () => {
         const result = MfaPasskeyRegisterRequestSchema.parse(payload);
 
         expect(result).toEqual(payload);
+    });
+
+    it('trims and lower-cases the name', () => {
+        const result = MfaPasskeyRegisterRequestSchema.parse({
+            ...payload,
+            name: '  My iPhone  ',
+        });
+
+        expect(result.name).toBe('my iphone');
     });
 
     it('rejects an attestation-shaped passkeyResponse', () => {

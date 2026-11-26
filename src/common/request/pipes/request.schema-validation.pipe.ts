@@ -27,14 +27,10 @@ export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
 
     private stampEmptyIssuePaths(
         issues: readonly StandardSchemaV1.Issue[],
-        data: string | null
+        path: string
     ): readonly StandardSchemaV1.Issue[] {
-        if (!data) {
-            return issues;
-        }
-
         return issues.map(issue =>
-            issue.path?.length ? issue : { ...issue, path: [data] }
+            issue.path?.length ? issue : { ...issue, path: [path] }
         );
     }
 
@@ -64,7 +60,7 @@ export class RequestSchemaValidationPipe extends StandardSchemaValidationPipe {
         if (result.issues) {
             const stampedIssues = this.stampEmptyIssuePaths(
                 result.issues,
-                metadata.data ?? null
+                metadata.data ?? metadata.type
             );
             const exception = this.exceptionFactory(stampedIssues);
             if (exception instanceof AppBaseException) {

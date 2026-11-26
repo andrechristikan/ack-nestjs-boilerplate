@@ -2,13 +2,13 @@ import { z } from 'zod';
 
 /** @public */
 export const WorkspaceUpdateRequestSchema = z.strictObject({
-    name: z.string().trim().min(1).max(150).meta({
+    name: z.string().trim().toLowerCase().min(1).max(150).meta({
         description: 'Workspace name',
-        example: 'Acme',
+        example: 'acme',
     }),
-    description: z.string().trim().max(500).nullable().meta({
+    description: z.string().trim().toLowerCase().max(500).nullable().meta({
         description: 'Workspace description; null clears it',
-        example: 'Our team workspace',
+        example: 'our team workspace',
     }),
 });
 

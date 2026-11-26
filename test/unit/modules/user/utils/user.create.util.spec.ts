@@ -40,7 +40,7 @@ describe('UserCreateUtil', () => {
 
     const configValues: Record<string, number | string> = {
         ...TestUnitKitConfigValues,
-        'workspace.personalNamePattern': "{username}'s Workspace",
+        'workspace.personalNamePattern': "{username}'s workspace",
         'workspace.slugPrefix': 'w-',
         'workspace.slugMaxLength': 30,
         'workspace.slugMaxAttempts': 3,
@@ -131,13 +131,13 @@ describe('UserCreateUtil', () => {
                     type: EnumUserCreateWorkspaceContextType.personal,
                     workspaceId: 'workspace-one',
                     slugCandidates: ['w-one-a', 'w-one-b', 'w-one-c'],
-                    name: "harborFinch's Workspace",
+                    name: "harborFinch's workspace",
                 },
                 {
                     type: EnumUserCreateWorkspaceContextType.personal,
                     workspaceId: 'workspace-two',
                     slugCandidates: ['w-two-a', 'w-two-b', 'w-two-c'],
-                    name: "marigoldFinch's Workspace",
+                    name: "marigoldFinch's workspace",
                 },
             ]);
             expect(random).toHaveBeenCalledTimes(6);
@@ -164,7 +164,7 @@ describe('UserCreateUtil', () => {
                 type: EnumUserCreateWorkspaceContextType.personal,
                 workspaceId: 'workspace-one',
                 slugCandidates: ['w-one-a', 'w-one-b', 'w-one-c'],
-                name: "harborFinch's Workspace",
+                name: "harborFinch's workspace",
             });
         });
 

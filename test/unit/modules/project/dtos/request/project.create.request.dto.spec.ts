@@ -3,23 +3,26 @@ import { ProjectCreateRequestSchema } from '@modules/project/dtos/request/projec
 describe('ProjectCreateRequestSchema', () => {
     it('parses name and description', () => {
         const result = ProjectCreateRequestSchema.parse({
-            name: 'Website Revamp',
-            description: 'Marketing site redesign',
+            name: 'website revamp',
+            description: 'marketing site redesign',
         });
 
         expect(result).toEqual({
-            name: 'Website Revamp',
-            description: 'Marketing site redesign',
+            name: 'website revamp',
+            description: 'marketing site redesign',
         });
     });
 
-    it('trims name and description', () => {
+    it('trims and lower-cases name and description', () => {
         const result = ProjectCreateRequestSchema.parse({
-            name: '  Apollo  ',
-            description: '  Moon  ',
+            name: '  Apollo Moon  ',
+            description: '  Moon LANDING  ',
         });
 
-        expect(result).toEqual({ name: 'Apollo', description: 'Moon' });
+        expect(result).toEqual({
+            name: 'apollo moon',
+            description: 'moon landing',
+        });
     });
 
     it('rejects a whitespace-only name', () => {
@@ -32,10 +35,10 @@ describe('ProjectCreateRequestSchema', () => {
 
     it('parses with description omitted', () => {
         const result = ProjectCreateRequestSchema.parse({
-            name: 'Website Revamp',
+            name: 'website revamp',
         });
 
-        expect(result).toEqual({ name: 'Website Revamp' });
+        expect(result).toEqual({ name: 'website revamp' });
     });
 
     it('rejects an empty name', () => {

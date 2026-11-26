@@ -5,7 +5,7 @@ describe('UserSignUpRequestSchema', () => {
     const payload = {
         username: 'developer123',
         email: 'john.doe@example.com',
-        name: 'John Doe',
+        name: 'john doe',
         countryId: '507f1f77bcf86cd799439012',
         password: 'abcDE12345@@!',
         marketing: true,
@@ -26,6 +26,15 @@ describe('UserSignUpRequestSchema', () => {
         const result = UserSignUpRequestSchema.parse(rest);
 
         expect(result).toEqual(rest);
+    });
+
+    it('trims and lower-cases the name inherited from the create schema', () => {
+        const result = UserSignUpRequestSchema.parse({
+            ...payload,
+            name: '  John DOE  ',
+        });
+
+        expect(result.name).toBe('john doe');
     });
 
     it('accepts an all-lowercase 8-character password', () => {

@@ -2,8 +2,8 @@ import { WorkspaceCreateRequestSchema } from '@modules/workspace/dtos/request/wo
 
 describe('WorkspaceCreateRequestSchema', () => {
     const payload = {
-        name: 'Acme',
-        description: 'Our team workspace',
+        name: 'acme',
+        description: 'our team workspace',
         isPublic: false,
     };
 
@@ -14,9 +14,9 @@ describe('WorkspaceCreateRequestSchema', () => {
     });
 
     it('parses with only the required name', () => {
-        const result = WorkspaceCreateRequestSchema.parse({ name: 'Acme' });
+        const result = WorkspaceCreateRequestSchema.parse({ name: 'acme' });
 
-        expect(result).toEqual({ name: 'Acme' });
+        expect(result).toEqual({ name: 'acme' });
     });
 
     it('rejects an empty name', () => {
@@ -63,13 +63,13 @@ describe('WorkspaceCreateRequestSchema', () => {
         ]);
     });
 
-    it('trims name and description and rejects a whitespace-only name', () => {
+    it('trims and lower-cases name and description and rejects a whitespace-only name', () => {
         expect(
             WorkspaceCreateRequestSchema.parse({
-                name: '  Acme  ',
-                description: '  Team  ',
+                name: ' Acme Team ',
+                description: '  Our TEAM  ',
             })
-        ).toEqual({ name: 'Acme', description: 'Team' });
+        ).toEqual({ name: 'acme team', description: 'our team' });
         expect(
             WorkspaceCreateRequestSchema.safeParse({ name: '   ' }).error
                 ?.issues

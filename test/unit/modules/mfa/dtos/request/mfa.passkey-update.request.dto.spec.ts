@@ -2,17 +2,17 @@ import { MfaPasskeyUpdateRequestSchema } from '@modules/mfa/dtos/request/mfa.pas
 
 describe('MfaPasskeyUpdateRequestSchema', () => {
     it('parses a payload into exactly the declared fields', () => {
-        const result = MfaPasskeyUpdateRequestSchema.parse({ name: 'Laptop' });
+        const result = MfaPasskeyUpdateRequestSchema.parse({ name: 'laptop' });
 
-        expect(result).toEqual({ name: 'Laptop' });
+        expect(result).toEqual({ name: 'laptop' });
     });
 
-    it('trims the name', () => {
+    it('trims and lower-cases the name', () => {
         const result = MfaPasskeyUpdateRequestSchema.parse({
-            name: '  Laptop  ',
+            name: '  Work Laptop  ',
         });
 
-        expect(result).toEqual({ name: 'Laptop' });
+        expect(result).toEqual({ name: 'work laptop' });
     });
 
     it('rejects a missing, blank, and 51-character name', () => {

@@ -3,7 +3,7 @@ import { UserImportRequestSchema } from '@modules/user/dtos/request/user.import.
 describe('UserImportRequestSchema', () => {
     const payload = {
         email: 'john.doe@example.com',
-        name: 'John Doe',
+        name: 'john doe',
         username: 'developer123',
     };
 
@@ -11,6 +11,15 @@ describe('UserImportRequestSchema', () => {
         const result = UserImportRequestSchema.parse(payload);
 
         expect(result).toEqual(payload);
+    });
+
+    it('trims and lower-cases the name inherited from the create schema', () => {
+        const result = UserImportRequestSchema.parse({
+            ...payload,
+            name: '  John DOE  ',
+        });
+
+        expect(result.name).toBe('john doe');
     });
 
     it('rejects an undeclared key', () => {

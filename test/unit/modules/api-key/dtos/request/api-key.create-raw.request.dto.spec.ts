@@ -3,7 +3,7 @@ import { ApiKeyCreateRawRequestSchema } from '@modules/api-key/dtos/request/api-
 
 describe('ApiKeyCreateRawRequestSchema', () => {
     const payload = {
-        name: 'Acme Api Key',
+        name: 'acme api key',
         type: EnumApiKeyType.default,
         key: 'local_abc123',
         secret: 'secret-value',
@@ -13,6 +13,15 @@ describe('ApiKeyCreateRawRequestSchema', () => {
         const result = ApiKeyCreateRawRequestSchema.parse(payload);
 
         expect(result).toEqual(payload);
+    });
+
+    it('trims and lower-cases the name inherited from the base schema', () => {
+        const result = ApiKeyCreateRawRequestSchema.parse({
+            ...payload,
+            name: '  Acme Api KEY  ',
+        });
+
+        expect(result.name).toBe('acme api key');
     });
 
     it('rejects a missing key', () => {

@@ -27,7 +27,7 @@ export interface IConfigWorkspace {
 }
 
 export default registerAs('workspace', (): IConfigWorkspace => ({
-    personalNamePattern: "{username}'s Workspace",
+    personalNamePattern: "{username}'s workspace",
     slugPrefix: 'w-',
     slugMaxLength: 30,
     slugMaxAttempts: 5,

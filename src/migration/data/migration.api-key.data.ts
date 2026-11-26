@@ -8,13 +8,13 @@ export const MigrationApiKeyData: IMigrationEnvironmentData<
 > = {
     [EnumAppEnvironment.local]: [
         {
-            name: 'Api Key Default',
+            name: 'api key default',
             type: EnumApiKeyType.default,
             key: 'fyFGb7ywyM37TqDY8nuhAmGW5',
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
         },
         {
-            name: 'Api Key System',
+            name: 'api key system',
             type: EnumApiKeyType.system,
             key: 'UTDH0fuDMAbd1ZVnwnyrQJd8Q',
             secret: 'qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP',
