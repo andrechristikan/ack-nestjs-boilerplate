@@ -1,4 +1,5 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { WorkspaceDatabaseErrorContract } from '@modules/workspace/contracts/workspace.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -17,8 +18,6 @@ import {
     WorkspaceMemberWithUserStateInclude,
     WorkspaceRefSelect,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
-import { WorkspaceSlugAlreadyExistsException } from '@modules/workspace/exceptions/workspace.slug-already-exists.exception';
 import type {
     IWorkspaceCreate,
     IWorkspaceOwnedUser,
@@ -32,15 +31,22 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class WorkspaceRepository implements IWorkspaceRepository {
+export class WorkspaceRepository
+    extends DatabaseRepositoryBase
+    implements IWorkspaceRepository
+{
     private readonly deletedSlugPattern: string;
+
+    protected override readonly errorContract = WorkspaceDatabaseErrorContract;
 
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
+        super();
+
         this.deletedSlugPattern = this.configService.get<string>(
             'workspace.deletedSlugPattern'
         )!;
@@ -230,16 +236,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'slug',
-                        exception: new WorkspaceSlugAlreadyExistsException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -260,16 +257,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 })),
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'slug',
-                        exception: new WorkspaceSlugAlreadyExistsException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -310,16 +298,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'slug',
-                        exception: new WorkspaceSlugAlreadyExistsException(),
-                    },
-                ],
-                new WorkspaceNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -328,7 +307,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
         workspaceId: string,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<string | null> {
+    ): Promise<string> {
         const deletedSlugPattern = this.deletedSlugPattern;
         try {
             const workspace = await tx.workspace.update({
@@ -347,15 +326,7 @@ export class WorkspaceRepository implements IWorkspaceRepository {
 
             return workspace.id;
         } catch (error: unknown) {
-            const isRecordNotFound = this.databaseUtil.isRecordNotFound(error);
-            if (isRecordNotFound) {
-                return null;
-            }
-
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 

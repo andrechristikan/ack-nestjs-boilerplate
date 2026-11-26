@@ -1,4 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { EnumUserProcess } from '@modules/user/enums/user.enum';
 import type {
     IUserDeletePhotoPayload,
@@ -10,8 +9,7 @@ import { UserProcessDeletePhotoUseCase } from '@modules/user/use-cases/user.proc
 import { UserProcessDeleteSelfUseCase } from '@modules/user/use-cases/user.process-delete-self.use-case';
 import { UserProcessExportByAdminUseCase } from '@modules/user/use-cases/user.process-export-by-admin.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
-import { Job, UnrecoverableError } from 'bullmq';
-import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import { EnumUserQueue } from '@modules/user/enums/user.enum';
@@ -35,30 +33,9 @@ export class UserProcessor extends QueueProcessorBase {
     ): Promise<IQueueResponse> {
         switch (job.name) {
             case EnumUserProcess.deletePhoto:
-                try {
-                    return await this.userProcessDeletePhotoUseCase.execute(
-                        data as IUserDeletePhotoPayload
-                    );
-                } catch (error: unknown) {
-                    if (error instanceof QueueException) {
-                        if (error.isFatal) {
-                            const unrecoverable = new UnrecoverableError(
-                                error.message
-                            );
-                            unrecoverable.cause = error;
-
-                            throw unrecoverable;
-                        }
-
-                        throw error;
-                    }
-
-                    if (error instanceof AppBaseException) {
-                        throw error;
-                    }
-
-                    this.throwUnknownException(error);
-                }
+                return await this.userProcessDeletePhotoUseCase.execute(
+                    data as IUserDeletePhotoPayload
+                );
             case EnumUserProcess.importByAdmin: {
                 if (outboxId === null) {
                     this.throwUnrecoverable('user.queue.error.outboxIdMissing');

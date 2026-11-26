@@ -48,12 +48,18 @@ export enum EnumNotificationKind {
     newDeviceLogin = 'newDeviceLogin',
     publishTermPolicy = 'publishTermPolicy',
     userAcceptTermPolicy = 'userAcceptTermPolicy',
-    userImportResult = 'userImportResult',
-    userExportResult = 'userExportResult',
+    processResult = 'processResult',
     workspaceInvite = 'workspaceInvite',
     workspaceJoinRequest = 'workspaceJoinRequest',
     workspaceJoinAccepted = 'workspaceJoinAccepted',
     workspaceJoinRejected = 'workspaceJoinRejected',
+}
+
+/** @public */
+export enum EnumNotificationProcessResultStatus {
+    success = 'success',
+    warning = 'warning',
+    error = 'error',
 }
 
 /** @public */

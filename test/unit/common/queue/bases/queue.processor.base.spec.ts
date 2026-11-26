@@ -8,9 +8,11 @@ import type { Mock } from 'vitest';
 import { CacheService } from '@common/cache/services/cache.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
-import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueUnrecoverableException } from '@common/queue/exceptions/queue.unrecoverable.exception';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import {
     buildProcessorJob,
@@ -272,9 +274,57 @@ describe('QueueProcessorBase', () => {
             await expect(processor.process(job)).rejects.toBe(error);
         });
 
+        it('rejects with an UnrecoverableError caused by the QueueUnrecoverableException and stamps the row failed on attempt 1 of 3', async () => {
+            const job = buildProcessorJob({
+                data: { outboxId },
+                opts: { attempts: 3 },
+                attemptsMade: 0,
+            });
+            const error = new QueueUnrecoverableException('hopeless');
+            outboxService.load.mockResolvedValue(row);
+            handle.mockRejectedValue(error);
+
+            const result = processor.process(job);
+
+            await expect(result).rejects.toBeInstanceOf(UnrecoverableError);
+            await expect(result).rejects.toMatchObject({
+                message: 'hopeless',
+                cause: error,
+            });
+            expect(outboxService.fail).toHaveBeenCalledWith(
+                outboxId,
+                1,
+                'hopeless'
+            );
+        });
+
+        it('rejects with an UnrecoverableError caused by the HelperDecryptFailedException and stamps the row failed on attempt 1 of 3', async () => {
+            const job = buildProcessorJob({
+                data: { outboxId },
+                opts: { attempts: 3 },
+                attemptsMade: 0,
+            });
+            const error = new HelperDecryptFailedException();
+            outboxService.load.mockResolvedValue(row);
+            handle.mockRejectedValue(error);
+
+            const result = processor.process(job);
+
+            await expect(result).rejects.toBeInstanceOf(UnrecoverableError);
+            await expect(result).rejects.toMatchObject({
+                message: error.message,
+                cause: error,
+            });
+            expect(outboxService.fail).toHaveBeenCalledWith(
+                outboxId,
+                1,
+                error.message
+            );
+        });
+
         it('rethrows an AppBaseException raised by the handler unchanged', async () => {
             const job = buildProcessorJob({});
-            const error = new DatabaseUnavailableException();
+            const error = new RedisUnavailableException();
             handle.mockRejectedValue(error);
 
             await expect(processor.process(job)).rejects.toBe(error);
@@ -319,6 +369,31 @@ describe('QueueProcessorBase', () => {
                     },
                 },
             });
+        });
+
+        it('reports an UnrecoverableError whose cause is a fatal QueueException', () => {
+            const job = buildProcessorJob({ opts: {}, attemptsMade: 0 });
+            const error = new UnrecoverableError('hopeless');
+            error.cause = new QueueUnrecoverableException('hopeless', true);
+
+            processor.onFailed(job, error);
+
+            expect(sentryService.captureException).toHaveBeenCalledWith(
+                error,
+                expect.objectContaining({
+                    tags: { 'job.name': jobName },
+                })
+            );
+        });
+
+        it('skips an UnrecoverableError whose cause is a non-fatal QueueException', () => {
+            const job = buildProcessorJob({ opts: {}, attemptsMade: 0 });
+            const error = new UnrecoverableError('hopeless');
+            error.cause = new QueueUnrecoverableException('hopeless', false);
+
+            processor.onFailed(job, error);
+
+            expect(sentryService.captureException).not.toHaveBeenCalled();
         });
 
         it('reports to Sentry when the error carries the UnrecoverableError name without being an instance', () => {

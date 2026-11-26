@@ -249,9 +249,7 @@ export class DeviceService {
             deviceOwnershipId,
             now
         );
-        if (deviceId !== null) {
-            await this.deviceRepository.touchInTx(tx, deviceId, now);
-        }
+        await this.deviceRepository.touchInTx(tx, deviceId, now);
     }
 
     async removeOwnershipInTx(

@@ -4,6 +4,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type {
@@ -544,7 +545,7 @@ describe('WorkspaceService', () => {
         const tx = {} as IDatabaseTransactionClient;
         const deletedAt = new Date('2026-01-01T00:00:00.000Z');
 
-        it('soft-deletes each workspace row on the given transaction and returns the ids whose write matched', async () => {
+        it('soft-deletes each workspace row on the given transaction and returns every id it wrote', async () => {
             workspaceRepository.softDeleteInTx.mockImplementation(
                 async (_tx, workspaceId) => workspaceId
             );
@@ -606,34 +607,32 @@ describe('WorkspaceService', () => {
             );
         });
 
-        it('returns and closes only the ids whose write matched', async () => {
+        it('passes a rejected write through and closes no invite or join request', async () => {
+            const error = new AppUnknownException(null);
             workspaceRepository.softDeleteInTx.mockImplementation(
-                async (_tx, workspaceId) =>
-                    workspaceId === 'workspace-2' ? null : workspaceId
+                async (_tx, workspaceId) => {
+                    if (workspaceId === 'workspace-2') {
+                        throw error;
+                    }
+
+                    return workspaceId;
+                }
             );
 
-            const result = await service.softDeleteManyInTx(
-                tx,
-                ['workspace-1', 'workspace-2', 'workspace-3'],
-                deletedAt,
-                'user-1'
-            );
-
-            expect(result).toEqual(['workspace-1', 'workspace-3']);
+            await expect(
+                service.softDeleteManyInTx(
+                    tx,
+                    ['workspace-1', 'workspace-2', 'workspace-3'],
+                    deletedAt,
+                    'user-1'
+                )
+            ).rejects.toBe(error);
             expect(
                 workspaceInviteService.revokePendingByWorkspacesInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['workspace-1', 'workspace-3'],
-                'user-1'
-            );
+            ).not.toHaveBeenCalled();
             expect(
                 workspaceJoinRequestService.cancelPendingByWorkspacesInTx
-            ).toHaveBeenCalledWith(
-                tx,
-                ['workspace-1', 'workspace-3'],
-                'user-1'
-            );
+            ).not.toHaveBeenCalled();
         });
 
         it('starts the invite revoke and the join request cancel together after the guarded writes', async () => {
@@ -674,25 +673,6 @@ describe('WorkspaceService', () => {
                 'end:invites',
                 'end:joinRequests',
             ]);
-        });
-
-        it('returns an empty list and closes nothing when no write matched', async () => {
-            workspaceRepository.softDeleteInTx.mockResolvedValue(null);
-
-            const result = await service.softDeleteManyInTx(
-                tx,
-                ['workspace-1'],
-                deletedAt,
-                'user-1'
-            );
-
-            expect(result).toEqual([]);
-            expect(
-                workspaceInviteService.revokePendingByWorkspacesInTx
-            ).not.toHaveBeenCalled();
-            expect(
-                workspaceJoinRequestService.cancelPendingByWorkspacesInTx
-            ).not.toHaveBeenCalled();
         });
 
         it('issues no statement for an empty id list', async () => {

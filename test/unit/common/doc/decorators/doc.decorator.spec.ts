@@ -1,7 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
@@ -315,7 +314,7 @@ describe('doc.decorator', () => {
             expect(stored.length).toBeGreaterThan(1);
         });
 
-        it('documents the database and redis kit errors at the status their exceptions answer', () => {
+        it('documents the redis kit error at the status their exceptions answer', () => {
             const descriptor: IMethodDescriptor = { value: vi.fn() };
 
             Doc()({}, 'exampleMethod', descriptor);
@@ -326,23 +325,6 @@ describe('doc.decorator', () => {
             ) as IDocResponseEntry[];
             expect(stored).toEqual(
                 expect.arrayContaining([
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.CONFLICT,
-                        statusCode:
-                            EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-                        messagePath:
-                            'database.error.uniqueValueGenerationFailed',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.CONFLICT,
-                        statusCode: EnumDatabaseStatusCodeError.writeConflict,
-                        messagePath: 'database.error.writeConflict',
-                    }),
-                    expect.objectContaining({
-                        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
-                        statusCode: EnumDatabaseStatusCodeError.unavailable,
-                        messagePath: 'database.error.unavailable',
-                    }),
                     expect.objectContaining({
                         httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
                         statusCode: EnumRedisStatusCodeError.unavailable,

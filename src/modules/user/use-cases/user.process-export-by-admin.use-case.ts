@@ -13,7 +13,10 @@ import {
     EnumAwsS3Accessibility,
 } from '@generated/prisma-client/client';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcessResultStatus,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import type {
     IUserExport,
@@ -159,16 +162,25 @@ export class UserProcessExportByAdminUseCase implements IAppUseCase<
         }
 
         const { count, link, expiredAt } = uploaded;
+        const title = this.messageService.setMessage(
+            'user.processResult.exportByAdmin.success.title'
+        );
+        const description = this.messageService.setMessage(
+            'user.processResult.exportByAdmin.success.description',
+            { properties: { count } }
+        );
         await this.databaseService.withTransaction(async tx => {
             const notification = this.notificationQueue.notify(
-                EnumNotificationKind.userExportResult,
+                EnumNotificationKind.processResult,
                 {
                     userId: activityLog.actorUserId,
                     proceedBy: activityLog.actorUserId,
                     reference: outboxId,
+                    status: EnumNotificationProcessResultStatus.success,
+                    title,
+                    description,
                     link,
-                    count,
-                    expiredAt,
+                    linkExpiredAt: expiredAt,
                 }
             );
             const entry = this.activityLogQueue.recordEffectFromPayload(

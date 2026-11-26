@@ -73,7 +73,7 @@ export interface IDeviceOwnershipRepository {
         userId: string,
         deviceOwnershipId: string,
         now: Date
-    ): Promise<string | null>;
+    ): Promise<string>;
     clearTokenFromOtherUsersInTx(
         tx: IDatabaseTransactionClient,
         notificationToken: string,

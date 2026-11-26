@@ -1,6 +1,5 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
@@ -94,6 +93,8 @@ export class UserSignUpUseCase implements IAppUseCase<
             this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const userIds = inputs.map(({ userId }) => userId);
         const workspaceContext = input.workspaceContext;
+
+        let collision: WorkspaceSlugAlreadyExistsException | null = null;
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
@@ -191,6 +192,7 @@ export class UserSignUpUseCase implements IAppUseCase<
                 return;
             } catch (error: unknown) {
                 if (error instanceof WorkspaceSlugAlreadyExistsException) {
+                    collision = error;
                     continue;
                 }
 
@@ -202,7 +204,7 @@ export class UserSignUpUseCase implements IAppUseCase<
             }
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        throw new AppUnknownException(collision);
     }
 
     async execute(

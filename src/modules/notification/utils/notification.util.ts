@@ -2,7 +2,10 @@ import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import { EnumNotificationChannel } from '@generated/prisma-client/client';
-import { NotificationPayloadEncryptionPurpose } from '@modules/notification/constants/notification.constant';
+import {
+    NotificationPayloadEncryptionPurpose,
+    NotificationProcessResultStatusColor,
+} from '@modules/notification/constants/notification.constant';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
 import { NotificationSettingContract } from '@modules/notification/contracts/notification.setting.contract';
 import type {
@@ -14,7 +17,10 @@ import type {
     INotificationWorkspaceInviteFields,
 } from '@modules/notification/interfaces/notification.interface';
 import type { IUserRecipient } from '@modules/user/interfaces/user.interface';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcessResultStatus,
+} from '@modules/notification/enums/notification.enum';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
@@ -44,7 +50,8 @@ export class NotificationUtil {
     ): Record<string, string> {
         const picked: Record<string, string> = { username };
         for (const field of fields) {
-            picked[field] = String(context[field]);
+            const value = context[field];
+            picked[field] = value === null ? '' : String(value);
         }
 
         return picked;
@@ -92,7 +99,7 @@ export class NotificationUtil {
         return hasUserFacingChannel ? surviving : [];
     }
 
-    /** Returns the context with each secret field of the kind decrypted from its `encrypted<Field>` value. */
+    /** Returns the context with each secret field of the kind decrypted from its `encrypted<Field>` value; a `null` sealed value opens to `null`. */
     openContext(
         kind: EnumNotificationKind,
         sealed: INotificationSealedRecord,
@@ -110,6 +117,12 @@ export class NotificationUtil {
             const openField = openFieldBySealedField.get(field) ?? null;
             if (openField === null) {
                 opened[field] = value;
+
+                continue;
+            }
+
+            if (value === null) {
+                opened[openField] = null;
 
                 continue;
             }
@@ -142,7 +155,7 @@ export class NotificationUtil {
         return this.pickFields(fields, context, username);
     }
 
-    /** The context values the kind's `templateFields` name, plus `username`, with each `dateFields` value in RFC 2822. */
+    /** The context values the kind's `templateFields` name, plus `username`, with each `dateFields` value in RFC 2822 and a `null` value as `''`; a context holding a `status` adds `statusColor`. */
     toTemplateData(
         kind: EnumNotificationKind,
         context: INotificationSealedRecord,
@@ -151,10 +164,22 @@ export class NotificationUtil {
         const { templateFields } = NotificationKindContract[kind];
         const picked = this.pickFields(templateFields, context, username);
 
-        return this.toDisplayProperties(kind, picked);
+        const displayed = this.toDisplayProperties(kind, picked);
+        const status =
+            Object.values(EnumNotificationProcessResultStatus).find(
+                value => value === context.status
+            ) ?? null;
+        if (status === null) {
+            return displayed;
+        }
+
+        return {
+            ...displayed,
+            statusColor: NotificationProcessResultStatusColor[status],
+        };
     }
 
-    /** The properties with each of the kind's `dateFields` value formatted from ISO to RFC 2822, for text a person reads. */
+    /** The properties with each of the kind's `dateFields` value formatted from ISO to RFC 2822, for text a person reads; an empty value stays empty. */
     toDisplayProperties<T extends string | number | boolean | Date>(
         kind: EnumNotificationKind,
         properties: Record<string, T>
@@ -163,7 +188,7 @@ export class NotificationUtil {
         const displayed: Record<string, T | string> = { ...properties };
         for (const field of dateFields) {
             const value = properties[field];
-            if (typeof value === 'string') {
+            if (typeof value === 'string' && value !== '') {
                 const date = this.helperDateService.createFromIso(value);
                 displayed[field] = this.helperDateService.formatToRfc2822(date);
             }
@@ -203,7 +228,7 @@ export class NotificationUtil {
         return { username, encryptedEmail, encryptedTokens };
     }
 
-    /** The context with each secret field renamed `encrypted<Field>` and encrypted against the encryption context. */
+    /** The context with each secret field renamed `encrypted<Field>` and encrypted against the encryption context; a `null` secret stays `null` under that name. */
     sealContext(
         context: INotificationContext | INotificationWorkspaceInviteFields,
         secrets: string[],
@@ -220,6 +245,12 @@ export class NotificationUtil {
             }
 
             const sealedField = this.toSealedField(field);
+            if (value === null) {
+                sealed[sealedField] = null;
+
+                continue;
+            }
+
             sealed[sealedField] = this.encryptPayload(value, encryptionContext);
         }
 

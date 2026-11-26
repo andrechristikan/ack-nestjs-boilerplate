@@ -70,7 +70,7 @@ export interface IWorkspaceRepository {
         workspaceId: string,
         deletedAt: Date,
         deletedBy: string
-    ): Promise<string | null>;
+    ): Promise<string>;
     existsOwnedWithOtherMembers(
         workspaceIds: string[],
         userId: string

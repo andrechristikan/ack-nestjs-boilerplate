@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { FeatureFlagDatabaseErrorContract } from '@modules/feature-flag/contracts/feature-flag.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -8,7 +10,6 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { FeatureFlagWithTargetsInclude } from '@modules/feature-flag/constants/feature-flag.constant';
-import { FeatureFlagNotFoundException } from '@modules/feature-flag/exceptions/feature-flag.not-found.exception';
 import type {
     IFeatureFlag,
     IFeatureFlagUpdateMetadata,
@@ -19,12 +20,20 @@ import type { IFeatureFlagRepository } from '@modules/feature-flag/interfaces/fe
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class FeatureFlagRepository implements IFeatureFlagRepository {
+export class FeatureFlagRepository
+    extends DatabaseRepositoryBase
+    implements IFeatureFlagRepository
+{
+    protected override readonly errorContract =
+        FeatureFlagDatabaseErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     private toFeatureFlag({
         targets,
@@ -124,10 +133,7 @@ export class FeatureFlagRepository implements IFeatureFlagRepository {
 
             return this.toFeatureFlag(featureFlag);
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new FeatureFlagNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 

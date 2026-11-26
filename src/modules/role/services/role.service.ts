@@ -13,11 +13,13 @@ import { RoleHasPoliciesException } from '@modules/role/exceptions/role.has-poli
 import { RoleImmutableException } from '@modules/role/exceptions/role.immutable.exception';
 import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
 import { RoleRankForbiddenException } from '@modules/role/exceptions/role.rank-forbidden.exception';
+import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import { RoleSelfForbiddenException } from '@modules/role/exceptions/role.self-forbidden.exception';
 import type {
     IRole,
     IRoleActor,
     IRoleCreate,
+    IRoleDeletable,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
@@ -118,8 +120,8 @@ export class RoleService {
     async getDeletableByActor(
         actor: IRoleActor,
         roleId: string
-    ): Promise<IRole> {
-        const role = await this.roleRepository.findOneById(roleId);
+    ): Promise<IRoleDeletable> {
+        const role = await this.roleRepository.findOneDeletableById(roleId);
         if (!role) {
             throw new RoleNotFoundException();
         }
@@ -129,6 +131,10 @@ export class RoleService {
 
         if (role.isImmutable) {
             throw new RoleImmutableException();
+        }
+
+        if (role.users.length > 0) {
+            throw new RoleUsedException();
         }
 
         return role;

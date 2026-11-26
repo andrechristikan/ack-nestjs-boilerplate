@@ -19,7 +19,7 @@ import type {
     IProjectMemberActor,
 } from '@modules/project/interfaces/project.interface';
 import { ProjectUtil } from '@modules/project/utils/project.util';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
 import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
 import { WorkspaceMemberService } from '@modules/workspace/services/workspace.member.service';
 import { ProjectAssignMemberUseCase } from '@modules/project/use-cases/project.assign-member.use-case';
@@ -194,7 +194,7 @@ describe('ProjectAssignMemberUseCase', () => {
         });
 
         it('passes a rejected typed exception through untouched', async () => {
-            const failure = new DatabaseWriteConflictException();
+            const failure = new ProjectMemberAlreadyAssignedException();
             projectMemberService.assignMemberInTx.mockRejectedValue(failure);
 
             await expect(useCase.execute(...args)).rejects.toBe(failure);

@@ -55,8 +55,7 @@ export class MigrationTemplateEmailNotificationSeed
             newDeviceLoginEmail,
             loginLockedEmail,
             publishTermPolicyEmail,
-            userImportResultEmail,
-            userExportResultEmail,
+            processResultEmail,
             resetPasswordEmail,
             workspaceInviteEmail,
             workspaceJoinRequestEmail,
@@ -104,10 +103,7 @@ export class MigrationTemplateEmailNotificationSeed
                 EnumNotificationKind.publishTermPolicy
             ),
             this.notificationTemplateService.getEmail(
-                EnumNotificationKind.userImportResult
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.userExportResult
+                EnumNotificationKind.processResult
             ),
             this.notificationTemplateService.getEmail(
                 EnumNotificationKind.resetPassword
@@ -271,26 +267,15 @@ export class MigrationTemplateEmailNotificationSeed
             promises.push(publishTermPolicyEmailImport);
         }
 
-        if (!userImportResultEmail) {
+        if (!processResultEmail) {
             this.logger.log(
-                'User Import Result Email template missing, importing...'
+                'Process Result Email template missing, importing...'
             );
-            const userImportResultEmailImport =
+            const processResultEmailImport =
                 this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.userImportResult
+                    EnumNotificationKind.processResult
                 );
-            promises.push(userImportResultEmailImport);
-        }
-
-        if (!userExportResultEmail) {
-            this.logger.log(
-                'User Export Result Email template missing, importing...'
-            );
-            const userExportResultEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.userExportResult
-                );
-            promises.push(userExportResultEmailImport);
+            promises.push(processResultEmailImport);
         }
 
         if (!resetPasswordEmail) {
@@ -420,10 +405,7 @@ export class MigrationTemplateEmailNotificationSeed
                     EnumNotificationKind.publishTermPolicy
                 ),
                 this.notificationTemplateService.emailDelete(
-                    EnumNotificationKind.userImportResult
-                ),
-                this.notificationTemplateService.emailDelete(
-                    EnumNotificationKind.userExportResult
+                    EnumNotificationKind.processResult
                 ),
                 this.notificationTemplateService.emailDelete(
                     EnumNotificationKind.resetPassword

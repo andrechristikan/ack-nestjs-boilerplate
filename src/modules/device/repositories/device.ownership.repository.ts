@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DeviceOwnershipDatabaseErrorContract } from '@modules/device/contracts/device.ownership.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -12,7 +14,6 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import { Prisma } from '@generated/prisma-client/client';
 import type { EnumDeviceNotificationProvider } from '@generated/prisma-client/client';
 import { DeviceOwnershipRefSelect } from '@modules/device/constants/device.constant';
-import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { SessionRefSelect } from '@modules/session/constants/session.constant';
 import type {
     IDeviceOwnership,
@@ -26,13 +27,21 @@ import { Injectable } from '@nestjs/common';
 import { Duration } from 'luxon';
 
 @Injectable()
-export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
+export class DeviceOwnershipRepository
+    extends DatabaseRepositoryBase
+    implements IDeviceOwnershipRepository
+{
+    protected override readonly errorContract =
+        DeviceOwnershipDatabaseErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     private ownershipInclude(
         today: Date,
@@ -174,10 +183,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
                 include,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new DeviceNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -306,10 +312,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
 
             return ownership.deviceId;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new DeviceNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -318,7 +321,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
         userId: string,
         deviceOwnershipId: string,
         now: Date
-    ): Promise<string | null> {
+    ): Promise<string> {
         try {
             const ownership = await tx.deviceOwnership.update({
                 where: {
@@ -332,15 +335,7 @@ export class DeviceOwnershipRepository implements IDeviceOwnershipRepository {
 
             return ownership.deviceId;
         } catch (error: unknown) {
-            const isNotFound = this.databaseUtil.isRecordNotFound(error);
-            if (isNotFound) {
-                return null;
-            }
-
-            throw this.databaseUtil.toWriteException(
-                error,
-                new DeviceNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 

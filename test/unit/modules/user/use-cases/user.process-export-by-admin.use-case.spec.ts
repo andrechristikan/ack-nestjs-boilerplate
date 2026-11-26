@@ -35,6 +35,7 @@ import {
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
+    EnumNotificationProcessResultStatus,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
@@ -106,7 +107,7 @@ describe('UserProcessExportByAdminUseCase', () => {
         queue: EnumNotificationQueue.notification,
         name: EnumNotificationProcess.notify,
         data: {
-            kind: EnumNotificationKind.userExportResult,
+            kind: EnumNotificationKind.processResult,
             context: {
                 userId: 'entry',
                 proceedBy: 'entry',
@@ -203,15 +204,22 @@ describe('UserProcessExportByAdminUseCase', () => {
                 exported: 1,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'user.processResult.exportByAdmin.success.description',
+                { properties: { count: 1 } }
+            );
             expect(notificationQueue.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.userExportResult,
+                EnumNotificationKind.processResult,
                 {
                     userId: 'admin-quill',
                     proceedBy: 'admin-quill',
                     reference: 'outbox-quill',
+                    status: EnumNotificationProcessResultStatus.success,
+                    title: 'user.processResult.exportByAdmin.success.title',
+                    description:
+                        'user.processResult.exportByAdmin.success.description',
                     link: 'https://signed.example.com/export.csv',
-                    count: 1,
-                    expiredAt: '2026-03-02T00:00:00.000Z',
+                    linkExpiredAt: '2026-03-02T00:00:00.000Z',
                 }
             );
             expect(

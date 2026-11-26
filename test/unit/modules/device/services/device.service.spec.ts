@@ -572,12 +572,13 @@ describe('DeviceService', () => {
             );
         });
 
-        it('stamps no device and throws nothing when the ownership touch matches no live ownership', async () => {
-            deviceOwnershipRepository.touchInTx.mockResolvedValue(null);
+        it('passes a rejection of the ownership touch through and stamps no device', async () => {
+            const error = new DeviceNotFoundException();
+            deviceOwnershipRepository.touchInTx.mockRejectedValue(error);
 
             await expect(
                 service.touchOwnershipInTx(tx, 'user-1', 'ownership-1', now)
-            ).resolves.toBeUndefined();
+            ).rejects.toBe(error);
 
             expect(deviceRepository.touchInTx).not.toHaveBeenCalled();
         });

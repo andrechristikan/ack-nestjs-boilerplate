@@ -23,7 +23,7 @@ Rule: `transaction.md`, Transactions; `concurrency.md`, Together and alone.
 - The read alone, with no guard on the statement: a change between the read and the write passes unchecked.
 - Every gate first: the checks sit on one level, and the first to fail answers.
 
-### A one-row write returns its row through `update()` or `delete()`, a miss mapped from P2025
+### A one-row write returns its row through `update()` or `delete()`, its P2025 an internal failure unless its contract names it
 
 Rule: `transaction.md`, Queries.
 
@@ -31,13 +31,27 @@ Rule: `transaction.md`, Queries.
 - `updateMany`, with the row rebuilt from the fail-fast read or from values: the rebuilt row is a copy that drifts from what the write stored, its stamps and the fields the write set.
 - The Prisma error in place of the fail-fast read: P2025 cannot tell a missing row from a row in the wrong state, and the transaction opens before the request learns either.
 
-### A database error is mapped by the repository of the statement that raised it
+### A database error is an internal failure unless its repository's database-error contract names it
 
-Rule: `exceptions.md`, Who throws; `transaction.md`, Queries.
+Rule: `repository.md`, Writes; `exceptions.md`, Who throws; `transaction.md`, Queries and Generated unique values; `layering.md`, Roles.
 
 - Mapping in the use case per flow: every flow repeats the mapping, and database logic belongs in the repository.
-- An `update()` or `delete()` returning `null` for its P2025: the row write already throws on a miss, so a `null` adds a second answer channel.
+- One contract per module: one field name such as `nonce` and one P2025 answer would span several models.
+- One contract per module keyed by model: a nesting level, and the base would need its model name.
+- A per-call `miss` exception: a race answered as a business 4xx the fail-fast read already owns.
+- A special answer for a lost race beside the one mapping (`null` for a P2025, `false` for a collision): a second answer channel.
 - A callback building the exception: every call site adds a function to defer an exception that costs nothing to build in the catch.
+- A repository `errorModule` field: the exception names its module.
+- An `IDatabaseRepository` interface beside the base: an interface cannot declare the base's protected members.
+- A kit retry helper `withUniqueRetry`: the transaction shape stays the use case's.
+- A module exhaustion exception per field: no client acts on it.
+
+### `AppGeneralFilter` maps no database error
+
+Rule: `filter.md`.
+
+- Keeping 400 for an invalid id and 503 for an unreachable database: reads and writes would answer two ways.
+- Mapping only wrapped errors: a raw error and a wrapped one of the same failure would answer two ways.
 
 ### Every `ObjectId` field carries a relation
 

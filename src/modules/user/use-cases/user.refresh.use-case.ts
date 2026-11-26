@@ -1,5 +1,3 @@
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -13,9 +11,7 @@ import type {
     IAuthJwtRefreshTokenPayload,
     IAuthToken,
 } from '@modules/auth/interfaces/auth.interface';
-import { DeviceNotFoundException } from '@modules/device/exceptions/device.not-found.exception';
 import { DeviceService } from '@modules/device/services/device.service';
-import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import { SessionService } from '@modules/session/services/session.service';
 import { UserService } from '@modules/user/services/user.service';
 import { Injectable } from '@nestjs/common';
@@ -49,37 +45,25 @@ export class UserRefreshUseCase implements IAppUseCase<
     ): Promise<void> {
         const { sessionId, userId } = authContext;
         const now = this.helperDateService.now();
-        try {
-            await this.databaseService.withTransaction(async tx => {
-                const isRevoked = await this.sessionService.revokeReusedInTx(
-                    tx,
-                    userId,
-                    sessionId,
-                    userId,
-                    now
+        await this.databaseService.withTransaction(async tx => {
+            const isRevoked = await this.sessionService.revokeReusedInTx(
+                tx,
+                userId,
+                sessionId,
+                userId,
+                now
+            );
+            if (isRevoked) {
+                const revokeEntry = this.activityLogQueue.recordEffect(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    null,
+                    { action: EnumActivityLogAction.userSessionRevoked }
                 );
-                if (isRevoked) {
-                    const revokeEntry = this.activityLogQueue.recordEffect(
-                        requestContext,
-                        apiKeyContext,
-                        authContext,
-                        null,
-                        { action: EnumActivityLogAction.userSessionRevoked }
-                    );
-                    await this.outboxService.addInTx(tx, revokeEntry);
-                }
-            });
-        } catch (err: unknown) {
-            if (err instanceof AppBaseException) {
-                if (err instanceof SessionNotFoundException) {
-                    return;
-                }
-
-                throw err;
+                await this.outboxService.addInTx(tx, revokeEntry);
             }
-
-            throw new AppUnknownException(err);
-        }
+        });
     }
 
     private async rotateSession(
@@ -97,61 +81,47 @@ export class UserRefreshUseCase implements IAppUseCase<
             user,
             refreshToken
         );
-        try {
-            // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
-            return await this.databaseService.withTransaction(async tx => {
-                const isJtiUpdated = await this.sessionService.updateJtiInTx(
-                    tx,
-                    sessionId,
-                    oldJti,
-                    newJti
-                );
-                if (!isJtiUpdated) {
-                    return null;
-                }
-
-                const now = this.helperDateService.now();
-                await Promise.all([
-                    this.userService.updateLoginInTx(
-                        tx,
-                        userId,
-                        loginFrom,
-                        loginWith,
-                        requestLog.ipAddress,
-                        now,
-                        false
-                    ),
-                    this.deviceService.touchOwnershipInTx(
-                        tx,
-                        userId,
-                        deviceOwnershipId,
-                        now
-                    ),
-                ]);
-                const entry = this.activityLogQueue.recordEffect(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    null,
-                    { action: EnumActivityLogAction.userTokenRefreshed }
-                );
-                await this.outboxService.addInTx(tx, entry);
-
-                return tokens;
-            });
-        } catch (err: unknown) {
-            if (
-                err instanceof SessionNotFoundException ||
-                err instanceof DeviceNotFoundException
-            ) {
+        // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
+        return this.databaseService.withTransaction(async tx => {
+            const isJtiUpdated = await this.sessionService.updateJtiInTx(
+                tx,
+                sessionId,
+                oldJti,
+                newJti
+            );
+            if (!isJtiUpdated) {
                 return null;
             }
-            if (err instanceof AppBaseException) {
-                throw err;
-            }
 
-            throw new AppUnknownException(err);
-        }
+            const now = this.helperDateService.now();
+            await Promise.all([
+                this.userService.updateLoginInTx(
+                    tx,
+                    userId,
+                    loginFrom,
+                    loginWith,
+                    requestLog.ipAddress,
+                    now,
+                    false
+                ),
+                this.deviceService.touchOwnershipInTx(
+                    tx,
+                    userId,
+                    deviceOwnershipId,
+                    now
+                ),
+            ]);
+            const entry = this.activityLogQueue.recordEffect(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                null,
+                { action: EnumActivityLogAction.userTokenRefreshed }
+            );
+            await this.outboxService.addInTx(tx, entry);
+
+            return tokens;
+        });
     }
 
     async execute(

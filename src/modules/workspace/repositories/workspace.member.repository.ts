@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -26,19 +28,23 @@ import type {
     IWorkspaceOwnedUser,
     IWorkspaceTransferMember,
 } from '@modules/workspace/interfaces/workspace.interface';
-import { WorkspaceMemberAlreadyExistsException } from '@modules/workspace/exceptions/workspace.member-already-exists.exception';
-import { WorkspaceMemberNotFoundException } from '@modules/workspace/exceptions/workspace.member-not-found.exception';
-import { WorkspaceMemberPeerForbiddenException } from '@modules/workspace/exceptions/workspace.member-peer-forbidden.exception';
 import type { IWorkspaceMemberRepository } from '@modules/workspace/interfaces/workspace.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
+export class WorkspaceMemberRepository
+    extends DatabaseRepositoryBase
+    implements IWorkspaceMemberRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService
-    ) {}
+    ) {
+        super();
+    }
 
     private buildWorkspaceScopedWhere(
         workspaceId: string,
@@ -221,28 +227,15 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
         role: EnumWorkspaceMemberRole,
         actorId: string
     ): Promise<WorkspaceMember> {
-        try {
-            return await tx.workspaceMember.create({
-                data: {
-                    workspaceId,
-                    userId,
-                    role,
-                    createdBy: actorId,
-                    updatedBy: actorId,
-                },
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'userId',
-                        exception: new WorkspaceMemberAlreadyExistsException(),
-                    },
-                ],
-                new WorkspaceMemberAlreadyExistsException()
-            );
-        }
+        return tx.workspaceMember.create({
+            data: {
+                workspaceId,
+                userId,
+                role,
+                createdBy: actorId,
+                updatedBy: actorId,
+            },
+        });
     }
 
     async updateRoleInTx(
@@ -259,10 +252,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceMemberPeerForbiddenException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -277,10 +267,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 include: WorkspaceMemberWithUserRecipientInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceMemberNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -321,10 +308,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceMemberPeerForbiddenException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -345,10 +329,7 @@ export class WorkspaceMemberRepository implements IWorkspaceMemberRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceMemberPeerForbiddenException()
-            );
+            throw this.toException(error);
         }
     }
 }

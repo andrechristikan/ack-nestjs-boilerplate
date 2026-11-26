@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -18,18 +20,23 @@ import type {
     IUserCreateVerificationEntry,
 } from '@modules/user/interfaces/user.create.interface';
 import { UserVerificationWithUserStateInclude } from '@modules/user/constants/user.constant';
-import { UserReauthenticationOtpInvalidException } from '@modules/user/exceptions/user.reauthentication-otp-invalid.exception';
-import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import type { IUserVerificationRepository } from '@modules/user/interfaces/user.verification-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserVerificationRepository implements IUserVerificationRepository {
+export class UserVerificationRepository
+    extends DatabaseRepositoryBase
+    implements IUserVerificationRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
-    ) {}
+    ) {
+        super();
+    }
 
     async findOneActiveByVerificationEmailToken(
         token: string
@@ -213,10 +220,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserTokenInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -238,10 +242,7 @@ export class UserVerificationRepository implements IUserVerificationRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserReauthenticationOtpInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 

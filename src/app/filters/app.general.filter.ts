@@ -4,7 +4,6 @@ import type { Response } from 'express';
 import { AppRefusalLogStatuses } from '@app/constants/app.constant';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import { MessageService } from '@common/message/services/message.service';
 import { CacheService } from '@common/cache/services/cache.service';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
@@ -21,18 +20,13 @@ export class AppGeneralFilter implements ExceptionFilter {
         private readonly messageService: MessageService,
         private readonly responseMetadataService: ResponseMetadataService,
         private readonly sentryService: SentryService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly cacheService: CacheService
     ) {}
 
     private map(error: unknown): AppBaseException | null {
-        const databaseException = this.databaseUtil.toException(error);
         const isConnectionError = this.cacheService.isConnectionError(error);
-        const redisException = isConnectionError
-            ? new RedisUnavailableException(error)
-            : null;
 
-        return databaseException ?? redisException;
+        return isConnectionError ? new RedisUnavailableException(error) : null;
     }
 
     private resolve(exception: unknown): AppBaseException {

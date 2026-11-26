@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -6,9 +8,6 @@ import {
     UserMobileNumberWithCountryInclude,
 } from '@modules/user/constants/user.constant';
 import type { UserAddMobileNumberRequestDto } from '@modules/user/dtos/request/user.add-mobile-number.request.dto';
-import { UserMobileNumberAlreadyVerifiedException } from '@modules/user/exceptions/user.mobile-number-already-verified.exception';
-import { UserMobileNumberExistException } from '@modules/user/exceptions/user.mobile-number-exist.exception';
-import { UserMobileNumberNotFoundException } from '@modules/user/exceptions/user.mobile-number-not-found.exception';
 import type {
     IUserMobileNumber,
     IUserMobileNumberSummary,
@@ -17,11 +16,18 @@ import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserMobileNumberRepository implements IUserMobileNumberRepository {
+export class UserMobileNumberRepository
+    extends DatabaseRepositoryBase
+    implements IUserMobileNumberRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findOneMobileNumber(
         userId: string,
@@ -66,28 +72,15 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
         userId: string,
         { number, countryId, phoneCode }: UserAddMobileNumberRequestDto
     ): Promise<IUserMobileNumber> {
-        try {
-            return await tx.userMobileNumber.create({
-                data: {
-                    userId,
-                    countryId,
-                    number,
-                    phoneCode,
-                },
-                include: UserMobileNumberWithCountryInclude,
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'number',
-                        exception: new UserMobileNumberExistException(),
-                    },
-                ],
-                new UserMobileNumberExistException()
-            );
-        }
+        return tx.userMobileNumber.create({
+            data: {
+                userId,
+                countryId,
+                number,
+                phoneCode,
+            },
+            include: UserMobileNumberWithCountryInclude,
+        });
     }
 
     async updateInTx(
@@ -109,16 +102,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 include: UserMobileNumberWithCountryInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'number',
-                        exception: new UserMobileNumberExistException(),
-                    },
-                ],
-                new UserMobileNumberNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -136,10 +120,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserMobileNumberAlreadyVerifiedException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -154,10 +135,7 @@ export class UserMobileNumberRepository implements IUserMobileNumberRepository {
                 include: UserMobileNumberWithCountryInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserMobileNumberNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 

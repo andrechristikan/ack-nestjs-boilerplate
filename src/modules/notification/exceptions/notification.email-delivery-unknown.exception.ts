@@ -1,7 +1,7 @@
-import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueUnrecoverableException } from '@common/queue/exceptions/queue.unrecoverable.exception';
 
 /** @public */
-export class NotificationEmailDeliveryUnknownException extends QueueException {
+export class NotificationEmailDeliveryUnknownException extends QueueUnrecoverableException {
     constructor(
         override readonly message: string,
         override readonly rawError: unknown,

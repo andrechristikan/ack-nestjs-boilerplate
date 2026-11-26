@@ -1,7 +1,6 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import type { Project } from '@generated/prisma-client/client';
@@ -40,6 +39,8 @@ export class ProjectCreateUseCase implements IAppUseCase<
         const create = { name, description: description ?? null };
         const slugCandidates = this.projectService.drawSlugCandidates();
 
+        let collision: ProjectSlugAlreadyExistsException | null = null;
+
         for (const slug of slugCandidates) {
             try {
                 const project = await this.databaseService.withTransaction(
@@ -58,6 +59,7 @@ export class ProjectCreateUseCase implements IAppUseCase<
                 return { data: project };
             } catch (error: unknown) {
                 if (error instanceof ProjectSlugAlreadyExistsException) {
+                    collision = error;
                     continue;
                 }
 
@@ -69,6 +71,6 @@ export class ProjectCreateUseCase implements IAppUseCase<
             }
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        throw new AppUnknownException(collision);
     }
 }

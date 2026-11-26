@@ -191,24 +191,13 @@ export class NotificationTemplateService {
                         'utf8'
                     ),
                 };
-            case EnumNotificationKind.userImportResult:
+            case EnumNotificationKind.processResult:
                 return {
-                    subject: 'User Import Result',
+                    subject: '{{title}}',
                     htmlBody: readFileSync(
                         join(
                             templateDir,
-                            'notification.user-import-result.template.hbs'
-                        ),
-                        'utf8'
-                    ),
-                };
-            case EnumNotificationKind.userExportResult:
-                return {
-                    subject: 'User Export Result',
-                    htmlBody: readFileSync(
-                        join(
-                            templateDir,
-                            'notification.user-export-result.template.hbs'
+                            'notification.process-result.template.hbs'
                         ),
                         'utf8'
                     ),

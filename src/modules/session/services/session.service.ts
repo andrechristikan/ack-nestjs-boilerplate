@@ -22,6 +22,7 @@ import { SessionNotFoundException } from '@modules/session/exceptions/session.no
 import { SessionRevokedException } from '@modules/session/exceptions/session.revoked.exception';
 import type {
     ISessionList,
+    ISessionLogin,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
@@ -38,7 +39,6 @@ import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import { SessionLoginCacheSchema } from '@modules/session/dtos/session.login-cache.dto';
-import type { SessionLoginCacheDto } from '@modules/session/dtos/session.login-cache.dto';
 
 @Injectable()
 export class SessionService {
@@ -81,11 +81,25 @@ export class SessionService {
         }));
     }
 
+    private async loadLogin(
+        userId: string,
+        sessionId: string,
+        idleSince: Date
+    ): Promise<ISessionLogin | null> {
+        const session = await this.sessionRepository.findLoginById(
+            userId,
+            sessionId,
+            idleSince
+        );
+
+        return session === null ? null : { jtiDigest: session.jtiDigest };
+    }
+
     private async readLogin(
         userId: string,
         sessionId: string,
         key: string
-    ): Promise<SessionLoginCacheDto | null> {
+    ): Promise<ISessionLogin | null> {
         const now = this.helperDateService.now();
         const idleSince = this.helperDateService.backward(
             now,
@@ -96,17 +110,7 @@ export class SessionService {
             key,
             SessionLoginCacheSchema,
             this.sessionCache.loginCacheTtlInMs,
-            async () => {
-                const session = await this.sessionRepository.findLoginById(
-                    userId,
-                    sessionId,
-                    idleSince
-                );
-
-                return session === null
-                    ? null
-                    : { jtiDigest: session.jtiDigest };
-            }
+            () => this.loadLogin(userId, sessionId, idleSince)
         );
     }
 

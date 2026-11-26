@@ -1,4 +1,4 @@
-import type { Prisma } from '@generated/prisma-client/client';
+import type { Prisma, Session } from '@generated/prisma-client/client';
 import type {
     SessionListSelect,
     SessionRefSelect,
@@ -11,3 +11,5 @@ export type ISessionList = Prisma.SessionGetPayload<{
 export type ISessionRef = Prisma.SessionGetPayload<{
     select: typeof SessionRefSelect;
 }>;
+
+export type ISessionLogin = Pick<Session, 'jtiDigest'>;

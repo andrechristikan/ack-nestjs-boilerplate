@@ -7,6 +7,8 @@ import { CacheService } from '@common/cache/services/cache.service';
 import { MessageService } from '@common/message/services/message.service';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueUnrecoverableException } from '@common/queue/exceptions/queue.unrecoverable.exception';
+import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { IOutboxJobPayload } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -153,22 +155,32 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
             this.logger.error(error, 'Queue job failed');
 
+            let thrown = error;
+            if (
+                error instanceof QueueUnrecoverableException ||
+                error instanceof HelperDecryptFailedException
+            ) {
+                const unrecoverable = new UnrecoverableError(error.message);
+                unrecoverable.cause = error;
+                thrown = unrecoverable;
+            }
+
             const attempts = job.attemptsMade + 1;
             const isLastAttempt =
-                error instanceof UnrecoverableError || attempts >= maxAttempts;
+                thrown instanceof UnrecoverableError || attempts >= maxAttempts;
             if (rowId !== null && isLastAttempt) {
                 await this.failRow(rowId, attempts, failureMessage);
             }
 
             if (
-                error instanceof QueueException ||
-                error instanceof AppBaseException ||
-                error instanceof UnrecoverableError
+                thrown instanceof QueueException ||
+                thrown instanceof AppBaseException ||
+                thrown instanceof UnrecoverableError
             ) {
-                throw error;
+                throw thrown;
             }
 
-            this.throwUnknownException(error);
+            this.throwUnknownException(thrown);
         }
 
         if (rowId !== null) {
@@ -198,8 +210,10 @@ export abstract class QueueProcessorBase extends WorkerHost {
 
         let isFatal = true;
 
-        if (error instanceof QueueException) {
-            isFatal = !!error.isFatal;
+        const source =
+            error instanceof UnrecoverableError ? error.cause : error;
+        if (source instanceof QueueException) {
+            isFatal = source.isFatal;
         }
 
         if (!isFatal) {

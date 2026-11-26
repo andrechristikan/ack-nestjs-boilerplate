@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -406,71 +406,41 @@ describe('UserRefreshUseCase', () => {
         it.each([
             ['the session row', new SessionNotFoundException()],
             ['the device ownership', new DeviceNotFoundException()],
+            ['the unknown failure', new AppUnknownException(null)],
         ])(
-            'answers SessionRevokedException when the refresh transaction loses a conflict on %s',
-            async (_subject, conflict) => {
+            'passes the exception %s raises while rotating the session through untouched',
+            async (_subject, failure) => {
                 stubUserRefreshSession(refreshSessionDoubles, {
                     payload,
                     oldJti: 'old-jti',
                     refreshed,
                 });
-                sessionService.getRefreshedTokens.mockImplementation(() => {
-                    throw new SessionRevokedException();
-                });
-                databaseService.withTransaction.mockRejectedValue(conflict);
+                sessionService.updateJtiInTx.mockResolvedValue(true);
+                deviceService.touchOwnershipInTx.mockRejectedValue(failure);
 
-                await expectSessionRevoked(
+                await expect(
                     useCase.execute(
                         requestContext,
                         apiKeyContext,
                         authContext,
                         userContext
                     )
-                );
+                ).rejects.toBe(failure);
 
-                expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
-                    null
-                );
+                expect(
+                    sessionService.getRefreshedTokens
+                ).not.toHaveBeenCalled();
             }
         );
 
-        it('answers SessionRevokedException, not the general conflict, when the reuse transaction loses its conflict on the session row', async () => {
+        it('passes the exception updateJtiInTx rejects with through untouched', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
                 refreshed,
             });
-            sessionService.existsLiveByJti.mockResolvedValue(false);
-            sessionService.getRefreshedTokens.mockImplementation(() => {
-                throw new SessionRevokedException();
-            });
-            databaseService.withTransaction.mockRejectedValue(
-                new SessionNotFoundException()
-            );
-
-            await expectSessionRevoked(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext
-                )
-            );
-
-            expect(sessionService.getRefreshedTokens).toHaveBeenCalledWith(
-                null
-            );
-        });
-
-        it('rethrows an app exception raised by the reuse transaction unchanged', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            sessionService.existsLiveByJti.mockResolvedValue(false);
-            const failure = new SessionRevokedException();
-            databaseService.withTransaction.mockRejectedValue(failure);
+            const failure = new SessionNotFoundException();
+            sessionService.updateJtiInTx.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -480,41 +450,20 @@ describe('UserRefreshUseCase', () => {
                     userContext
                 )
             ).rejects.toBe(failure);
+
+            expect(deviceService.touchOwnershipInTx).not.toHaveBeenCalled();
             expect(sessionService.getRefreshedTokens).not.toHaveBeenCalled();
         });
 
-        it('wraps any other failure raised by the reuse transaction in the unknown exception', async () => {
+        it('passes the exception revokeReusedInTx rejects with through untouched', async () => {
             stubUserRefreshSession(refreshSessionDoubles, {
                 payload,
                 oldJti: 'old-jti',
                 refreshed,
             });
             sessionService.existsLiveByJti.mockResolvedValue(false);
-            const failure = new Error('boom');
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: failure,
-            });
-        });
-
-        it('rethrows an app exception raised while rotating the session unchanged', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            const failure = new SessionRevokedException();
-            databaseService.withTransaction.mockRejectedValue(failure);
+            const failure = new SessionNotFoundException();
+            sessionService.revokeReusedInTx.mockRejectedValue(failure);
 
             await expect(
                 useCase.execute(
@@ -524,29 +473,8 @@ describe('UserRefreshUseCase', () => {
                     userContext
                 )
             ).rejects.toBe(failure);
-        });
 
-        it('wraps any other failure raised while rotating the session in the unknown exception', async () => {
-            stubUserRefreshSession(refreshSessionDoubles, {
-                payload,
-                oldJti: 'old-jti',
-                refreshed,
-            });
-            const failure = new Error('boom');
-            databaseService.withTransaction.mockRejectedValue(failure);
-
-            await expect(
-                useCase.execute(
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    userContext
-                )
-            ).rejects.toMatchObject({
-                module: 'app',
-                statusCode: EnumAppStatusCodeError.unknown,
-                rawError: failure,
-            });
+            expect(sessionService.getRefreshedTokens).not.toHaveBeenCalled();
         });
     });
 });

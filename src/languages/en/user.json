@@ -37,6 +37,24 @@
     "import": "User import queued successfully.",
     "export": "User export queued successfully.",
     "logout": "Logged out successfully.",
+    "processResult": {
+        "importByAdmin": {
+            "success": {
+                "title": "User import finished",
+                "description": "{created} users were created."
+            },
+            "error": {
+                "title": "User import failed",
+                "description": "No user was created: {reason}"
+            }
+        },
+        "exportByAdmin": {
+            "success": {
+                "title": "User export ready",
+                "description": "{count} users were exported."
+            }
+        }
+    },
     "queue": {
         "deletePhoto": "Deleted previous user photo.",
         "importByAdmin": "Imported users by admin.",
@@ -52,6 +70,7 @@
         "error": {
             "unknownProcess": "No {process} job handler exists.",
             "importFailed": "The user import job failed.",
+            "importConflict": "The user import created no user: {reason}",
             "exportFailed": "The user export job failed.",
             "deleteSelfFailed": "The user self-deletion job failed.",
             "outboxIdMissing": "The job carries no outbox row id."

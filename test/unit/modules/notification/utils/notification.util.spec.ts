@@ -3,7 +3,10 @@ import {
     EnumNotificationType,
 } from '@generated/prisma-client/client';
 import { NotificationKindContract } from '@modules/notification/contracts/notification.kind.contract';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcessResultStatus,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationUtil } from '@modules/notification/utils/notification.util';
 import { ConfigService } from '@nestjs/config';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
@@ -107,6 +110,34 @@ describe('NotificationUtil', () => {
                 util.decryptPayload(String(result.encryptedOtp), 'user-id')
             ).toBe('482913');
         });
+
+        it('keeps a null secret as null under its encrypted name without encrypting it', () => {
+            const result = util.sealContext(
+                {
+                    userId: 'admin-id',
+                    proceedBy: 'admin-id',
+                    reference: 'outbox-id',
+                    status: EnumNotificationProcessResultStatus.error,
+                    title: 'User import failed',
+                    description: 'No user was created.',
+                    link: null,
+                    linkExpiredAt: null,
+                },
+                ['link'],
+                'admin-id'
+            );
+
+            expect(result).toEqual({
+                userId: 'admin-id',
+                proceedBy: 'admin-id',
+                reference: 'outbox-id',
+                status: 'error',
+                title: 'User import failed',
+                description: 'No user was created.',
+                encryptedLink: null,
+                linkExpiredAt: null,
+            });
+        });
     });
 
     describe('toStepKey', () => {
@@ -138,6 +169,16 @@ describe('NotificationUtil', () => {
                 reference: 'WI-ref',
                 inviteAcceptLink: 'plain-link',
             });
+        });
+
+        it('opens a null sealed secret to null', () => {
+            const result = util.openContext(
+                EnumNotificationKind.processResult,
+                { reference: 'outbox-id', encryptedLink: null },
+                'admin-id'
+            );
+
+            expect(result).toEqual({ reference: 'outbox-id', link: null });
         });
     });
 
@@ -221,6 +262,63 @@ describe('NotificationUtil', () => {
 
             expect(result.loginAt).toBe(loginAtRfc2822);
             expect(result.loginFrom).toBe('web');
+        });
+
+        it.each([
+            [EnumNotificationProcessResultStatus.success, '#2e7d32'],
+            [EnumNotificationProcessResultStatus.warning, '#ed6c02'],
+            [EnumNotificationProcessResultStatus.error, '#d32f2f'],
+        ])(
+            'adds the %s status color and formats the link expiry for a processResult',
+            (status, color) => {
+                const result = util.toTemplateData(
+                    EnumNotificationKind.processResult,
+                    {
+                        status,
+                        title: 'User export ready',
+                        description: '12 users were exported.',
+                        link: 'https://s3.test/export.csv',
+                        linkExpiredAt: loginAtIso,
+                    },
+                    'ana'
+                );
+
+                expect(result).toEqual({
+                    username: 'ana',
+                    status,
+                    title: 'User export ready',
+                    description: '12 users were exported.',
+                    link: 'https://s3.test/export.csv',
+                    linkExpiredAt: loginAtRfc2822,
+                    statusColor: color,
+                });
+            }
+        );
+
+        it('answers an empty link and an empty expiry for a processResult with none', () => {
+            const result = util.toTemplateData(
+                EnumNotificationKind.processResult,
+                {
+                    status: EnumNotificationProcessResultStatus.error,
+                    title: 'User import failed',
+                    description: 'No user was created.',
+                    link: null,
+                    linkExpiredAt: null,
+                },
+                'ana'
+            );
+
+            expect(result).toMatchObject({ link: '', linkExpiredAt: '' });
+        });
+
+        it('adds no status color for another kind', () => {
+            const result = util.toTemplateData(
+                EnumNotificationKind.workspaceJoinAccepted,
+                { workspaceId: 'workspace-id', workspaceName: 'Acme' },
+                'user'
+            );
+
+            expect(result).not.toHaveProperty('statusColor');
         });
     });
 

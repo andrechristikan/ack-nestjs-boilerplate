@@ -1,6 +1,5 @@
 import { CacheService } from '@common/cache/services/cache.service';
 import { EnumAppEnvironment } from '@app/enums/app.enum';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -89,6 +88,8 @@ export class MigrationWorkspaceSeed
 
         const name = this.buildPersonalName(user.username);
 
+        let collision: unknown = null;
+
         for (const slug of slugCandidates) {
             try {
                 await this.databaseService.withTransaction(
@@ -127,10 +128,15 @@ export class MigrationWorkspaceSeed
                         'Creating the default workspace failed'
                     );
                 }
+
+                collision = error;
             }
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        throw new AppUnknownException(
+            collision,
+            'Generating a unique default workspace slug failed'
+        );
     }
 
     async seed(): Promise<void> {

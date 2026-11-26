@@ -25,14 +25,10 @@ export interface IAnalyticSnapshotRepository {
     createHeader(
         signal: EnumAnalyticSnapshotSignal,
         header: IAnalyticSnapshotHeaderInput
-    ): Promise<boolean>;
+    ): Promise<void>;
     deleteItemsStartedBefore(
         signal: EnumAnalyticSnapshotSignal,
         startedAt: Date
-    ): Promise<void>;
-    deleteItemsOfRun(
-        signal: EnumAnalyticSnapshotSignal,
-        runId: string
     ): Promise<void>;
     findHeader(
         signal: EnumAnalyticSnapshotSignal

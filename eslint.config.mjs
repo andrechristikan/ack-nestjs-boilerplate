@@ -103,8 +103,8 @@ const thisCall =
 const thisCallWrapper =
     ':matches(AwaitExpression, TSAsExpression, TSNonNullExpression, TSSatisfiesExpression, ChainExpression)';
 
-/** The this-call a throw may carry: the repository's database error mapper, which returns the exception. */
-const thisCallNotDatabaseErrorMapper = `${thisCall}:not([callee.object.type="MemberExpression"][callee.object.object.type="ThisExpression"][callee.object.property.name="databaseUtil"][callee.property.name=/^(toWriteException|toUniqueException)$/])`;
+/** The this-call a throw may carry: the repository base's `this.toException(...)` mapper, which returns the exception. */
+const thisCallNotRepositoryErrorMapper = `${thisCall}:not([callee.object.type="ThisExpression"][callee.property.name="toException"])`;
 
 /** Each parent of a this-call, with the field the call fills ('' when it is the whole child) and the call selector it refuses. */
 const thisCallParents = [
@@ -118,7 +118,7 @@ const thisCallParents = [
         '',
     ],
     ['MemberExpression', '.object'],
-    ['ThrowStatement', '', thisCallNotDatabaseErrorMapper],
+    ['ThrowStatement', '', thisCallNotRepositoryErrorMapper],
     ['ForOfStatement', '.right'],
     ['MemberExpression[computed=true]', '.property'],
 ];

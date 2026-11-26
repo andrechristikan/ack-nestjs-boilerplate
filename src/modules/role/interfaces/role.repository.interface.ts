@@ -8,6 +8,7 @@ import type { IResponsePaginationReturn } from '@common/response/interfaces/resp
 import type {
     IRole,
     IRoleCreate,
+    IRoleDeletable,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
@@ -25,6 +26,7 @@ export interface IRoleRepository {
     ): Promise<IResponsePaginationReturn<IRoleWithPolicyCount>>;
     findOneWithPoliciesById(id: string): Promise<IRoleWithPolicies | null>;
     findOneById(id: string): Promise<IRole | null>;
+    findOneDeletableById(id: string): Promise<IRoleDeletable | null>;
     findOneByName(name: string): Promise<IRole | null>;
     findOneWithPolicyCountById(
         id: string

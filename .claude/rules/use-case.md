@@ -20,7 +20,7 @@ Its place in the layer chain and what it injects: `layering.md`, Roles.
 - A use case taking the request takes its controller's contexts in the `http.md` order, and passes each service and effect builder `requestContext`, `apiKeyContext`, and `authContext` whole, `recordEffect` also `workspaceContext` (the actor: `service.md`, Shape). A job use case passes on what its payload carries.
 - A row a guard loaded is the fail-fast read, taken from its context (`guards.md`, Contexts).
 - Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `UserSignUpUseCase` (`src/modules/user/use-cases/user.sign-up.use-case.ts`) shows the first:
-    - the slug retry exhaustion `DatabaseUniqueValueGenerationFailedException` after the retry loop's last attempt (`transaction.md`, Generated unique values);
+    - the slug retry exhaustion `AppUnknownException` after the retry loop's last attempt (`transaction.md`, Generated unique values);
     - on a job, `QueueException` (`queue.md`).
 
 ## Transactions
@@ -33,6 +33,7 @@ Its place in the layer chain and what it injects: `layering.md`, Roles.
 ## Jobs
 
 - A job is one flow in its processor use case: it opens the transaction and calls each module's service inside it, as a route's use case does, and queues no job to finish its own work; what it adds is a side effect (`effects.md`).
+- A failed business outcome (the import's collision) adds its `error` `processResult` (`notify.md`) in a transaction holding the add alone, then throws `QueueUnrecoverableException`.
 - A part of the flow over an unbounded collection is paged by the same use case after the commit, the chunks in turn (`transaction.md`, Transactions; `concurrency.md`, Sequential by design).
 - An action that pages an unbounded collection is a job its route queues: the route's use case validates and adds the job's effect in the transaction of its own writes, or in one holding the add alone when it has none (`UserDeleteSelfUseCase`, `TermPolicyPublishByAdminUseCase`); a route that writes nothing else answers the effect's `outboxId` (`WorkspaceSoftDeleteUseCase`, `UserImportByAdminUseCase`).
 

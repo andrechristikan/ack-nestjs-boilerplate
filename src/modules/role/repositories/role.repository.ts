@@ -1,5 +1,6 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { RoleDatabaseErrorContract } from '@modules/role/contracts/role.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type {
@@ -13,28 +14,34 @@ import {
     RoleSelect,
     RoleWithPoliciesInclude,
     RoleWithPolicyCountInclude,
+    RoleWithUserIdInclude,
 } from '@modules/role/constants/role.constant';
-import { RoleExistException } from '@modules/role/exceptions/role.exist.exception';
-import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.exception';
-import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRole,
     IRoleCreate,
+    IRoleDeletable,
     IRoleUpdate,
     IRoleWithPolicies,
     IRoleWithPolicyCount,
 } from '@modules/role/interfaces/role.interface';
 import type { IRoleRepository } from '@modules/role/interfaces/role.repository.interface';
 import { Injectable } from '@nestjs/common';
-import { EnumRoleType, Prisma } from '@generated/prisma-client/client';
+import { EnumRoleType } from '@generated/prisma-client/client';
 
 @Injectable()
-export class RoleRepository implements IRoleRepository {
+export class RoleRepository
+    extends DatabaseRepositoryBase
+    implements IRoleRepository
+{
+    protected override readonly errorContract = RoleDatabaseErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findWithPaginationOffsetByAdmin(
         { where, ...params }: IPaginationQueryOffsetParams,
@@ -80,6 +87,13 @@ export class RoleRepository implements IRoleRepository {
         });
     }
 
+    async findOneDeletableById(id: string): Promise<IRoleDeletable | null> {
+        return this.databaseService.client.role.findUnique({
+            where: { id },
+            include: RoleWithUserIdInclude,
+        });
+    }
+
     async findOneByName(name: string): Promise<IRole | null> {
         return this.databaseService.client.role.findFirst({
             where: { name },
@@ -110,16 +124,7 @@ export class RoleRepository implements IRoleRepository {
                 include: RoleWithPoliciesInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: Prisma.RoleScalarFieldEnum.name,
-                        exception: new RoleExistException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -136,10 +141,7 @@ export class RoleRepository implements IRoleRepository {
                 include: RoleWithPoliciesInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new RoleNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -153,10 +155,7 @@ export class RoleRepository implements IRoleRepository {
                 select: RoleSelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new RoleUsedException()
-            );
+            throw this.toException(error);
         }
     }
 }

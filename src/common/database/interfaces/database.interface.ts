@@ -1,4 +1,8 @@
 import type { AppBaseException } from '@app/exceptions/app.base.exception';
+import type {
+    DatabaseRecordNotFoundCode,
+    DatabaseUniqueConstraintCode,
+} from '@common/database/constants/database.constant';
 import type { Prisma } from '@generated/prisma-client/client';
 
 type IDatabaseScalarFieldEnum<M extends Prisma.ModelName> =
@@ -10,7 +14,11 @@ export type IDatabaseScalarField = {
     ]: IDatabaseScalarFieldEnum<M>[keyof IDatabaseScalarFieldEnum<M>];
 }[Prisma.ModelName];
 
-export interface IDatabaseUniqueCollision {
-    field: IDatabaseScalarField;
-    exception: AppBaseException;
+export type IDatabaseExceptionClass = new () => AppBaseException;
+
+export interface IDatabaseErrorContract {
+    [DatabaseRecordNotFoundCode]?: IDatabaseExceptionClass;
+    [DatabaseUniqueConstraintCode]?: {
+        [F in IDatabaseScalarField]?: IDatabaseExceptionClass;
+    };
 }

@@ -1,6 +1,5 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { UserUtil } from '@modules/user/utils/user.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -107,6 +106,8 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             inviteeUserId: existingUser?.id ?? null,
         };
 
+        let collision: WorkspaceInviteReferenceExistException | null = null;
+
         for (let attempt = 0; attempt < this.referenceMaxAttempts; attempt++) {
             const tokenData = this.workspaceInviteService.createInviteTokenData(
                 prepared.expiresInDays
@@ -133,6 +134,7 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
                 return { data: censored };
             } catch (err: unknown) {
                 if (err instanceof WorkspaceInviteReferenceExistException) {
+                    collision = err;
                     continue;
                 }
 
@@ -144,6 +146,6 @@ export class WorkspaceCreateInviteUseCase implements IAppUseCase<
             }
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        throw new AppUnknownException(collision);
     }
 }

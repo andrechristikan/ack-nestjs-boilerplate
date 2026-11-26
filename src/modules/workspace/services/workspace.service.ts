@@ -276,14 +276,14 @@ export class WorkspaceService {
         }
     }
 
-    /** Soft-deletes the workspaces and closes the pending invites and join requests of those it deleted; returns their ids, leaving out one already deleted. */
+    /** Soft-deletes the workspaces and closes their pending invites and join requests; returns every id it wrote, and a rejected write rejects the call. */
     async softDeleteManyInTx(
         tx: IDatabaseTransactionClient,
         workspaceIds: string[],
         deletedAt: Date,
         deletedBy: string
     ): Promise<string[]> {
-        const softDeleted = await Promise.all(
+        const deletedIds = await Promise.all(
             workspaceIds.map(workspaceId =>
                 this.workspaceRepository.softDeleteInTx(
                     tx,
@@ -292,9 +292,6 @@ export class WorkspaceService {
                     deletedBy
                 )
             )
-        );
-        const deletedIds = softDeleted.filter(
-            (workspaceId): workspaceId is string => workspaceId !== null
         );
         if (deletedIds.length > 0) {
             await this.closePendingByWorkspacesInTx(tx, deletedIds, deletedBy);

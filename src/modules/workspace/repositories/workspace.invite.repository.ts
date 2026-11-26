@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { WorkspaceInviteDatabaseErrorContract } from '@modules/workspace/contracts/workspace.invite.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -16,9 +18,6 @@ import {
     WorkspaceInviteRefSelect,
     WorkspaceInviteUserListSelect,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceInviteAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.invite-already-processed.exception';
-import { WorkspaceInviteDuplicateException } from '@modules/workspace/exceptions/workspace.invite-duplicate.exception';
-import { WorkspaceInviteReferenceExistException } from '@modules/workspace/exceptions/workspace.invite-reference-exist.exception';
 import type { IWorkspaceInviteRepository } from '@modules/workspace/interfaces/workspace.invite-repository.interface';
 import type {
     IWorkspaceInviteCreateData,
@@ -29,17 +28,25 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
+export class WorkspaceInviteRepository
+    extends DatabaseRepositoryBase
+    implements IWorkspaceInviteRepository
+{
     private readonly expireChunkSize: number;
+
+    protected override readonly errorContract =
+        WorkspaceInviteDatabaseErrorContract;
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly paginationService: PaginationService,
         private readonly configService: ConfigService
     ) {
+        super();
+
         this.expireChunkSize = this.configService.get<number>(
             'workspace.invite.expireChunkSize'
         )!;
@@ -303,20 +310,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 select: WorkspaceInviteUserListSelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'nonce',
-                        exception: new WorkspaceInviteDuplicateException(),
-                    },
-                    {
-                        field: 'reference',
-                        exception: new WorkspaceInviteReferenceExistException(),
-                    },
-                ],
-                new WorkspaceInviteDuplicateException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -345,16 +339,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 select: WorkspaceInviteUserListSelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'reference',
-                        exception: new WorkspaceInviteReferenceExistException(),
-                    },
-                ],
-                new WorkspaceInviteAlreadyProcessedException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -377,10 +362,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceInviteAlreadyProcessedException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -409,10 +391,7 @@ export class WorkspaceInviteRepository implements IWorkspaceInviteRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceInviteAlreadyProcessedException()
-            );
+            throw this.toException(error);
         }
     }
 }

@@ -98,14 +98,9 @@ describe('NotificationTemplateService', () => {
             subject: 'Publish Term Policy',
         },
         {
-            name: EnumNotificationKind.userImportResult,
-            file: 'notification.user-import-result.template.hbs',
-            subject: 'User Import Result',
-        },
-        {
-            name: EnumNotificationKind.userExportResult,
-            file: 'notification.user-export-result.template.hbs',
-            subject: 'User Export Result',
+            name: EnumNotificationKind.processResult,
+            file: 'notification.process-result.template.hbs',
+            subject: '{{title}}',
         },
         {
             name: EnumNotificationKind.workspaceInvite,

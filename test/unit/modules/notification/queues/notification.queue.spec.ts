@@ -14,6 +14,7 @@ import {
     EnumNotificationKind,
     EnumNotificationLoginLockedMethod,
     EnumNotificationProcess,
+    EnumNotificationProcessResultStatus,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -312,61 +313,32 @@ describe('NotificationQueue', () => {
             ).toBe('+6281234567890');
         });
 
-        it('returns the userImportResult effect on the notification queue keyed by the import row id with the counts and reasons unsealed', () => {
-            const result = queue.notify(EnumNotificationKind.userImportResult, {
+        it('returns the processResult effect keyed by the reference with the link sealed against the recipient and the rest plain', () => {
+            const result = queue.notify(EnumNotificationKind.processResult, {
                 userId: 'admin-id',
                 proceedBy: 'admin-id',
                 reference: 'outbox-id',
-                created: 0,
-                failed: 2,
-                reasons: ['Username already exists.'],
-            });
-
-            expect(result).toEqual({
-                queue: EnumNotificationQueue.notification,
-                name: EnumNotificationProcess.notify,
-                data: {
-                    kind: EnumNotificationKind.userImportResult,
-                    context: {
-                        userId: 'admin-id',
-                        proceedBy: 'admin-id',
-                        reference: 'outbox-id',
-                        created: 0,
-                        failed: 2,
-                        reasons: ['Username already exists.'],
-                        snapshot: null,
-                        verificationId: null,
-                    },
-                    recipient: null,
-                    notificationId: null,
-                },
-                priority: EnumQueuePriority.medium,
-                idempotencyKey: 'userImportResult-outbox-id',
-            });
-        });
-
-        it('returns the userExportResult effect keyed by the reference with the link sealed against the recipient and the count and expiry plain', () => {
-            const result = queue.notify(EnumNotificationKind.userExportResult, {
-                userId: 'admin-id',
-                proceedBy: 'admin-id',
-                reference: 'outbox-id',
+                status: EnumNotificationProcessResultStatus.success,
+                title: 'User export ready',
+                description: '12 users were exported.',
                 link: 'https://s3.test/export.csv?sig=abc',
-                count: 12,
-                expiredAt: '2026-01-02T00:00:00.000Z',
+                linkExpiredAt: '2026-01-02T00:00:00.000Z',
             });
 
             expect(result).toEqual({
                 queue: EnumNotificationQueue.notification,
                 name: EnumNotificationProcess.notify,
                 data: {
-                    kind: EnumNotificationKind.userExportResult,
+                    kind: EnumNotificationKind.processResult,
                     context: {
                         userId: 'admin-id',
                         proceedBy: 'admin-id',
                         reference: 'outbox-id',
+                        status: 'success',
+                        title: 'User export ready',
+                        description: '12 users were exported.',
                         encryptedLink: expect.any(String),
-                        count: 12,
-                        expiredAt: '2026-01-02T00:00:00.000Z',
+                        linkExpiredAt: '2026-01-02T00:00:00.000Z',
                         snapshot: null,
                         verificationId: null,
                     },
@@ -374,7 +346,7 @@ describe('NotificationQueue', () => {
                     notificationId: null,
                 },
                 priority: EnumQueuePriority.medium,
-                idempotencyKey: 'userExportResult-outbox-id',
+                idempotencyKey: 'processResult-outbox-id',
             });
             expect(result.data.context).not.toHaveProperty('link');
             expect(
@@ -383,6 +355,25 @@ describe('NotificationQueue', () => {
                     'admin-id'
                 )
             ).toBe('https://s3.test/export.csv?sig=abc');
+        });
+
+        it('returns the processResult effect with an empty link kept null and not encrypted', () => {
+            const result = queue.notify(EnumNotificationKind.processResult, {
+                userId: 'admin-id',
+                proceedBy: 'admin-id',
+                reference: 'outbox-id',
+                status: EnumNotificationProcessResultStatus.error,
+                title: 'User import failed',
+                description: 'No user was created.',
+                link: null,
+                linkExpiredAt: null,
+            });
+
+            expect(result.data.context).toMatchObject({
+                encryptedLink: null,
+                linkExpiredAt: null,
+            });
+            expect(result.data.context).not.toHaveProperty('link');
         });
 
         it('leaves a non-string context field out of the idempotency key values', () => {

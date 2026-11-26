@@ -1,6 +1,5 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
@@ -161,6 +160,8 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const userIds = inputs.map(({ userId }) => userId);
 
+        let collision: WorkspaceSlugAlreadyExistsException | null = null;
+
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
                 return await this.databaseService.withTransaction(
@@ -281,6 +282,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                 );
             } catch (error: unknown) {
                 if (error instanceof WorkspaceSlugAlreadyExistsException) {
+                    collision = error;
                     continue;
                 }
 
@@ -292,7 +294,7 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
             }
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        throw new AppUnknownException(collision);
     }
 
     private async resolveLoginOutcome(

@@ -1,4 +1,5 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { ProjectDatabaseErrorContract } from '@modules/project/contracts/project.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -11,8 +12,6 @@ import { PaginationService } from '@common/pagination/services/pagination.servic
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import type { Prisma, Project } from '@generated/prisma-client/client';
 import { ProjectRefSelect } from '@modules/project/constants/project.constant';
-import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
-import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import type {
     IProjectCreate,
     IProjectRef,
@@ -24,15 +23,22 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class ProjectRepository implements IProjectRepository {
+export class ProjectRepository
+    extends DatabaseRepositoryBase
+    implements IProjectRepository
+{
     private readonly deletedSlugPattern: string;
+
+    protected override readonly errorContract = ProjectDatabaseErrorContract;
 
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly configService: ConfigService
     ) {
+        super();
+
         this.deletedSlugPattern = this.configService.get<string>(
             'project.deletedSlugPattern'
         )!;
@@ -148,16 +154,7 @@ export class ProjectRepository implements IProjectRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'slug',
-                        exception: new ProjectSlugAlreadyExistsException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -185,16 +182,7 @@ export class ProjectRepository implements IProjectRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'slug',
-                        exception: new ProjectSlugAlreadyExistsException(),
-                    },
-                ],
-                new ProjectNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -219,10 +207,7 @@ export class ProjectRepository implements IProjectRepository {
                 select: ProjectRefSelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ProjectNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 

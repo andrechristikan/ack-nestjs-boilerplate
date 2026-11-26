@@ -49,7 +49,6 @@ import type {
 import { UserCreateUtil } from '@modules/user/utils/user.create.util';
 import { WorkspaceService } from '@modules/workspace/services/workspace.service';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
@@ -656,10 +655,9 @@ describe('UserCreateByAdminUseCase', () => {
             });
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException after the last attempt', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                new WorkspaceSlugAlreadyExistsException()
-            );
+        it('throws AppUnknownException carrying the last collision after the last attempt', async () => {
+            const collision = new WorkspaceSlugAlreadyExistsException();
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 useCase['createAdminUsers'](
@@ -671,9 +669,8 @@ describe('UserCreateByAdminUseCase', () => {
                     5000
                 )
             ).rejects.toMatchObject({
-                module: 'database',
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+                constructor: AppUnknownException,
+                rawError: collision,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });

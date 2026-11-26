@@ -1,4 +1,5 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { ProjectMemberDatabaseErrorContract } from '@modules/project/contracts/project.member.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -9,19 +10,24 @@ import { EnumProjectMemberRole } from '@generated/prisma-client/client';
 import type { ProjectMember } from '@generated/prisma-client/client';
 import type { IProjectMember } from '@modules/project/interfaces/project.interface';
 import { ProjectMemberWithUserInclude } from '@modules/project/constants/project.constant';
-import { ProjectMemberAlreadyAssignedException } from '@modules/project/exceptions/project.member-already-assigned.exception';
-import { ProjectMemberNotFoundException } from '@modules/project/exceptions/project.member-not-found.exception';
-import { ProjectMemberPeerForbiddenException } from '@modules/project/exceptions/project.member-peer-forbidden.exception';
 import type { IProjectMemberRepository } from '@modules/project/interfaces/project.member-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ProjectMemberRepository implements IProjectMemberRepository {
+export class ProjectMemberRepository
+    extends DatabaseRepositoryBase
+    implements IProjectMemberRepository
+{
+    protected override readonly errorContract =
+        ProjectMemberDatabaseErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findByIdAndProject(
         projectMemberId: string,
@@ -69,16 +75,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'userId',
-                        exception: new ProjectMemberAlreadyAssignedException(),
-                    },
-                ],
-                new ProjectMemberAlreadyAssignedException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -100,16 +97,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                 include: ProjectMemberWithUserInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'userId',
-                        exception: new ProjectMemberAlreadyAssignedException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -127,10 +115,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ProjectMemberPeerForbiddenException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -144,10 +129,7 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
                 where: { id: targetMemberId, role: expectedRole },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ProjectMemberPeerForbiddenException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -155,16 +137,9 @@ export class ProjectMemberRepository implements IProjectMemberRepository {
         tx: IDatabaseTransactionClient,
         memberId: string
     ): Promise<ProjectMember> {
-        try {
-            return await tx.projectMember.delete({
-                where: { id: memberId },
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ProjectMemberNotFoundException()
-            );
-        }
+        return tx.projectMember.delete({
+            where: { id: memberId },
+        });
     }
 
     async removeByWorkspaceAndUserInTx(

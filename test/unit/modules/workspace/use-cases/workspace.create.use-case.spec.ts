@@ -4,8 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -184,10 +182,9 @@ describe('WorkspaceCreateUseCase', () => {
             );
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            workspaceService.createWorkspaceInTx.mockRejectedValue(
-                new WorkspaceSlugAlreadyExistsException()
-            );
+        it('throws AppUnknownException carrying the last collision when every slug candidate collides', async () => {
+            const collision = new WorkspaceSlugAlreadyExistsException();
+            workspaceService.createWorkspaceInTx.mockRejectedValue(collision);
 
             await expect(
                 useCase.execute(
@@ -197,10 +194,8 @@ describe('WorkspaceCreateUseCase', () => {
                     body
                 )
             ).rejects.toMatchObject({
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-                constructor: DatabaseUniqueValueGenerationFailedException,
-                module: 'database',
+                constructor: AppUnknownException,
+                rawError: collision,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });

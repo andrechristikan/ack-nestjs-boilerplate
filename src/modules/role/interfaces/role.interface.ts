@@ -4,6 +4,7 @@ import type {
     RoleSelect,
     RoleWithPoliciesInclude,
     RoleWithPolicyCountInclude,
+    RoleWithUserIdInclude,
 } from '@modules/role/constants/role.constant';
 
 export type IRole = Prisma.RoleGetPayload<{
@@ -16,6 +17,10 @@ export type IRoleWithPolicies = Prisma.RoleGetPayload<{
 
 export type IRoleWithPolicyCount = Prisma.RoleGetPayload<{
     include: typeof RoleWithPolicyCountInclude;
+}>;
+
+export type IRoleDeletable = Prisma.RoleGetPayload<{
+    include: typeof RoleWithUserIdInclude;
 }>;
 
 export type IRoleRank = Record<EnumRoleType, number>;

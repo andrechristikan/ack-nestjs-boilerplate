@@ -1,8 +1,5 @@
-import { Job, UnrecoverableError } from 'bullmq';
-import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { Job } from 'bullmq';
 import { QueueProcessorBase } from '@common/queue/bases/queue.processor.base';
-import { HelperDecryptFailedException } from '@common/helper/exceptions/helper.decrypt-failed.exception';
 import { QueueProcessor } from '@common/queue/decorators/queue.decorator';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { INotificationSmsSendPayload } from '@modules/notification/interfaces/notification.interface';
@@ -25,45 +22,26 @@ export class NotificationSmsProcessor extends QueueProcessorBase {
         data: unknown,
         outboxId: string | null
     ): Promise<IQueueResponse> {
-        try {
-            const jobName = job.name;
-            switch (jobName) {
-                case EnumNotificationSmsProcess.send: {
-                    if (outboxId === null) {
-                        this.throwUnrecoverable(
-                            'notification.queue.error.outboxIdMissing'
-                        );
-                    }
-
-                    return await this.notificationSmsProcessSendUseCase.execute(
-                        outboxId,
-                        data as INotificationSmsSendPayload
+        const jobName = job.name;
+        switch (jobName) {
+            case EnumNotificationSmsProcess.send: {
+                if (outboxId === null) {
+                    this.throwUnrecoverable(
+                        'notification.queue.error.outboxIdMissing'
                     );
                 }
 
-                default:
-                    this.throwUnknownProcess(
-                        'notification.queue.sms.error.unknownProcess',
-                        job.name
-                    );
-            }
-        } catch (error: unknown) {
-            if (error instanceof HelperDecryptFailedException) {
-                const unrecoverable = new UnrecoverableError(error.message);
-                unrecoverable.cause = error;
-
-                throw unrecoverable;
+                return await this.notificationSmsProcessSendUseCase.execute(
+                    outboxId,
+                    data as INotificationSmsSendPayload
+                );
             }
 
-            if (
-                error instanceof QueueException ||
-                error instanceof AppBaseException ||
-                error instanceof UnrecoverableError
-            ) {
-                throw error;
-            }
-
-            this.throwUnknownException(error);
+            default:
+                this.throwUnknownProcess(
+                    'notification.queue.sms.error.unknownProcess',
+                    job.name
+                );
         }
     }
 }

@@ -1,14 +1,18 @@
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { HelperEncryptionService } from '@common/helper/services/helper.encryption.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueUnrecoverableException } from '@common/queue/exceptions/queue.unrecoverable.exception';
 import type { IUserImportByAdminQueueResponse } from '@modules/user/interfaces/user.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { CountryService } from '@modules/country/services/country.service';
-import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import {
+    EnumNotificationKind,
+    EnumNotificationProcessResultStatus,
+} from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { NotificationService } from '@modules/notification/services/notification.service';
@@ -86,6 +90,15 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
         const passwordHistories =
             this.userCreateUtil.buildPasswordHistoryEntries(inputs);
         const userIds = inputs.map(({ userId }) => userId);
+        const title = this.messageService.setMessage(
+            'user.processResult.importByAdmin.success.title'
+        );
+        const description = this.messageService.setMessage(
+            'user.processResult.importByAdmin.success.description',
+            { properties: { created: inputs.length } }
+        );
+
+        let collision: WorkspaceSlugAlreadyExistsException | null = null;
 
         for (let attempt = 0; attempt < attempts; attempt++) {
             try {
@@ -124,14 +137,16 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                             )
                         );
                         const result = this.notificationQueue.notify(
-                            EnumNotificationKind.userImportResult,
+                            EnumNotificationKind.processResult,
                             {
                                 userId: activityLog.actorUserId,
                                 proceedBy: activityLog.actorUserId,
                                 reference: outboxId,
-                                created: inputs.length,
-                                failed: 0,
-                                reasons: [],
+                                status: EnumNotificationProcessResultStatus.success,
+                                title,
+                                description,
+                                link: null,
+                                linkExpiredAt: null,
                             }
                         );
                         await Promise.all([
@@ -152,6 +167,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                 return null;
             } catch (error: unknown) {
                 if (error instanceof WorkspaceSlugAlreadyExistsException) {
+                    collision = error;
                     continue;
                 }
 
@@ -174,7 +190,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
             }
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        throw new AppUnknownException(collision);
     }
 
     async execute(
@@ -187,7 +203,7 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
                 'user.queue.importByAdmin'
             );
 
-            return { message, created: recorded, failed: 0 };
+            return { message, created: recorded };
         }
 
         const { actorUserId } = activityLog;
@@ -233,35 +249,49 @@ export class UserProcessImportByAdminUseCase implements IAppUseCase<
             );
         });
 
-        const created = await this.createAdminUsers(
+        const collision = await this.createAdminUsers(
             payload,
             inputs,
             welcomes,
             outboxId
         );
-        const message = this.messageService.setMessage(
-            'user.queue.importByAdmin'
-        );
-        if (created === null) {
-            return { message, created: inputs.length, failed: 0 };
+        if (collision === null) {
+            const message = this.messageService.setMessage(
+                'user.queue.importByAdmin'
+            );
+
+            return { message, created: inputs.length };
         }
 
-        const reason = this.messageService.setMessage(created.messagePath);
+        const reason = this.messageService.setMessage(collision.messagePath);
+        const title = this.messageService.setMessage(
+            'user.processResult.importByAdmin.error.title'
+        );
+        const description = this.messageService.setMessage(
+            'user.processResult.importByAdmin.error.description',
+            { properties: { reason } }
+        );
         const result = this.notificationQueue.notify(
-            EnumNotificationKind.userImportResult,
+            EnumNotificationKind.processResult,
             {
                 userId: actorUserId,
                 proceedBy: actorUserId,
                 reference: outboxId,
-                created: 0,
-                failed: rows.length,
-                reasons: [reason],
+                status: EnumNotificationProcessResultStatus.error,
+                title,
+                description,
+                link: null,
+                linkExpiredAt: null,
             }
         );
         await this.databaseService.withTransaction(async tx =>
             this.outboxService.addInTx(tx, result)
         );
+        const conflict = this.messageService.setMessage(
+            'user.queue.error.importConflict',
+            { properties: { reason } }
+        );
 
-        return { message, created: 0, failed: rows.length };
+        throw new QueueUnrecoverableException(conflict, false, collision);
     }
 }

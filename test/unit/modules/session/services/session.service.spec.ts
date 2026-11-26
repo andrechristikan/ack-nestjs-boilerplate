@@ -1269,4 +1269,38 @@ describe('SessionService', () => {
             expect(result).toEqual([]);
         });
     });
+
+    describe('loadLogin', () => {
+        it('loads only the jtiDigest of the live session row', async () => {
+            sessionRepository.findLoginById.mockResolvedValue({
+                ...session,
+                jtiDigest: JtiDigest,
+            });
+
+            const result = await service['loadLogin'](
+                'user-1',
+                'session-1',
+                idleSince
+            );
+
+            expect(sessionRepository.findLoginById).toHaveBeenCalledWith(
+                'user-1',
+                'session-1',
+                idleSince
+            );
+            expect(result).toEqual({ jtiDigest: JtiDigest });
+        });
+
+        it('returns null when no live row is found', async () => {
+            sessionRepository.findLoginById.mockResolvedValue(null);
+
+            const result = await service['loadLogin'](
+                'user-1',
+                'session-1',
+                idleSince
+            );
+
+            expect(result).toBeNull();
+        });
+    });
 });

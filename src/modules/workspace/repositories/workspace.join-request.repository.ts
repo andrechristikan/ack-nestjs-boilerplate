@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { WorkspaceJoinRequestDatabaseErrorContract } from '@modules/workspace/contracts/workspace.join-request.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -21,8 +23,6 @@ import {
     WorkspaceJoinRequestRefSelect,
     WorkspaceJoinRequestWithUserRecipientInclude,
 } from '@modules/workspace/constants/workspace.constant';
-import { WorkspaceJoinRequestAlreadyProcessedException } from '@modules/workspace/exceptions/workspace.join-request-already-processed.exception';
-import { WorkspaceJoinRequestDuplicateException } from '@modules/workspace/exceptions/workspace.join-request-duplicate.exception';
 import type { IWorkspaceJoinRequestRepository } from '@modules/workspace/interfaces/workspace.join-request-repository.interface';
 import type {
     IWorkspaceJoinRequestCreateData,
@@ -32,17 +32,25 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepository {
+export class WorkspaceJoinRequestRepository
+    extends DatabaseRepositoryBase
+    implements IWorkspaceJoinRequestRepository
+{
     private readonly expireChunkSize: number;
+
+    protected override readonly errorContract =
+        WorkspaceJoinRequestDatabaseErrorContract;
 
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService,
         private readonly helperHashService: HelperHashService,
         private readonly configService: ConfigService
     ) {
+        super();
+
         this.expireChunkSize = this.configService.get<number>(
             'workspace.joinRequest.expireChunkSize'
         )!;
@@ -208,16 +216,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'nonce',
-                        exception: new WorkspaceJoinRequestDuplicateException(),
-                    },
-                ],
-                new WorkspaceJoinRequestDuplicateException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -244,10 +243,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 include: WorkspaceJoinRequestWithUserRecipientInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceJoinRequestAlreadyProcessedException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -275,10 +271,7 @@ export class WorkspaceJoinRequestRepository implements IWorkspaceJoinRequestRepo
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new WorkspaceJoinRequestAlreadyProcessedException()
-            );
+            throw this.toException(error);
         }
     }
 

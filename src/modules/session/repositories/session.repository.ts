@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { SessionDatabaseErrorContract } from '@modules/session/contracts/session.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -14,7 +16,6 @@ import {
     SessionListSelect,
     SessionRefSelect,
 } from '@modules/session/constants/session.constant';
-import { SessionNotFoundException } from '@modules/session/exceptions/session.not-found.exception';
 import type {
     ISessionList,
     ISessionRef,
@@ -24,13 +25,20 @@ import { Injectable } from '@nestjs/common';
 import type { Session } from '@generated/prisma-client/client';
 
 @Injectable()
-export class SessionRepository implements ISessionRepository {
+export class SessionRepository
+    extends DatabaseRepositoryBase
+    implements ISessionRepository
+{
+    protected override readonly errorContract = SessionDatabaseErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly helperDateService: HelperDateService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findWithPaginationOffsetByAdmin(
         userId: string,
@@ -166,10 +174,7 @@ export class SessionRepository implements ISessionRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new SessionNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -196,10 +201,7 @@ export class SessionRepository implements ISessionRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new SessionNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -229,10 +231,7 @@ export class SessionRepository implements ISessionRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new SessionNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -258,10 +257,7 @@ export class SessionRepository implements ISessionRepository {
                 select: SessionListSelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new SessionNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 

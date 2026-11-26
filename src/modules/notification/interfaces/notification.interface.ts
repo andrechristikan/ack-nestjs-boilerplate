@@ -3,6 +3,7 @@ import type { SendTemplatedEmailCommandOutput } from '@aws-sdk/client-ses';
 import type {
     EnumNotificationEmailProcess,
     EnumNotificationProcess,
+    EnumNotificationProcessResultStatus,
     EnumNotificationPushProcess,
     EnumNotificationQueue,
     EnumNotificationSmsProcess,
@@ -115,16 +116,12 @@ export interface INotificationTermPolicyContext extends INotificationContextBase
     version: number;
 }
 
-export interface INotificationUserImportResultContext extends INotificationReferenceContext {
-    created: number;
-    failed: number;
-    reasons: string[];
-}
-
-export interface INotificationUserExportResultContext extends INotificationReferenceContext {
-    link: string;
-    count: number;
-    expiredAt: string;
+export interface INotificationProcessResultContext extends INotificationReferenceContext {
+    status: EnumNotificationProcessResultStatus;
+    title: string;
+    description: string;
+    link: string | null;
+    linkExpiredAt: string | null;
 }
 
 export interface INotificationWorkspaceInviteFields {
@@ -183,8 +180,7 @@ export interface INotificationContextMap {
     [EnumNotificationKind.newDeviceLogin]: INotificationNewDeviceLoginContext;
     [EnumNotificationKind.publishTermPolicy]: INotificationTermPolicyContext;
     [EnumNotificationKind.userAcceptTermPolicy]: INotificationTermPolicyContext;
-    [EnumNotificationKind.userImportResult]: INotificationUserImportResultContext;
-    [EnumNotificationKind.userExportResult]: INotificationUserExportResultContext;
+    [EnumNotificationKind.processResult]: INotificationProcessResultContext;
     [EnumNotificationKind.workspaceInvite]: INotificationWorkspaceInviteContext;
     [EnumNotificationKind.workspaceJoinRequest]: INotificationWorkspaceJoinRequestContext;
     [EnumNotificationKind.workspaceJoinAccepted]: INotificationWorkspaceJoinAcceptedContext;
@@ -219,6 +215,11 @@ export interface INotificationKindContract<
 
 export type INotificationKeyPatterns = Record<
     EnumNotificationKeyPattern,
+    string
+>;
+
+export type INotificationProcessResultStatusColor = Record<
+    EnumNotificationProcessResultStatus,
     string
 >;
 

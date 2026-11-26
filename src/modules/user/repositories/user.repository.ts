@@ -1,4 +1,5 @@
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { UserDatabaseErrorContract } from '@modules/user/contracts/user.database-error.contract';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -33,11 +34,6 @@ import type {
     IUserUpdateProfile,
     IUserUpdateStatus,
 } from '@modules/user/interfaces/user.interface';
-import { UserEmailAlreadyVerifiedException } from '@modules/user/exceptions/user.email-already-verified.exception';
-import { UserEmailExistException } from '@modules/user/exceptions/user.email-exist.exception';
-import { UserNotFoundException } from '@modules/user/exceptions/user.not-found.exception';
-import { UserStatusInvalidException } from '@modules/user/exceptions/user.status-invalid.exception';
-import { UserUsernameExistException } from '@modules/user/exceptions/user.username-exist.exception';
 import type { IUserRepository } from '@modules/user/interfaces/user.repository.interface';
 import { Injectable } from '@nestjs/common';
 import {
@@ -50,13 +46,20 @@ import type { User } from '@generated/prisma-client/client';
 import type { IAuthPassword } from '@modules/auth/interfaces/auth.interface';
 
 @Injectable()
-export class UserRepository implements IUserRepository {
+export class UserRepository
+    extends DatabaseRepositoryBase
+    implements IUserRepository
+{
+    protected override readonly errorContract = UserDatabaseErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly paginationService: PaginationService,
         private readonly helperDateService: HelperDateService
-    ) {}
+    ) {
+        super();
+    }
 
     private buildExportWhere(
         status: EnumUserStatus[],
@@ -274,20 +277,7 @@ export class UserRepository implements IUserRepository {
                 include: UserWithRoleInclude,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'username',
-                        exception: new UserUsernameExistException(),
-                    },
-                    {
-                        field: 'email',
-                        exception: new UserEmailExistException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -300,20 +290,7 @@ export class UserRepository implements IUserRepository {
         try {
             await tx.user.createMany({ data });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'username',
-                        exception: new UserUsernameExistException(),
-                    },
-                    {
-                        field: 'email',
-                        exception: new UserEmailExistException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -333,10 +310,7 @@ export class UserRepository implements IUserRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserStatusInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -410,16 +384,7 @@ export class UserRepository implements IUserRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'username',
-                        exception: new UserUsernameExistException(),
-                    },
-                ],
-                new UserNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -474,10 +439,7 @@ export class UserRepository implements IUserRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -514,10 +476,7 @@ export class UserRepository implements IUserRepository {
                 data: { passwordAttempt: 0, passwordLockedUntil: null },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -555,10 +514,7 @@ export class UserRepository implements IUserRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserEmailAlreadyVerifiedException()
-            );
+            throw this.toException(error);
         }
     }
 

@@ -3,6 +3,9 @@ import { Test } from '@nestjs/testing';
 import type { MockProxy } from 'vitest-mock-extended';
 import { Prisma } from '@generated/prisma-client/client';
 import { DatabaseClient } from '@common/database/constants/database.constant';
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import type { IDatabaseErrorContract } from '@common/database/interfaces/database.interface';
+import type { DatabaseUtil } from '@common/database/utils/database.util';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
@@ -92,4 +95,15 @@ export function buildPrismaKnownRequestError(
         clientVersion: '6.19.0',
         meta: target === null ? {} : { target: [target] },
     });
+}
+
+/** An instance of the abstract base with its two abstract members filled, built without a class declaration. */
+export function buildDatabaseRepository(
+    databaseUtil: DatabaseUtil,
+    errorContract: IDatabaseErrorContract
+): DatabaseRepositoryBase {
+    return Object.create(DatabaseRepositoryBase.prototype, {
+        databaseUtil: { value: databaseUtil },
+        errorContract: { value: errorContract },
+    }) as DatabaseRepositoryBase;
 }

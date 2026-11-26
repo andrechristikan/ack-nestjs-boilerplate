@@ -26,6 +26,7 @@ import { RoleNotFoundException } from '@modules/role/exceptions/role.not-found.e
 import { RoleUsedException } from '@modules/role/exceptions/role.used.exception';
 import type {
     IRoleActor,
+    IRoleDeletable,
     IRoleCreate,
     IRoleUpdate,
     IRoleWithPolicies,
@@ -577,20 +578,62 @@ describe('RoleService', () => {
     });
 
     describe('getDeletableByActor', () => {
+        const deletableRole: IRoleDeletable = { ...role, users: [] };
+        const deletableSuperAdminRole: IRoleDeletable = {
+            ...superAdminRole,
+            users: [],
+        };
+        const deletableImmutableRole: IRoleDeletable = {
+            ...immutableRole,
+            users: [],
+        };
+        const usedRole: IRoleDeletable = { ...role, users: [{ id: 'user-1' }] };
+        const usedImmutableRole: IRoleDeletable = {
+            ...immutableRole,
+            users: [{ id: 'user-1' }],
+        };
+
         it('returns the role read on the client', async () => {
-            roleRepository.findOneById.mockResolvedValue(role);
+            roleRepository.findOneDeletableById.mockResolvedValue(
+                deletableRole
+            );
 
             const result = await service.getDeletableByActor(
                 superAdminActor,
                 role.id
             );
 
-            expect(result).toBe(role);
-            expect(roleRepository.findOneById).toHaveBeenCalledWith(role.id);
+            expect(result).toEqual(deletableRole);
+            expect(roleRepository.findOneDeletableById).toHaveBeenCalledWith(
+                role.id
+            );
+        });
+
+        it('throws RoleUsedException when the read holds a user', async () => {
+            roleRepository.findOneDeletableById.mockResolvedValue(usedRole);
+
+            await expect(
+                service.getDeletableByActor(superAdminActor, role.id)
+            ).rejects.toMatchObject({
+                module: 'role',
+                statusCode: EnumRoleStatusCodeError.used,
+            });
+        });
+
+        it('throws RoleImmutableException before the in-use check', async () => {
+            roleRepository.findOneDeletableById.mockResolvedValue(
+                usedImmutableRole
+            );
+
+            await expect(
+                service.getDeletableByActor(superAdminActor, immutableRole.id)
+            ).rejects.toMatchObject({
+                statusCode: EnumRoleStatusCodeError.immutable,
+            });
         });
 
         it('throws RoleNotFoundException when the role does not exist', async () => {
-            roleRepository.findOneById.mockResolvedValue(null);
+            roleRepository.findOneDeletableById.mockResolvedValue(null);
 
             await expect(
                 service.getDeletableByActor(adminActor, 'missing')
@@ -601,7 +644,9 @@ describe('RoleService', () => {
         });
 
         it('throws RoleSelfForbiddenException when the actor deletes the role they hold', async () => {
-            roleRepository.findOneById.mockResolvedValue(role);
+            roleRepository.findOneDeletableById.mockResolvedValue(
+                deletableRole
+            );
 
             await expect(
                 service.getDeletableByActor(
@@ -615,7 +660,9 @@ describe('RoleService', () => {
         });
 
         it('throws RoleRankForbiddenException when an admin deletes a superAdmin role', async () => {
-            roleRepository.findOneById.mockResolvedValue(superAdminRole);
+            roleRepository.findOneDeletableById.mockResolvedValue(
+                deletableSuperAdminRole
+            );
 
             await expect(
                 service.getDeletableByActor(adminActor, superAdminRole.id)
@@ -626,7 +673,9 @@ describe('RoleService', () => {
         });
 
         it('throws RoleImmutableException for an immutable role', async () => {
-            roleRepository.findOneById.mockResolvedValue(immutableRole);
+            roleRepository.findOneDeletableById.mockResolvedValue(
+                deletableImmutableRole
+            );
 
             await expect(
                 service.getDeletableByActor(superAdminActor, immutableRole.id)

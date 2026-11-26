@@ -6,7 +6,7 @@ import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
 import type { AnalyticSnapshot, Prisma } from '@generated/prisma-client/client';
 import { AnalyticSnapshotRepository } from '@modules/analytic/repositories/analytic.snapshot.repository';
 import { AnalyticSnapshotService } from '@modules/analytic/services/analytic.snapshot.service';
-import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
@@ -84,17 +84,10 @@ describe('AnalyticSnapshotService', () => {
         );
         analyticSnapshotRepository.createHeader.mockImplementation(async () => {
             calls.push('createHeader');
-
-            return true;
         });
         analyticSnapshotRepository.deleteItemsStartedBefore.mockImplementation(
             async () => {
                 calls.push('deleteItemsStartedBefore');
-            }
-        );
-        analyticSnapshotRepository.deleteItemsOfRun.mockImplementation(
-            async () => {
-                calls.push('deleteItemsOfRun');
             }
         );
 
@@ -178,9 +171,6 @@ describe('AnalyticSnapshotService', () => {
             expect(
                 analyticSnapshotRepository.createHeader
             ).not.toHaveBeenCalled();
-            expect(
-                analyticSnapshotRepository.deleteItemsOfRun
-            ).not.toHaveBeenCalled();
         });
 
         it('inserts no batch for an empty result and still writes the header', async () => {
@@ -192,22 +182,6 @@ describe('AnalyticSnapshotService', () => {
             ]);
         });
 
-        it('deletes its own items when the header create reports a lost write', async () => {
-            analyticSnapshotRepository.updateHeaderIfOlder.mockResolvedValue(
-                false
-            );
-            analyticSnapshotRepository.createHeader.mockResolvedValue(false);
-
-            await service.replace(signal, buildSnapshotResult(1));
-
-            expect(
-                analyticSnapshotRepository.deleteItemsOfRun
-            ).toHaveBeenCalledWith(signal, runId);
-            expect(
-                analyticSnapshotRepository.deleteItemsStartedBefore
-            ).not.toHaveBeenCalled();
-        });
-
         it('creates the header with no header read after a missed update and deletes older items', async () => {
             analyticSnapshotRepository.updateHeaderIfOlder.mockResolvedValue(
                 false
@@ -215,6 +189,11 @@ describe('AnalyticSnapshotService', () => {
 
             await service.replace(signal, buildSnapshotResult(1));
 
+            expect(calls).toEqual([
+                'createItems',
+                'createHeader',
+                'deleteItemsStartedBefore',
+            ]);
             expect(
                 analyticSnapshotRepository.createHeader
             ).toHaveBeenCalledWith(
@@ -227,13 +206,10 @@ describe('AnalyticSnapshotService', () => {
             expect(
                 analyticSnapshotRepository.deleteItemsStartedBefore
             ).toHaveBeenCalledWith(signal, startedAt);
-            expect(
-                analyticSnapshotRepository.deleteItemsOfRun
-            ).not.toHaveBeenCalled();
         });
 
         it('passes an exception the header create rejects with through untouched', async () => {
-            const error = new DatabaseUnavailableException();
+            const error = new AppUnknownException(null);
             analyticSnapshotRepository.updateHeaderIfOlder.mockResolvedValue(
                 false
             );
@@ -243,7 +219,7 @@ describe('AnalyticSnapshotService', () => {
                 service.replace(signal, buildSnapshotResult(1))
             ).rejects.toBe(error);
             expect(
-                analyticSnapshotRepository.deleteItemsOfRun
+                analyticSnapshotRepository.deleteItemsStartedBefore
             ).not.toHaveBeenCalled();
         });
     });
@@ -277,9 +253,6 @@ describe('AnalyticSnapshotService', () => {
             expect(
                 analyticSnapshotRepository.deleteItemsStartedBefore
             ).not.toHaveBeenCalled();
-            expect(
-                analyticSnapshotRepository.deleteItemsOfRun
-            ).not.toHaveBeenCalled();
         });
 
         it('creates the header with no header read after a missed update', async () => {
@@ -300,22 +273,8 @@ describe('AnalyticSnapshotService', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('treats a header create answering false as a lost write and deletes nothing', async () => {
-            analyticSnapshotRepository.updateHeaderIfOlder.mockResolvedValue(
-                false
-            );
-            analyticSnapshotRepository.createHeader.mockResolvedValue(false);
-
-            await expect(
-                service.replaceHeader(signal, result)
-            ).resolves.toBeUndefined();
-            expect(
-                analyticSnapshotRepository.deleteItemsOfRun
-            ).not.toHaveBeenCalled();
-        });
-
         it('passes an exception the header create rejects with through untouched', async () => {
-            const error = new DatabaseUnavailableException();
+            const error = new AppUnknownException(null);
             analyticSnapshotRepository.updateHeaderIfOlder.mockResolvedValue(
                 false
             );
@@ -441,27 +400,6 @@ describe('AnalyticSnapshotService', () => {
 
             expect(result.data).toEqual([]);
             expect(result).not.toHaveProperty('metadata');
-        });
-    });
-
-    describe('writeHeader', () => {
-        it('answers false when the header create resolves false', async () => {
-            analyticSnapshotRepository.updateHeaderIfOlder.mockResolvedValue(
-                false
-            );
-            analyticSnapshotRepository.createHeader.mockResolvedValue(false);
-
-            const result = await service['writeHeader'](signal, {
-                runId,
-                startedAt,
-                count: 0,
-                metadata: null,
-                windowStart: null,
-                windowEnd: null,
-                computedAt,
-            });
-
-            expect(result).toBe(false);
         });
     });
 });

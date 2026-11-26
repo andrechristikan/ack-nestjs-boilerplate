@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -6,9 +8,6 @@ import {
     MfaPasskeyRefSelect,
     MfaPasskeySelect,
 } from '@modules/mfa/constants/mfa.constant';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { MfaPasskeyAlreadyRegisteredException } from '@modules/mfa/exceptions/mfa.passkey-already-registered.exception';
-import { MfaPasskeyNotFoundException } from '@modules/mfa/exceptions/mfa.passkey-not-found.exception';
 import type {
     IMfaPasskey,
     IMfaPasskeyCreate,
@@ -18,11 +17,18 @@ import type { IMfaPasskeyRepository } from '@modules/mfa/interfaces/mfa.passkey-
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class MfaPasskeyRepository implements IMfaPasskeyRepository {
+export class MfaPasskeyRepository
+    extends DatabaseRepositoryBase
+    implements IMfaPasskeyRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findManyByUserId(userId: string): Promise<IMfaPasskey[]> {
         return this.databaseService.client.mfaPasskey.findMany({
@@ -82,23 +88,10 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
         tx: IDatabaseTransactionClient,
         data: IMfaPasskeyCreate
     ): Promise<IMfaPasskey> {
-        try {
-            return await tx.mfaPasskey.create({
-                data: { ...data, lastUsedAt: null, createdBy: data.userId },
-                select: MfaPasskeySelect,
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'credentialId',
-                        exception: new MfaPasskeyAlreadyRegisteredException(),
-                    },
-                ],
-                new MfaPasskeyAlreadyRegisteredException()
-            );
-        }
+        return tx.mfaPasskey.create({
+            data: { ...data, lastUsedAt: null, createdBy: data.userId },
+            select: MfaPasskeySelect,
+        });
     }
 
     async markUsedInTx(
@@ -108,19 +101,12 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
         now: Date,
         updatedBy: string
     ): Promise<boolean> {
-        try {
-            const { count } = await tx.mfaPasskey.updateMany({
-                where: { id: passkeyId },
-                data: { counter, lastUsedAt: now, updatedBy },
-            });
+        const { count } = await tx.mfaPasskey.updateMany({
+            where: { id: passkeyId },
+            data: { counter, lastUsedAt: now, updatedBy },
+        });
 
-            return count > 0;
-        } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaInvalidException()
-            );
-        }
+        return count > 0;
     }
 
     async updateNameInTx(
@@ -149,10 +135,7 @@ export class MfaPasskeyRepository implements IMfaPasskeyRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaPasskeyNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 

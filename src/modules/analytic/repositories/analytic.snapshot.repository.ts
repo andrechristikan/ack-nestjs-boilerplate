@@ -1,6 +1,5 @@
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IPaginationQueryOffsetParams } from '@common/pagination/interfaces/pagination.interface';
 import { PaginationOffsetUtil } from '@common/pagination/utils/pagination.offset.util';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
@@ -23,7 +22,6 @@ import { Injectable } from '@nestjs/common';
 export class AnalyticSnapshotRepository implements IAnalyticSnapshotRepository {
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
         private readonly paginationOffsetUtil: PaginationOffsetUtil,
         private readonly analyticPipelineUtil: AnalyticPipelineUtil
     ) {}
@@ -71,36 +69,19 @@ export class AnalyticSnapshotRepository implements IAnalyticSnapshotRepository {
     async createHeader(
         signal: EnumAnalyticSnapshotSignal,
         header: IAnalyticSnapshotHeaderInput
-    ): Promise<boolean> {
-        try {
-            await this.databaseService.client.analyticSnapshot.create({
-                data: {
-                    signal,
-                    runId: header.runId,
-                    startedAt: header.startedAt,
-                    count: header.count,
-                    metadata: header.metadata,
-                    windowStart: header.windowStart,
-                    windowEnd: header.windowEnd,
-                    computedAt: header.computedAt,
-                },
-            });
-
-            return true;
-        } catch (error: unknown) {
-            const isLostWrite = this.databaseUtil.isUniqueCollision(
-                error,
-                Prisma.AnalyticSnapshotScalarFieldEnum.signal
-            );
-            if (isLostWrite) {
-                return false;
-            }
-
-            throw this.databaseUtil.toWriteException(
-                error,
-                new AppUnknownException(error)
-            );
-        }
+    ): Promise<void> {
+        await this.databaseService.client.analyticSnapshot.create({
+            data: {
+                signal,
+                runId: header.runId,
+                startedAt: header.startedAt,
+                count: header.count,
+                metadata: header.metadata,
+                windowStart: header.windowStart,
+                windowEnd: header.windowEnd,
+                computedAt: header.computedAt,
+            },
+        });
     }
 
     async deleteItemsStartedBefore(
@@ -109,15 +90,6 @@ export class AnalyticSnapshotRepository implements IAnalyticSnapshotRepository {
     ): Promise<void> {
         await this.databaseService.client.analyticSnapshotItem.deleteMany({
             where: { signal, runStartedAt: { lt: startedAt } },
-        });
-    }
-
-    async deleteItemsOfRun(
-        signal: EnumAnalyticSnapshotSignal,
-        runId: string
-    ): Promise<void> {
-        await this.databaseService.client.analyticSnapshotItem.deleteMany({
-            where: { signal, runId },
         });
     }
 

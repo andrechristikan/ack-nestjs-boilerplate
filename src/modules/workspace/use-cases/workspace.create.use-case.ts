@@ -1,6 +1,5 @@
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -44,6 +43,8 @@ export class WorkspaceCreateUseCase implements IAppUseCase<
         await this.workspaceService.assertOwnedCapAvailable(authContext.userId);
         const slugCandidates = this.workspaceService.drawSlugCandidates();
 
+        let collision: WorkspaceSlugAlreadyExistsException | null = null;
+
         for (const slug of slugCandidates) {
             const workspaceId = this.databaseUtil.createId();
 
@@ -64,6 +65,7 @@ export class WorkspaceCreateUseCase implements IAppUseCase<
                 return { data: workspace };
             } catch (error: unknown) {
                 if (error instanceof WorkspaceSlugAlreadyExistsException) {
+                    collision = error;
                     continue;
                 }
 
@@ -75,6 +77,6 @@ export class WorkspaceCreateUseCase implements IAppUseCase<
             }
         }
 
-        throw new DatabaseUniqueValueGenerationFailedException();
+        throw new AppUnknownException(collision);
     }
 }

@@ -35,20 +35,20 @@ export class AnalyticSnapshotService {
     private async writeHeader(
         signal: EnumAnalyticSnapshotSignal,
         header: IAnalyticSnapshotHeaderInput
-    ): Promise<boolean> {
+    ): Promise<void> {
         const updated =
             await this.analyticSnapshotRepository.updateHeaderIfOlder(
                 signal,
                 header
             );
         if (updated) {
-            return true;
+            return;
         }
 
-        return this.analyticSnapshotRepository.createHeader(signal, header);
+        await this.analyticSnapshotRepository.createHeader(signal, header);
     }
 
-    /** Writes the run's items, then swaps the signal's header to the run and deletes the superseded items; a run that lost to a later one deletes its own items instead. */
+    /** Writes the run's items, then swaps the signal's header to the run and deletes the items started before it; a lost header write rejects, and the job retry heals it, a later success deleting the failed run's items as started before. */
     async replace<
         TData extends Prisma.InputJsonObject,
         TMetadata extends Prisma.InputJsonObject | null,
@@ -60,7 +60,7 @@ export class AnalyticSnapshotService {
         const startedAt = this.helperDateService.now();
         const batchSize = this.writeBatchSize;
 
-        // Sequential by design: side effects whose order is part of the contract (the header after its items, the delete after the header write decides it); a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
+        // Sequential by design: side effects whose order is part of the contract (the header after its items, the delete after the header write); a fan-out over an unbounded collection: bounded chunks in turn, each concurrent
         for (
             let offset = 0;
             offset < result.items.length;
@@ -75,7 +75,7 @@ export class AnalyticSnapshotService {
         }
 
         const computedAt = this.helperDateService.now();
-        const won = await this.writeHeader(signal, {
+        await this.writeHeader(signal, {
             runId,
             startedAt,
             count: result.items.length,
@@ -85,19 +85,13 @@ export class AnalyticSnapshotService {
             computedAt,
         });
 
-        if (won) {
-            await this.analyticSnapshotRepository.deleteItemsStartedBefore(
-                signal,
-                startedAt
-            );
-
-            return;
-        }
-
-        await this.analyticSnapshotRepository.deleteItemsOfRun(signal, runId);
+        await this.analyticSnapshotRepository.deleteItemsStartedBefore(
+            signal,
+            startedAt
+        );
     }
 
-    /** Writes the header of a signal that carries its result in `metadata`: no item is written or deleted; a run that lost to a later one writes nothing. */
+    /** Writes the header of a signal that carries its result in `metadata`: no item is written or deleted; a lost header write rejects, and the job retry heals it. */
     async replaceHeader<TMetadata extends Prisma.InputJsonObject | null>(
         signal: EnumAnalyticSnapshotSignal,
         result: IAnalyticSnapshotResult<never, TMetadata>

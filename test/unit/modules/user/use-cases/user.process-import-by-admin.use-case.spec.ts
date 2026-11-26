@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { setImmediate } from 'node:timers/promises';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
@@ -8,11 +9,11 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { MessageService } from '@common/message/services/message.service';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueUnrecoverableException } from '@common/queue/exceptions/queue.unrecoverable.exception';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
 import {
     EnumActivityLogProcess,
@@ -34,6 +35,7 @@ import { EnumCountryStatusCodeError } from '@modules/country/enums/country.statu
 import {
     EnumNotificationKind,
     EnumNotificationProcess,
+    EnumNotificationProcessResultStatus,
     EnumNotificationQueue,
 } from '@modules/notification/enums/notification.enum';
 import { NotificationQueue } from '@modules/notification/queues/notification.queue';
@@ -221,7 +223,7 @@ describe('UserProcessImportByAdminUseCase', () => {
             activityEffect
         );
         notificationQueue.notify.mockImplementation(kind =>
-            kind === EnumNotificationKind.userImportResult
+            kind === EnumNotificationKind.processResult
                 ? resultEffect
                 : welcomeEffect
         );
@@ -281,7 +283,6 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(response).toEqual({
                 message: 'user.queue.importByAdmin',
                 created: 1,
-                failed: 0,
             });
             expect(roleService.getByName).toHaveBeenCalledWith('user');
             expect(countryService.getIdByAlpha2Code).toHaveBeenCalledWith('ID');
@@ -402,7 +403,6 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(response).toEqual({
                 message: 'user.queue.importByAdmin',
                 created: 3,
-                failed: 0,
             });
             expect(roleService.getByName).not.toHaveBeenCalled();
             expect(countryService.getIdByAlpha2Code).not.toHaveBeenCalled();
@@ -431,18 +431,25 @@ describe('UserProcessImportByAdminUseCase', () => {
             );
         });
 
-        it('notifies the admin with a result of the created count, no failures, and no reasons keyed by the row id', async () => {
+        it('notifies the admin with a success processResult of the created count and no link keyed by the row id', async () => {
             await useCase.execute('outbox-bramble', payload);
 
+            expect(messageService.setMessage).toHaveBeenCalledWith(
+                'user.processResult.importByAdmin.success.description',
+                { properties: { created: 1 } }
+            );
             expect(notificationQueue.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.userImportResult,
+                EnumNotificationKind.processResult,
                 {
                     userId: 'admin-bramble',
                     proceedBy: 'admin-bramble',
                     reference: 'outbox-bramble',
-                    created: 1,
-                    failed: 0,
-                    reasons: [],
+                    status: EnumNotificationProcessResultStatus.success,
+                    title: 'user.processResult.importByAdmin.success.title',
+                    description:
+                        'user.processResult.importByAdmin.success.description',
+                    link: null,
+                    linkExpiredAt: null,
                 }
             );
         });
@@ -494,69 +501,67 @@ describe('UserProcessImportByAdminUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
-        it('adds the result effect alone with one username reason and resolves when a username collides', async () => {
-            databaseService.withTransaction.mockRejectedValueOnce(
-                new UserUsernameExistException()
-            );
+        it.each([
+            {
+                label: 'username',
+                collision: new UserUsernameExistException(),
+                reason: 'user.error.usernameExist',
+            },
+            {
+                label: 'email',
+                collision: new UserEmailExistException(),
+                reason: 'user.error.emailExist',
+            },
+        ])(
+            'adds the error processResult alone and throws an unrecoverable non-fatal QueueException when the $label collides',
+            async ({ collision, reason }) => {
+                userService.createManyInTx.mockRejectedValueOnce(collision);
 
-            await expect(
-                useCase.execute('outbox-bramble', payload)
-            ).resolves.toEqual({
-                message: 'user.queue.importByAdmin',
-                created: 0,
-                failed: 1,
-            });
+                await expect(
+                    useCase.execute('outbox-bramble', payload)
+                ).rejects.toMatchObject({
+                    constructor: QueueUnrecoverableException,
+                    message: 'user.queue.error.importConflict',
+                    isFatal: false,
+                    rawError: collision,
+                });
 
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'user.error.usernameExist'
-            );
-            expect(notificationQueue.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.userImportResult,
-                {
-                    userId: 'admin-bramble',
-                    proceedBy: 'admin-bramble',
-                    reference: 'outbox-bramble',
-                    created: 0,
-                    failed: 1,
-                    reasons: ['user.error.usernameExist'],
-                }
-            );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                resultEffect
-            );
-            expect(outboxService.addManyInTx).not.toHaveBeenCalled();
-        });
-
-        it('adds the result effect alone with one email reason and resolves when an email collides', async () => {
-            databaseService.withTransaction.mockRejectedValueOnce(
-                new UserEmailExistException()
-            );
-
-            await expect(
-                useCase.execute('outbox-bramble', payload)
-            ).resolves.toEqual({
-                message: 'user.queue.importByAdmin',
-                created: 0,
-                failed: 1,
-            });
-
-            expect(notificationQueue.notify).toHaveBeenCalledWith(
-                EnumNotificationKind.userImportResult,
-                expect.objectContaining({
-                    created: 0,
-                    failed: 1,
-                    reasons: ['user.error.emailExist'],
-                })
-            );
-            expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
-            expect(outboxService.addInTx).toHaveBeenCalledWith(
-                tx,
-                resultEffect
-            );
-        });
+                expect(messageService.setMessage).toHaveBeenCalledWith(
+                    collision.messagePath
+                );
+                expect(messageService.setMessage).toHaveBeenCalledWith(
+                    'user.processResult.importByAdmin.error.description',
+                    { properties: { reason } }
+                );
+                expect(messageService.setMessage).toHaveBeenCalledWith(
+                    'user.queue.error.importConflict',
+                    { properties: { reason } }
+                );
+                expect(notificationQueue.notify).toHaveBeenCalledWith(
+                    EnumNotificationKind.processResult,
+                    {
+                        userId: 'admin-bramble',
+                        proceedBy: 'admin-bramble',
+                        reference: 'outbox-bramble',
+                        status: EnumNotificationProcessResultStatus.error,
+                        title: 'user.processResult.importByAdmin.error.title',
+                        description:
+                            'user.processResult.importByAdmin.error.description',
+                        link: null,
+                        linkExpiredAt: null,
+                    }
+                );
+                expect(databaseService.withTransaction).toHaveBeenCalledTimes(
+                    2
+                );
+                expect(outboxService.addInTx).toHaveBeenCalledTimes(1);
+                expect(outboxService.addInTx).toHaveBeenCalledWith(
+                    tx,
+                    resultEffect
+                );
+                expect(outboxService.addManyInTx).not.toHaveBeenCalled();
+            }
+        );
 
         it('retries with the next slug attempt after a slug collision', async () => {
             const collision = new WorkspaceSlugAlreadyExistsException();
@@ -566,7 +571,7 @@ describe('UserProcessImportByAdminUseCase', () => {
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
-            ).resolves.toMatchObject({ created: 1, failed: 0 });
+            ).resolves.toMatchObject({ created: 1 });
 
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(
@@ -575,17 +580,15 @@ describe('UserProcessImportByAdminUseCase', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException after the last slug attempt and adds no result', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                new WorkspaceSlugAlreadyExistsException()
-            );
+        it('throws AppUnknownException carrying the last collision after the last slug attempt and adds no result', async () => {
+            const collision = new WorkspaceSlugAlreadyExistsException();
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 useCase.execute('outbox-bramble', payload)
             ).rejects.toMatchObject({
-                module: 'database',
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+                constructor: AppUnknownException,
+                rawError: collision,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
             expect(outboxService.addInTx).not.toHaveBeenCalled();

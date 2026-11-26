@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -9,8 +11,6 @@ import type {
 import { PaginationService } from '@common/pagination/services/pagination.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ApiKeySelect } from '@modules/api-key/constants/api-key.constant';
-import { ApiKeyInactiveException } from '@modules/api-key/exceptions/api-key.inactive.exception';
-import { ApiKeyNotFoundException } from '@modules/api-key/exceptions/api-key.not-found.exception';
 import type {
     IApiKey,
     IApiKeyCreate,
@@ -20,12 +20,19 @@ import { Injectable } from '@nestjs/common';
 import type { ApiKey } from '@generated/prisma-client/client';
 
 @Injectable()
-export class ApiKeyRepository implements IApiKeyRepository {
+export class ApiKeyRepository
+    extends DatabaseRepositoryBase
+    implements IApiKeyRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findWithPagination(
         { where, ...params }: IPaginationQueryOffsetParams,
@@ -95,10 +102,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
                 select: ApiKeySelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ApiKeyNotFoundException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -137,10 +141,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
                 select: ApiKeySelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ApiKeyInactiveException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -161,10 +162,7 @@ export class ApiKeyRepository implements IApiKeyRepository {
                 select: ApiKeySelect,
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ApiKeyInactiveException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -172,19 +170,12 @@ export class ApiKeyRepository implements IApiKeyRepository {
         tx: IDatabaseTransactionClient,
         id: string
     ): Promise<IApiKey> {
-        try {
-            return await tx.apiKey.delete({
-                where: {
-                    id,
-                },
-                select: ApiKeySelect,
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new ApiKeyNotFoundException()
-            );
-        }
+        return tx.apiKey.delete({
+            where: {
+                id,
+            },
+            select: ApiKeySelect,
+        });
     }
 
     async findOneByKey(key: string): Promise<ApiKey | null> {

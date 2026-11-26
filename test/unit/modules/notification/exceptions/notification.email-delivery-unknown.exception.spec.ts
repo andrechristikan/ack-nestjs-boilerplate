@@ -1,11 +1,12 @@
 import { NotificationEmailDeliveryUnknownException } from '@modules/notification/exceptions/notification.email-delivery-unknown.exception';
 import { QueueException } from '@common/queue/exceptions/queue.exception';
+import { QueueUnrecoverableException } from '@common/queue/exceptions/queue.unrecoverable.exception';
 
 describe('NotificationEmailDeliveryUnknownException', () => {
     const message = 'notification.queue.email.error.deliveryUnknown';
 
     describe('constructor', () => {
-        it('declares a fatal QueueException naming the batch and the unknown count', () => {
+        it('declares a fatal QueueUnrecoverableException naming the batch and the unknown count', () => {
             const exception = new NotificationEmailDeliveryUnknownException(
                 message,
                 null,
@@ -14,6 +15,7 @@ describe('NotificationEmailDeliveryUnknownException', () => {
             );
 
             expect(exception).toBeInstanceOf(QueueException);
+            expect(exception).toBeInstanceOf(QueueUnrecoverableException);
             expect(exception).toMatchObject({
                 message,
                 isFatal: true,

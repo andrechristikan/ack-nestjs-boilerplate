@@ -40,6 +40,7 @@ import { RoleUtil } from '@modules/role/utils/role.util';
 import type { IUser } from '@modules/user/interfaces/user.interface';
 import type {
     IRoleActor,
+    IRoleDeletable,
     IRoleWithPolicies,
 } from '@modules/role/interfaces/role.interface';
 import { RoleDeleteByAdminUseCase } from '@modules/role/use-cases/role.delete-by-admin.use-case';
@@ -65,6 +66,7 @@ describe('RoleDeleteByAdminUseCase', () => {
         updatedAt: now,
         updatedBy: 'user-1',
     };
+    const deletableRole: IRoleDeletable = { ...role, users: [] };
     const roleWithPolicies: IRoleWithPolicies = { ...role, policies: [] };
     const actorRole: IRoleWithPolicies = {
         ...roleWithPolicies,
@@ -137,7 +139,7 @@ describe('RoleDeleteByAdminUseCase', () => {
 
     describe('execute', () => {
         beforeEach(() => {
-            roleService.getDeletableByActor.mockResolvedValue(role);
+            roleService.getDeletableByActor.mockResolvedValue(deletableRole);
         });
 
         it.each([
@@ -181,7 +183,7 @@ describe('RoleDeleteByAdminUseCase', () => {
             );
             expect(roleService.deleteByAdminInTx).toHaveBeenCalledWith(
                 tx,
-                role
+                deletableRole
             );
         });
 

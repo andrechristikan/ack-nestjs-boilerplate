@@ -3,26 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
 import { ObjectId } from 'bson';
 import {
-    DatabaseIdInvalidCode,
-    DatabaseRawQueryFailedCode,
-    DatabaseRecordNotFoundCode,
-    DatabaseTransactionExpiredCode,
-    DatabaseUnavailableCodes,
-    DatabaseUnavailableMessages,
     DatabaseUniqueConstraintCode,
     DatabaseUrlCensoredValue,
-    DatabaseWriteConflictCode,
 } from '@common/database/constants/database.constant';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import type { AppBaseException } from '@app/exceptions/app.base.exception';
-import type {
-    IDatabaseScalarField,
-    IDatabaseUniqueCollision,
-} from '@common/database/interfaces/database.interface';
-import { DatabaseIdInvalidException } from '@common/database/exceptions/database.id-invalid.exception';
-import { DatabaseTransactionExpiredException } from '@common/database/exceptions/database.transaction-expired.exception';
-import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
-import { DatabaseWriteConflictException } from '@common/database/exceptions/database.write-conflict.exception';
+import type { IDatabaseScalarField } from '@common/database/interfaces/database.interface';
 
 @Injectable()
 export class DatabaseUtil {
@@ -103,83 +87,6 @@ export class DatabaseUtil {
                 typeof entry === 'string' &&
                 entry.toLowerCase().includes(field.toLowerCase())
         );
-    }
-
-    isRecordNotFound(error: unknown): boolean {
-        return (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === DatabaseRecordNotFoundCode
-        );
-    }
-
-    /** Maps a Prisma write conflict, malformed id, expired transaction, connection failure, or server-selection timeout to its exception; null for any other error. */
-    toException(error: unknown): AppBaseException | null {
-        if (error instanceof Prisma.PrismaClientInitializationError) {
-            return new DatabaseUnavailableException();
-        }
-
-        if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-            return null;
-        }
-
-        if (error.code === DatabaseWriteConflictCode) {
-            return new DatabaseWriteConflictException();
-        }
-
-        if (error.code === DatabaseIdInvalidCode) {
-            return new DatabaseIdInvalidException();
-        }
-
-        if (error.code === DatabaseTransactionExpiredCode) {
-            return new DatabaseTransactionExpiredException();
-        }
-
-        if (DatabaseUnavailableCodes.has(error.code)) {
-            return new DatabaseUnavailableException();
-        }
-
-        if (
-            error.code === DatabaseRawQueryFailedCode &&
-            DatabaseUnavailableMessages.some(message =>
-                error.message.includes(message)
-            )
-        ) {
-            return new DatabaseUnavailableException();
-        }
-
-        return null;
-    }
-
-    /** Maps the error a write raised: a record-not-found or write-conflict error returns `miss`, the answer the calling statement names; any other error returns its `toException` mapping or an `AppUnknownException`. Returns, never throws. */
-    toWriteException(error: unknown, miss: AppBaseException): AppBaseException {
-        const isRecordNotFound = this.isRecordNotFound(error);
-        if (
-            isRecordNotFound ||
-            (error instanceof Prisma.PrismaClientKnownRequestError &&
-                error.code === DatabaseWriteConflictCode)
-        ) {
-            return miss;
-        }
-
-        const mapped = this.toException(error);
-
-        return mapped ?? new AppUnknownException(error);
-    }
-
-    /** Maps the error a write on a unique field raised: the first `collisions` entry whose field the unique error names returns its exception; a record-not-found or write-conflict error returns `miss`, the answer the calling statement names; any other error maps as `toWriteException`. Returns, never throws. */
-    toUniqueException(
-        error: unknown,
-        collisions: IDatabaseUniqueCollision[],
-        miss: AppBaseException
-    ): AppBaseException {
-        const collision = collisions.find(entry =>
-            this.isUniqueCollision(error, entry.field)
-        );
-        if (collision) {
-            return collision.exception;
-        }
-
-        return this.toWriteException(error, miss);
     }
 
     toPlainObject<T, N = Prisma.JsonObject>(data: T): N {

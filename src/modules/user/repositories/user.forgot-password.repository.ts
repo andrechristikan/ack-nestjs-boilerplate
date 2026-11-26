@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -11,16 +13,22 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { IUserForgotPasswordRepository } from '@modules/user/interfaces/user.forgot-password-repository.interface';
 import { UserForgotPasswordWithUserRecipientInclude } from '@modules/user/constants/user.constant';
-import { UserTokenInvalidException } from '@modules/user/exceptions/user.token-invalid.exception';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class UserForgotPasswordRepository implements IUserForgotPasswordRepository {
+export class UserForgotPasswordRepository
+    extends DatabaseRepositoryBase
+    implements IUserForgotPasswordRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil,
+        protected override readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
-    ) {}
+    ) {
+        super();
+    }
 
     async findOneActiveByForgotPasswordToken(
         token: string
@@ -96,10 +104,7 @@ export class UserForgotPasswordRepository implements IUserForgotPasswordReposito
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new UserTokenInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 

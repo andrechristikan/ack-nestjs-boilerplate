@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 import type { IActivityLogCreateManyEffect } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
@@ -7,12 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import {
@@ -115,7 +114,6 @@ import {
     buildRequestContext,
     buildUser,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 import { TestUnitUserConfigValues } from '@test/unit/helpers/test.unit.user.helper';
 
 describe('UserLoginWithSocialUseCase', () => {
@@ -1742,11 +1740,10 @@ describe('UserLoginWithSocialUseCase', () => {
             ]);
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
+        it('throws AppUnknownException carrying the last collision when every slug candidate collides', async () => {
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
-            databaseService.withTransaction.mockRejectedValue(
-                new WorkspaceSlugAlreadyExistsException()
-            );
+            const collision = new WorkspaceSlugAlreadyExistsException();
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 useCase['signUpWithSocial'](
@@ -1759,9 +1756,8 @@ describe('UserLoginWithSocialUseCase', () => {
                     'subject-bramble'
                 )
             ).rejects.toMatchObject({
-                module: 'database',
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+                constructor: AppUnknownException,
+                rawError: collision,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
@@ -1802,9 +1798,7 @@ describe('UserLoginWithSocialUseCase', () => {
         });
 
         it('wraps a raw write conflict in the unknown exception', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
+            const conflict = new Error('write conflict');
             userRegistrationService.buildSocialCreate.mockReturnValue(input);
             databaseService.withTransaction.mockRejectedValue(conflict);
 

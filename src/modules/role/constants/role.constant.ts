@@ -28,6 +28,11 @@ export const RoleWithPolicyCountInclude = {
 } satisfies Prisma.RoleInclude;
 
 /** @public */
+export const RoleWithUserIdInclude = {
+    users: { select: { id: true }, take: 1 },
+} satisfies Prisma.RoleInclude;
+
+/** @public */
 export const RoleRank: IRoleRank = {
     [EnumRoleType.superAdmin]: 3,
     [EnumRoleType.admin]: 2,

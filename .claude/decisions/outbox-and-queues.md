@@ -128,6 +128,23 @@ Rule: `outbox.md`, Dispatch.
 - Leave a stale enqueued row: its outcome is lost from the history.
 - A dispatch-attempt counter with a `failed` stamp: the rotation already frees the head of the batch, and a row only a removed queue or a refused job option produces is not a normal case.
 
+### A hopeless job failure is a `QueueUnrecoverableException` the processor base turns into `UnrecoverableError`
+
+Rule: `queue.md`, Processors; `exceptions.md`, The hierarchy.
+
+- A mapping per processor case: every processor repeats it.
+- An `isRecoverable` flag on `QueueException`: one more positional argument at every site.
+- Reading `isFatal` as no-retry: `throwUnknownException` makes every unknown error fatal, and those retry.
+- A use case throwing BullMQ's `UnrecoverableError`: a use case stays free of BullMQ.
+
+### An import that collides after its route's check fails unrecoverably after notifying the admin
+
+Rule: `use-case.md`, Jobs.
+
+- Finishing with a failed count: the job reports success for work it did not do.
+- Failing with no notification: the admin never learns why.
+- Re-running the route's check in the job: a second read for a race the contract already names.
+
 ### Step state lives in the outbox row
 
 Rule: `notification.md`, Fan-out and send.
@@ -219,6 +236,13 @@ Rule: `role.md`.
 Rule: `notification.md`, Fan-out and send.
 
 - Rendering in the application and sending raw mail: the job payload would carry a rendered body, where a template keeps it to template data.
+
+### An async process tells the admin its outcome through one `processResult` kind
+
+Rule: `notify.md`; `notification.md`, Fan-out and send.
+
+- One result kind and template per process: a template per job, and a new job adds a kind.
+- A status the template derives from counts: the code would decide success or failure per process.
 
 ### The term-policy broadcast is delivered at most once per recipient
 

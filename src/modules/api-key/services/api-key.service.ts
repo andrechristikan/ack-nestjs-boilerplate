@@ -242,7 +242,6 @@ export class ApiKeyService {
             apiKey.id,
             name
         );
-
         await this.addInvalidateEffectInTx(tx, apiKey.key);
 
         return updated;

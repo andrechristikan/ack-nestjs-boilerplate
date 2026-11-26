@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { TermPolicyDatabaseErrorContract } from '@modules/term-policy/contracts/term-policy.database-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -22,10 +24,6 @@ import type {
     ITermPolicyUserAcceptance,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import type { ITermPolicyRepository } from '@modules/term-policy/interfaces/term-policy.repository.interface';
-import { TermPolicyAlreadyAcceptedException } from '@modules/term-policy/exceptions/term-policy.already-accepted.exception';
-import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
-import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
-import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { Injectable } from '@nestjs/common';
 import {
     EnumTermPolicyStatus,
@@ -35,12 +33,19 @@ import {
 import type { TermPolicy } from '@generated/prisma-client/client';
 
 @Injectable()
-export class TermPolicyRepository implements ITermPolicyRepository {
+export class TermPolicyRepository
+    extends DatabaseRepositoryBase
+    implements ITermPolicyRepository
+{
+    protected override readonly errorContract = TermPolicyDatabaseErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
         private readonly paginationService: PaginationService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     private pickLatestPerType<T extends ITermPolicyRef>(rows: T[]): T[] {
         const latest = new Map<EnumTermPolicyType, T>();
@@ -211,17 +216,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: Prisma.TermPolicyUserAcceptanceScalarFieldEnum
-                            .termPolicyId,
-                        exception: new TermPolicyAlreadyAcceptedException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
+            throw this.toException(error);
         }
     }
 
@@ -242,28 +237,15 @@ export class TermPolicyRepository implements ITermPolicyRepository {
         const plainContents: Prisma.TermPolicyContentCreateInput[] =
             this.databaseUtil.toPlainArray(contents);
 
-        try {
-            return await tx.termPolicy.create({
-                data: {
-                    id: termPolicyId,
-                    type,
-                    version,
-                    status: EnumTermPolicyStatus.draft,
-                    contents: plainContents,
-                },
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: Prisma.TermPolicyScalarFieldEnum.version,
-                        exception: new TermPolicyExistException(),
-                    },
-                ],
-                new AppUnknownException(error)
-            );
-        }
+        return tx.termPolicy.create({
+            data: {
+                id: termPolicyId,
+                type,
+                version,
+                status: EnumTermPolicyStatus.draft,
+                contents: plainContents,
+            },
+        });
     }
 
     async deleteDraftInTx(
@@ -278,10 +260,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new TermPolicyStatusInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -314,10 +293,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new TermPolicyStatusInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -344,10 +320,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new TermPolicyStatusInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -378,10 +351,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new TermPolicyStatusInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -404,10 +374,7 @@ export class TermPolicyRepository implements ITermPolicyRepository {
                 },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new TermPolicyStatusInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 

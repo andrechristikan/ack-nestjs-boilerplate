@@ -1,3 +1,4 @@
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { setImmediate } from 'node:timers/promises';
 import type { INotificationNotifyEffect } from '@modules/notification/interfaces/notification.interface';
 import { buildActivityLogCreateManyEffect } from '@test/unit/helpers/test.unit.activity-log-effect.helper';
@@ -8,11 +9,9 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { OutboxService } from '@common/outbox/services/outbox.service';
-import { DatabaseWriteConflictCode } from '@common/database/constants/database.constant';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
     EnumActivityLogAction,
@@ -95,7 +94,6 @@ import {
     buildApiKeyContext,
     buildRequestContext,
 } from '@test/unit/helpers/test.unit.request.helper';
-import { buildPrismaKnownRequestError } from '@test/unit/helpers/test.unit.database.helper';
 
 describe('UserSignUpUseCase', () => {
     const userService: MockProxy<UserService> = mock<UserService>();
@@ -956,10 +954,9 @@ describe('UserSignUpUseCase', () => {
             ]);
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            databaseService.withTransaction.mockRejectedValue(
-                new WorkspaceSlugAlreadyExistsException()
-            );
+        it('throws AppUnknownException carrying the last collision when every slug candidate collides', async () => {
+            const collision = new WorkspaceSlugAlreadyExistsException();
+            databaseService.withTransaction.mockRejectedValue(collision);
 
             await expect(
                 useCase['createSignUpUser'](
@@ -970,9 +967,8 @@ describe('UserSignUpUseCase', () => {
                     termPolicyRefs
                 )
             ).rejects.toMatchObject({
-                module: 'database',
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+                constructor: AppUnknownException,
+                rawError: collision,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
@@ -1009,9 +1005,7 @@ describe('UserSignUpUseCase', () => {
         });
 
         it('wraps a raw write conflict in the unknown exception', async () => {
-            const conflict = buildPrismaKnownRequestError(
-                DatabaseWriteConflictCode
-            );
+            const conflict = new Error('write conflict');
             databaseService.withTransaction.mockRejectedValue(conflict);
 
             await expect(

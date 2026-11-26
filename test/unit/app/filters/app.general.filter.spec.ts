@@ -1,6 +1,5 @@
 import type { ArgumentsHost } from '@nestjs/common';
 import { HttpStatus, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import type { Response } from 'express';
@@ -12,8 +11,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
-import { DatabaseUtil } from '@common/database/utils/database.util';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { CacheService } from '@common/cache/services/cache.service';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
@@ -27,7 +24,6 @@ import { ResponseMetadataService } from '@common/response/services/response.meta
 import { SentryService } from '@common/sentry/services/sentry.service';
 import { UserImportEmailExistException } from '@modules/user/exceptions/user.import-email-exist.exception';
 import { buildStatusException } from '@test/unit/helpers/test.unit.app-exception.helper';
-import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('AppGeneralFilter', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
@@ -70,8 +66,6 @@ describe('AppGeneralFilter', () => {
                     useValue: responseMetadataService,
                 },
                 { provide: SentryService, useValue: sentryService },
-                DatabaseUtil,
-                { provide: ConfigService, useValue: buildConfigService({}) },
                 { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
@@ -129,21 +123,48 @@ describe('AppGeneralFilter', () => {
             expect(warn).not.toHaveBeenCalled();
         });
 
-        const serverSelectionTimeout = new Prisma.PrismaClientKnownRequestError(
-            'Raw query failed. Code: `unknown`. Message: `Kind: Server selection timeout: No available servers.`',
-            { code: 'P2010', clientVersion: '6.19.0' }
-        );
-        const initializationError = new Prisma.PrismaClientInitializationError(
-            'cannot reach database',
-            '6.19.0'
-        );
-        const databaseUnavailableBody = {
-            statusCode: EnumDatabaseStatusCodeError.unavailable,
+        const databaseErrors: [string, Error][] = [
+            [
+                'a P2002 unique collision',
+                new Prisma.PrismaClientKnownRequestError('unique', {
+                    code: 'P2002',
+                    clientVersion: '6.19.0',
+                }),
+            ],
+            [
+                'a P2023 malformed id',
+                new Prisma.PrismaClientKnownRequestError('id', {
+                    code: 'P2023',
+                    clientVersion: '6.19.0',
+                }),
+            ],
+            [
+                'a P2028 expired transaction',
+                new Prisma.PrismaClientKnownRequestError('expired', {
+                    code: 'P2028',
+                    clientVersion: '6.19.0',
+                }),
+            ],
+            [
+                'a P2034 write conflict',
+                new Prisma.PrismaClientKnownRequestError('conflict', {
+                    code: 'P2034',
+                    clientVersion: '6.19.0',
+                }),
+            ],
+            [
+                'a PrismaClientInitializationError',
+                new Prisma.PrismaClientInitializationError(
+                    'cannot reach database',
+                    '6.19.0'
+                ),
+            ],
+        ];
+        const unknownBody = {
+            statusCode: EnumAppStatusCodeError.unknown,
             statusCodeKey:
-                EnumDatabaseStatusCodeError[
-                    EnumDatabaseStatusCodeError.unavailable
-                ],
-            module: 'database',
+                EnumAppStatusCodeError[EnumAppStatusCodeError.unknown],
+            module: 'app',
             message: 'Internal Server Error',
         };
 
@@ -163,27 +184,27 @@ describe('AppGeneralFilter', () => {
             });
         });
 
-        it('answers 409 with the database write-conflict code for a Prisma P2034 error', async () => {
-            const error = new Prisma.PrismaClientKnownRequestError('conflict', {
-                code: 'P2034',
-                clientVersion: '6.19.0',
-            });
+        it.each(databaseErrors)(
+            'answers 500 with the unknown status code and reports %s',
+            async (_label, rawError) => {
+                const error = vi.spyOn(Logger.prototype, 'error');
 
-            await filter.catch(error, argumentsHost);
+                await filter.catch(rawError, argumentsHost);
 
-            expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
-            expect(response.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    statusCode: EnumDatabaseStatusCodeError.writeConflict,
-                    module: 'database',
-                })
-            );
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'database.error.writeConflict',
-                { customLanguage: EnumMessageLanguage.en }
-            );
-            expect(sentryService.captureException).not.toHaveBeenCalled();
-        });
+                expect(response.status).toHaveBeenCalledWith(
+                    HttpStatus.INTERNAL_SERVER_ERROR
+                );
+                expect(response.json).toHaveBeenCalledWith({
+                    ...unknownBody,
+                    metadata,
+                });
+                expect(error).toHaveBeenCalledTimes(1);
+                expect(sentryService.captureException).toHaveBeenCalledWith(
+                    rawError,
+                    null
+                );
+            }
+        );
 
         it('renders RedisUnavailableException (503, 52400) carrying the raw error as rawError when the raw error is a connection error', async () => {
             const error = new Error('connection lost');
@@ -269,30 +290,6 @@ describe('AppGeneralFilter', () => {
                 expect.objectContaining({
                     statusCode: EnumAwsStatusCodeError.s3NotConfigured,
                 })
-            );
-        });
-
-        it.each([
-            ['a P2010 server selection timeout', serverSelectionTimeout],
-            ['a PrismaClientInitializationError', initializationError],
-        ])('logs and reports every %s', async (_label, rawError) => {
-            const error = vi.spyOn(Logger.prototype, 'error');
-
-            await filter.catch(rawError, argumentsHost);
-            await filter.catch(rawError, argumentsHost);
-
-            expect(response.status).toHaveBeenCalledWith(
-                HttpStatus.SERVICE_UNAVAILABLE
-            );
-            expect(response.json).toHaveBeenCalledWith({
-                ...databaseUnavailableBody,
-                metadata,
-            });
-            expect(error).toHaveBeenCalledTimes(2);
-            expect(sentryService.captureException).toHaveBeenCalledTimes(2);
-            expect(sentryService.captureException).toHaveBeenCalledWith(
-                rawError,
-                null
             );
         });
 
@@ -446,26 +443,27 @@ describe('AppGeneralFilter', () => {
             );
         });
 
-        it('answers 409 with the database write-conflict code for an AppUnknownException wrapping a Prisma P2034 error', async () => {
-            const rawError = new Prisma.PrismaClientKnownRequestError(
-                'conflict',
-                { code: 'P2034', clientVersion: '6.19.0' }
-            );
+        it.each(databaseErrors)(
+            'answers 500 with the unknown status code and reports the rawError for an AppUnknownException wrapping %s',
+            async (_label, rawError) => {
+                await filter.catch(
+                    new AppUnknownException(rawError),
+                    argumentsHost
+                );
 
-            await filter.catch(
-                new AppUnknownException(rawError),
-                argumentsHost
-            );
-
-            expect(response.status).toHaveBeenCalledWith(HttpStatus.CONFLICT);
-            expect(response.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    statusCode: EnumDatabaseStatusCodeError.writeConflict,
-                    module: 'database',
-                })
-            );
-            expect(sentryService.captureException).not.toHaveBeenCalled();
-        });
+                expect(response.status).toHaveBeenCalledWith(
+                    HttpStatus.INTERNAL_SERVER_ERROR
+                );
+                expect(response.json).toHaveBeenCalledWith({
+                    ...unknownBody,
+                    metadata,
+                });
+                expect(sentryService.captureException).toHaveBeenCalledWith(
+                    rawError,
+                    null
+                );
+            }
+        );
 
         it('renders the mapped RedisUnavailableException for an AppUnknownException whose rawError is a connection error', async () => {
             const rawError = new Error('connection lost');

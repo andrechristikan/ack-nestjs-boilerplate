@@ -9,8 +9,6 @@ import { ConfigService } from '@nestjs/config';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsSesNotConfiguredException } from '@common/aws/exceptions/aws.ses-not-configured.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { Test } from '@nestjs/testing';
@@ -647,9 +645,10 @@ describe('WorkspaceCreateInviteUseCase', () => {
             );
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException once the attempt budget is spent', async () => {
+        it('throws AppUnknownException carrying the last collision once the attempt budget is spent', async () => {
+            const collision = new WorkspaceInviteReferenceExistException();
             workspaceInviteService.createInviteInTx.mockRejectedValue(
-                new WorkspaceInviteReferenceExistException()
+                collision
             );
 
             await expect(
@@ -662,10 +661,8 @@ describe('WorkspaceCreateInviteUseCase', () => {
                     body
                 )
             ).rejects.toMatchObject({
-                constructor: DatabaseUniqueValueGenerationFailedException,
-                module: 'database',
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
+                constructor: AppUnknownException,
+                rawError: collision,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(3);
         });

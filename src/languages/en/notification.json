@@ -49,13 +49,9 @@
             "title": "Term Policy Update",
             "body": "A new {type} term policy version {version} has been published. Please review it."
         },
-        "userImportResult": {
-            "title": "User import result",
-            "body": "Hi {username}, your user import has finished. The result is in your email."
-        },
-        "userExportResult": {
-            "title": "User export ready",
-            "body": "Hi {username}, your user export has finished. The download link is in your email."
+        "processResult": {
+            "title": "{title}",
+            "body": "{description}"
         },
         "loginLocked": {
             "title": "Sign-in Locked",

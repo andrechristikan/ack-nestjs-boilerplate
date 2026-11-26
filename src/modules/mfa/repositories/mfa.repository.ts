@@ -1,20 +1,27 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { Mfa } from '@generated/prisma-client/client';
 import { MfaRefSelect } from '@modules/mfa/constants/mfa.constant';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
 import type { IMfaCreate } from '@modules/mfa/interfaces/mfa.interface';
-import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
 import type { IMfaRepository } from '@modules/mfa/interfaces/mfa.repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class MfaRepository implements IMfaRepository {
+export class MfaRepository
+    extends DatabaseRepositoryBase
+    implements IMfaRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findOneByUserId(userId: string): Promise<Mfa | null> {
         return this.databaseService.client.mfa.findUnique({
@@ -79,17 +86,10 @@ export class MfaRepository implements IMfaRepository {
         userId: string,
         updatedBy: string | null
     ): Promise<void> {
-        try {
-            await tx.mfa.updateMany({
-                where: { userId },
-                data: { attempt: 0, lockedUntil: null, updatedBy },
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaInvalidException()
-            );
-        }
+        await tx.mfa.updateMany({
+            where: { userId },
+            data: { attempt: 0, lockedUntil: null, updatedBy },
+        });
     }
 
     async createBackupCodesInTx(
@@ -105,10 +105,7 @@ export class MfaRepository implements IMfaRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -117,36 +114,22 @@ export class MfaRepository implements IMfaRepository {
         userId: string,
         backupCodesHashed: string[]
     ): Promise<boolean> {
-        try {
-            const { count } = await tx.mfa.updateMany({
-                where: { userId },
-                data: { backupCodes: backupCodesHashed },
-            });
+        const { count } = await tx.mfa.updateMany({
+            where: { userId },
+            data: { backupCodes: backupCodesHashed },
+        });
 
-            return count > 0;
-        } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaNotEnabledException()
-            );
-        }
+        return count > 0;
     }
 
     async clearBackupCodesInTx(
         tx: IDatabaseTransactionClient,
         userId: string
     ): Promise<void> {
-        try {
-            await tx.mfa.updateMany({
-                where: { userId },
-                data: { backupCodes: [] },
-            });
-        } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaInvalidException()
-            );
-        }
+        await tx.mfa.updateMany({
+            where: { userId },
+            data: { backupCodes: [] },
+        });
     }
 
     async consumeBackupCodeInTx(
@@ -164,10 +147,7 @@ export class MfaRepository implements IMfaRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 

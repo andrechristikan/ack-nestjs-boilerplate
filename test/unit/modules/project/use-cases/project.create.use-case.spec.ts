@@ -6,10 +6,9 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
-import { DatabaseUniqueValueGenerationFailedException } from '@common/database/exceptions/database.unique-value-generation-failed.exception';
-import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import type { Project } from '@generated/prisma-client/client';
 import type { ProjectCreateRequestDto } from '@modules/project/dtos/request/project.create.request.dto';
+import { ProjectNotFoundException } from '@modules/project/exceptions/project.not-found.exception';
 import { ProjectSlugAlreadyExistsException } from '@modules/project/exceptions/project.slug-already-exists.exception';
 import { ProjectService } from '@modules/project/services/project.service';
 import { ProjectCreateUseCase } from '@modules/project/use-cases/project.create.use-case';
@@ -169,10 +168,9 @@ describe('ProjectCreateUseCase', () => {
             );
         });
 
-        it('throws DatabaseUniqueValueGenerationFailedException when every slug candidate collides', async () => {
-            projectService.createProjectInTx.mockRejectedValue(
-                new ProjectSlugAlreadyExistsException()
-            );
+        it('throws AppUnknownException carrying the last collision when every slug candidate collides', async () => {
+            const collision = new ProjectSlugAlreadyExistsException();
+            projectService.createProjectInTx.mockRejectedValue(collision);
 
             await expect(
                 useCase.execute(
@@ -183,16 +181,14 @@ describe('ProjectCreateUseCase', () => {
                     body
                 )
             ).rejects.toMatchObject({
-                statusCode:
-                    EnumDatabaseStatusCodeError.uniqueValueGenerationFailed,
-                constructor: DatabaseUniqueValueGenerationFailedException,
-                module: 'database',
+                constructor: AppUnknownException,
+                rawError: collision,
             });
             expect(databaseService.withTransaction).toHaveBeenCalledTimes(2);
         });
 
         it('passes a rejected typed exception other than the slug collision through untouched without retrying', async () => {
-            const typed = new DatabaseUniqueValueGenerationFailedException();
+            const typed = new ProjectNotFoundException();
             projectService.createProjectInTx.mockRejectedValue(typed);
 
             await expect(

@@ -1,20 +1,25 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import type { MfaTotp } from '@generated/prisma-client/client';
-import { MfaInvalidException } from '@modules/mfa/exceptions/mfa.invalid.exception';
-import { MfaNotEnabledException } from '@modules/mfa/exceptions/mfa.not-enabled.exception';
-import { MfaTotpAlreadyEnabledException } from '@modules/mfa/exceptions/mfa.totp-already-enabled.exception';
-import { MfaTotpSetupRequiredException } from '@modules/mfa/exceptions/mfa.totp-setup-required.exception';
 import type { IMfaTotpRepository } from '@modules/mfa/interfaces/mfa.totp-repository.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class MfaTotpRepository implements IMfaTotpRepository {
+export class MfaTotpRepository
+    extends DatabaseRepositoryBase
+    implements IMfaTotpRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async findOneByUserId(userId: string): Promise<MfaTotp | null> {
         return this.databaseService.client.mfaTotp.findUnique({
@@ -61,16 +66,7 @@ export class MfaTotpRepository implements IMfaTotpRepository {
                 update: { pendingSecret: pendingSecretEncrypted },
             });
         } catch (error: unknown) {
-            throw this.databaseUtil.toUniqueException(
-                error,
-                [
-                    {
-                        field: 'userId',
-                        exception: new MfaTotpAlreadyEnabledException(),
-                    },
-                ],
-                new MfaTotpAlreadyEnabledException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -96,10 +92,7 @@ export class MfaTotpRepository implements IMfaTotpRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaTotpSetupRequiredException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -114,10 +107,7 @@ export class MfaTotpRepository implements IMfaTotpRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaNotEnabledException()
-            );
+            throw this.toException(error);
         }
     }
 
@@ -149,10 +139,7 @@ export class MfaTotpRepository implements IMfaTotpRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 }

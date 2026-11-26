@@ -1,3 +1,5 @@
+import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
@@ -5,17 +7,23 @@ import type {
     EnumMfaChallengePurpose,
     MfaChallenge,
 } from '@generated/prisma-client/client';
-import { MfaChallengeInvalidException } from '@modules/mfa/exceptions/mfa.challenge-invalid.exception';
 import type { IMfaChallengeRepository } from '@modules/mfa/interfaces/mfa.challenge-repository.interface';
 import type { IMfaChallengeCreateData } from '@modules/mfa/interfaces/mfa.interface';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class MfaChallengeRepository implements IMfaChallengeRepository {
+export class MfaChallengeRepository
+    extends DatabaseRepositoryBase
+    implements IMfaChallengeRepository
+{
+    protected override readonly errorContract = DatabaseEmptyErrorContract;
+
     constructor(
         private readonly databaseService: DatabaseService,
-        private readonly databaseUtil: DatabaseUtil
-    ) {}
+        protected override readonly databaseUtil: DatabaseUtil
+    ) {
+        super();
+    }
 
     async create(data: IMfaChallengeCreateData): Promise<void> {
         await this.databaseService.client.mfaChallenge.create({
@@ -67,10 +75,7 @@ export class MfaChallengeRepository implements IMfaChallengeRepository {
 
             return count > 0;
         } catch (error: unknown) {
-            throw this.databaseUtil.toWriteException(
-                error,
-                new MfaChallengeInvalidException()
-            );
+            throw this.toException(error);
         }
     }
 

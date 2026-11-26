@@ -487,7 +487,6 @@ export interface IUserDeletePhotoQueueResponse extends IQueueResponse {
 
 export interface IUserImportByAdminQueueResponse extends IQueueResponse {
     created: number;
-    failed: number;
 }
 
 export interface IUserExportByAdminQueueResponse extends IQueueResponse {
