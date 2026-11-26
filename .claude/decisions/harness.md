@@ -152,8 +152,35 @@ Rule: `authoring.md`, Language.
 
 - British spelling: the owner chose the US form for every tree, a `src/` enum value included, so one `cspell` dictionary (`en`) reads code and prose alike.
 
-### Each page holds one Diátaxis type, through the copied `documentation` skill, with pages flat in `docs/*.md`
+### Each page holds one Diátaxis type, through the copied `documentation` skill, in its type folder
 
 Rule: `authoring.md`, Page types; `.claude/agents/writer.md`, `skills:`.
 
-- Folders per type and a documentation website: both are held with the monorepo feature.
+- Pages flat in `docs/`: a later website migration would regroup every page; pages in type folders make it a move.
+- A documentation website now: it is held with the monorepo feature.
+
+### Every page opens with frontmatter, its `#` heading, a Table of Contents, and Related Documents
+
+Rule: `authoring.md`, Frame.
+
+- Frontmatter added at the website migration: every page is rewritten now, so the migration moves files and edits none.
+- The Table of Contents dropped for one a site generator renders: no website exists, and a page read in the repository has no other outline.
+
+### No page lists endpoints
+
+Rule: `authoring.md`, Documentation prose.
+
+- An endpoint table per feature page: Swagger is generated from the routes and their zod schemas, and a table beside it restates it and drifts from it.
+
+### Production lives on one page
+
+Rule: `authoring.md`, Documentation prose and Page types.
+
+- Production steps beside the feature, installation, and release pages: a reader running the project locally reads hosting steps meant for a deployer, and a deployer collects them from several pages.
+
+### Contributors are listed on a docs page
+
+Rule: `authoring.md`, Final state only.
+
+- The `README.md` `## Contributors` section: the README is the landing page, and a list that grows with each contribution pushes its content down.
+- A root `CONTRIBUTORS.md`: it is not a file GitHub treats as a community file.

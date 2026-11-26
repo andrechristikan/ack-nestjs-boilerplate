@@ -162,6 +162,7 @@
         "prettier": "^3.9.8",
         "prisma": "^6.19.0",
         "remark-cli": "^12.0.1",
+        "remark-frontmatter": "^5.0.0",
         "remark-gfm": "^4.0.1",
         "remark-validate-links": "^13.1.0",
         "rimraf": "^6.1.3",

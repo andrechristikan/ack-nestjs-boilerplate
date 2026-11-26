@@ -2,13 +2,13 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 
 # Example: a writer report
 
-`writer` hands this back to step 2 of `SKILL.md` after a run over `docs/status-codes.md`, `docs/database.md`, and `docs/authentication.md`, with `Context: Country gained isActive; CountryInactiveException throws 50901`. The six classes are the ones `.claude/agents/writer.md`, Docs, defines. Commit hashes in the CONFLICT evidence depend on the history, so they stay in angle brackets.
+`writer` hands this back to step 2 of `SKILL.md` after a run over `docs/reference/status-codes.md`, `docs/database.md`, and `docs/authentication.md`, with `Context: Country gained isActive; CountryInactiveException throws 50901`. The six classes are the ones `.claude/agents/writer.md`, Docs, defines. Commit hashes in the CONFLICT evidence depend on the history, so they stay in angle brackets.
 
 ```markdown
 ## Findings by class
 
 - ACCURATE: `docs/database.md:360`: `Country` maps to the `Countries` collection (`prisma/schema.prisma:94`).
-- STALE: `docs/status-codes.md:236`: `inactive` `50901` read "Reserved enum member; no exception or i18n path."; repaired to 400 (`BAD_REQUEST`), `country.error.inactive`, "Country is not available." (`CountryInactiveException`).
+- STALE: `docs/reference/status-codes.md:196`: `inactive` `50901` read "Reserved enum member; no exception or i18n path."; repaired to 400 (`BAD_REQUEST`), `country.error.inactive`, "Country is not available." (`CountryInactiveException`).
 - MISSING: `docs/database.md`: no page said which requests reject a country whose `isActive` is `false`; added the `Country availability` section after the model table.
 - PHANTOM: `docs/database.md:<line>`: named a `pnpm migration:country` script that `package.json` `scripts` lacks; removed, and the line now points at `pnpm migration {module} --type seed`.
 - CONTRADICTS: `docs/database.md:<line>`: the example shape declared `isActive?: boolean | null`, which `.claude/rules/null-safety.md` (rule 2) forbids; repaired to `isActive: boolean`.
@@ -16,7 +16,7 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 
 ## Files changed
 
-- `docs/status-codes.md`
+- `docs/reference/status-codes.md`
 - `docs/database.md`
 
 ## Rule files read
@@ -25,7 +25,7 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 
 ## `pnpm lint:docs`
 
-Exit 0. No line names `docs/status-codes.md` or `docs/database.md`; Vale ends `✖ 0 errors, <n> warnings and 0 suggestions in <n> files.`
+Exit 0. No line names `docs/reference/status-codes.md` or `docs/database.md`; Vale ends `✖ 0 errors, <n> warnings and 0 suggestions in <n> files.`
 
 ## `pnpm spell`
 
@@ -40,7 +40,7 @@ Exit 0. No output.
 ## Humanizer spans touched
 
 - `docs/database.md`, `Country availability`: two sentences reworded.
-- `docs/status-codes.md:236`: none.
+- `docs/reference/status-codes.md:196`: none.
 
 ## Reader questions, `docs/database.md`, `Country availability`
 
@@ -53,7 +53,7 @@ Exit 0. No output.
 
 ## Noticed outside the scope
 
-- `docs/pagination.md:231`: the cursor payload is described as base64 over `{ cursor, fingerprint }`; outside this scope, unchecked.
+- `docs/concepts/pagination.md:67`: the cursor token is described as AES-256-GCM over the last row's sort values and a query fingerprint; outside this scope, unchecked.
 ```
 
 Step 3 of `SKILL.md` sends the six reader questions to a fresh reader with `docs/database.md` alone; step 4 puts the CONFLICT to the owner.

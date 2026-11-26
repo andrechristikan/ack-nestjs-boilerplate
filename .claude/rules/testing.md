@@ -10,7 +10,7 @@ A spec succeeds when it fails on a behavior change. Load tests are not this suit
 
 A unit spec's subject is one class (service, use case, util, cache class, guard, pipe, interceptor, filter, queue class, DTO); its doubles: `test-doubles.md`.
 
-Integration and e2e are held: no Vitest project, script, or `test/` folder exists for them. Do not run, write, or dispatch one; a task needing one is a hand-back.
+Integration is held: no Vitest project, script, or `test/` folder exists for it. Do not run, write, or dispatch an integration spec; a task needing one is a hand-back.
 
 ## Layout and runs
 
@@ -18,7 +18,7 @@ Integration and e2e are held: no Vitest project, script, or `test/` folder exist
 - `pnpm test` (unit, no Docker) takes a path filter (`pnpm test user.service`); name it when reporting. Pre-commit: `AGENTS.md`, Commit gates; no `pre-push` hook exists. `pnpm test:cov` applies the 100% thresholds to `src/**/*.ts` minus `coverage.exclude` (modules, enums, interfaces, constants, contracts, controllers, processors, repositories, configs, `src/migration/`, the router, languages, generated code, and the root files); `test-unit.yml`, which `.github/workflows/ci.yml` calls, runs it, and the thresholds fail that job. An excluded file gets no spec, the config factories excepted: one spec under `test/unit/configs/` asserts every `AppEnvSchema` key lands at its config path (`config.md`, Names) while `src/configs/**` stays excluded.
 - `test/helpers/test.logger.helper.ts`, first in every `setupFiles`, mutes Nest loggers; `vi.spyOn` reaches a muted logger as it reaches any other method.
 - A scoped `pnpm test:cov <path>` exits 1 with every spec passing because the 100% threshold is global. Read the `Tests` line and the per-file rows, not the exit code.
-- `pnpm test` applies no threshold (`coverage.enabled` is `false`). `.github/workflows/test-e2e.yml` runs on manual dispatch only and fails, calling the held `pnpm test:e2e`.
+- `pnpm test` applies no threshold (`coverage.enabled` is `false`).
 
 ## File names
 

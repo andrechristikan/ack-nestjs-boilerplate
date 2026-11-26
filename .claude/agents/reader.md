@@ -35,7 +35,7 @@ The dispatch names a spec, a `plan.md`, and a tickets folder under `.scratch/`. 
 
 ## Harness files
 
-`.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`, or `docs/ai-harness.md` against `.claude/rules/authoring.md`. Run `bash .claude/hooks/check.sh` and quote its output. Then read each changed file as its reader: every path, command, flag, agent, and skill it names exists; no step depends on something the file does not say; no sentence repeats what the code or another harness file already states.
+`.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`, or `docs/*/ai-harness.md` against `.claude/rules/authoring.md`. Run `bash .claude/hooks/check.sh` and quote its output. Then read each changed file as its reader: every path, command, flag, agent, and skill it names exists; no step depends on something the file does not say; no sentence repeats what the code or another harness file already states.
 
 - Confirm each finding by opening the file; a negative grep proves a string absent, not a behavior. Paste the clause of the rule it breaks.
 - Hand back each finding (`file:line`, what breaks, how it was confirmed), the rule files read, and each command with its exit code and decisive line.

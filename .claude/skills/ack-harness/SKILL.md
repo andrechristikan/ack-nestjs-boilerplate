@@ -1,7 +1,7 @@
 ---
 name: ack-harness
 description: >-
-    Changes the AI configuration from a requirement settled with the owner: .claude/**, AGENTS.md, .github/copilot-instructions.md, the decision entries in .claude/decisions/, and docs/ai-harness.md, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, to record a decision, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-design, ack-spec) or other docs (ack-doc).
+    Changes the AI configuration from a requirement settled with the owner: .claude/**, AGENTS.md, .github/copilot-instructions.md, the decision entries in .claude/decisions/, and docs/*/ai-harness.md, final state only. Use when the owner wants to change how Claude or Copilot works in this repository, to record a decision, or with diagnose to turn a session transcript into that change. Not for src/ or test/ (ack-design, ack-spec) or other docs (ack-doc).
 blurb: '.claude, AGENTS.md, copilot digest, decision entries'
 disable-model-invocation: true
 argument-hint: '<the change: files, what changes, expected outcome> | <a .scratch/ plan or requirement path> | diagnose [session id | last]'
@@ -55,7 +55,7 @@ bash .claude/hooks/check.sh
 
 ## Boundaries
 
-- No `src/`, `test/`, `prisma/`, no `docs/` beyond `docs/ai-harness.md`, no `.github/**` beyond the Copilot digest.
+- No `src/`, `test/`, `prisma/`, no `docs/` beyond `docs/*/ai-harness.md`, no `.github/**` beyond the Copilot digest.
 - No database or seed command.
 - Commits go through `ask`.
 

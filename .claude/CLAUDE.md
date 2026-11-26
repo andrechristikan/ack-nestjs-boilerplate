@@ -15,7 +15,7 @@ The owner types every `/ack-*` skill (`disable-model-invocation: true`), and no 
 
 ### Copied skills
 
-The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Their license texts are in `.claude/skills/licenses/`. Editing and updating them: `.claude/rules/harness.md`.
+The other folders under `.claude/skills/` are third-party skills copied by the `skills` CLI and pinned in `skills-lock.json`. Editing and updating them: `.claude/rules/harness.md`.
 
 - Where a copied skill and a rule, an `ack-*` skill, or an agent file differ, the copied skill loses.
 - `caveman` shapes agent hand-backs only: the session and every file stay in full sentences.
@@ -42,21 +42,20 @@ A platform issue needs the owner's word (`gh issue create` asks). The sweep log 
 
 ### Agents
 
-Skills dispatch the agents in `.claude/agents/`; the session locates code with `Explore` there and dispatches `researcher` for a fact outside the repository. An agent missing something hands the question back. In an `ack-*` skill the session assigns, asks the owner, and reads hand-backs; gates, boots, endpoint calls, and data reads are `reviewer`'s, a symptom's `debugger`'s.
+Skills dispatch the agents in `.claude/agents/`; the session locates code with `Explore` there and dispatches `researcher` for a fact outside the repository. In an `ack-*` skill the session assigns, asks the owner, and reads hand-backs; gates, boots, endpoint calls, and data reads are `reviewer`'s, a symptom's `debugger`'s.
 
 ### Gotchas
 
 - `tsc` aborts on a `tsconfig.json` error and reports zero source errors, and `| grep -c 'error TS'` prints `0` on a crashed runner's empty output. Read the raw output and exit code.
 - The `Stop` hook `.claude/hooks/verify.sh` runs `pnpm typecheck` and the unit specs of the changed modules when a `src/` or `test/` path differing from `HEAD` or untracked has changed since the session started, whatever wrote it, and blocks the stop on failure. A stop whose gated files are unchanged since the last green run skips both checks. A changed path outside `src/modules/<name>/`, `src/common/<name>/`, and their `test/unit/` mirrors runs the full suite.
-- Claude worktrees live under `.claude/worktrees/` (gitignored).
 - A Bash call's `timeout` is 10 minutes at most, also the default (`BASH_DEFAULT_TIMEOUT_MS`, `.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
 - `pnpm spell` and `pnpm deadcode` exit codes: `.claude/rules/code-style.md`, Lint. `pnpm test` and `pnpm test:cov`: `.claude/rules/testing.md`, Layout and runs. A boot: `.claude/skills/ack-build/references/boot.md`.
 
 ### Etiquette
 
-- A commit message is one conventional subject line, `<type>(<scope>): <description>`, no body, no footer, 100 characters max. `.commitlintrc` is the source for types and subject case; scope is the module name.
-- Commits and staging go through `ask`. Propose a subject only when the owner asks for a commit or the running skill's Hand back lists one. A finished task, ticket, or build is not a commit request. Run no `git add`, `git restore --staged`, or `git reset` the owner did not name: a staged set is the owner's review. Branch before committing on `main`.
-- The working tree on disk is the source, unstaged and untracked files included; list changes with `git status --short`, `git diff HEAD --name-only`, `git ls-files --others --exclude-standard`.
+- A commit message is one conventional subject line, `<type>(<scope>): <description>`, no body, no footer. `.commitlintrc` is the source for types and subject case; scope is the module name.
+- Commits and staging go through `ask`. Propose a subject only when the owner asks for a commit or the running skill's Hand back lists one. Run no `git add`, `git restore --staged`, or `git reset` the owner did not name: a staged set is the owner's review. Branch before committing on `main`.
+- The working tree on disk is the source, unstaged and untracked files included.
 - Diff with no second ref: `git diff <base>` includes uncommitted and staged work; `<base>..HEAD` omits it. No fetch or pull outside `/ack-pr`, which alone moves refs.
 - Every commit in a series leaves `pre-commit` and `commit-msg` green (`AGENTS.md`, Commit gates); a red hook is fixed, not skipped.
 - Run every command and Agent call in the foreground, bounded: GNU `timeout` wraps the boot's endless log wait (`.claude/skills/ack-build/references/boot.md`, step 4; `brew install coreutils` on stock macOS). Start no process the call leaves behind (`&`, `nohup`), the compose containers a boot starts aside. Wait for a call Claude Code moves to the background at its timeout and for each Agent hand-back, never poll.
@@ -66,9 +65,9 @@ Skills dispatch the agents in `.claude/agents/`; the session locates code with `
     - Before an edit outside what the owner approved (a spec, a plan, a review's fix list, a pin, a settled requirement, the typed skill's scope), show the names, shape, wording, and files, and wait for a yes; a picked option approves the direction only.
     - Ask through `AskUserQuestion`, one decision per question: the point in plain words, the code before and after, then options, the recommended first. Ask what is open and each `/ack-review` finding; apply and list a call a rule, a decision entry, or the spec settles.
     - Read a full check (a whole scope, a whole standard) whole, or ask its split first.
-    - In a plan split into phases the owner runs one at a time, explain one phase and stop for the per-item reply; announce each finished task as `N/total`.
+    - In a plan split into phases the owner runs one at a time, explain one phase and stop for the per-item reply; announce each finished task as `N/total`. Settle every finding of a phase, a code bug and one outside its scope included, with the owner on a recommended fix before the next phase starts; then mark the phase done in the plan, and update the plan's row in the sweep log's `## Next session order`, if any.
 - Fix in the run a finding fixable within its skill's boundaries; which others are sweep rows: `.claude/skills/ack-spec/references/sweep-log.md`.
-- A hand-back names no stale `docs/*` page, no git staging state, no later phase of a phased plan, and no owner command already in the plan; the Next line and the skills it names stay.
+- A hand-back names no stale `docs/**` page, no git staging state, no later phase of a phased plan, and no owner command already in the plan; the Next line and the skills it names stay.
 - No working agreement lives only in Claude's memory.
 
 ### Rules

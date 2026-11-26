@@ -3,7 +3,7 @@
 # Never blocks: any failure exits 0 with no output. Reads the transcript's tail only.
 set -uo pipefail
 
-threshold=150000
+threshold=600000
 
 input=$(cat)
 [[ $(jq -r '.prompt // empty' <<<"$input" 2>/dev/null) == /ack-* ]] || exit 0

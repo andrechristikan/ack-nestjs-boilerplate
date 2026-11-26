@@ -1,7 +1,7 @@
 ---
 name: ack-spec
 description: >-
-    Creates or repairs unit specs for code that exists, to 100% coverage per file; the code on disk wins and src/ is not changed. Integration and e2e are held. Use for a coverage gap, a spec the code moved away from, or orphan specs. Not for new behavior (ack-design), a red spec whose cause is unknown (ack-quick), or a src/ fix.
+    Creates or repairs unit specs for code that exists, to 100% coverage per file; the code on disk wins and src/ is not changed. Integration is held. Use for a coverage gap, a spec the code moved away from, or orphan specs. Not for new behavior (ack-design), a red spec whose cause is unknown (ack-quick), or a src/ fix.
 blurb: 'unit specs to 100% for existing code; the code wins'
 disable-model-invocation: true
 context: fork

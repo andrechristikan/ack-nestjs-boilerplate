@@ -30,7 +30,7 @@ src/modules/            feature modules
 src/router/             http/ mounts controllers under /public /system /admin /user /shared; processor/ provides every processor and imports their use-case modules
 prisma/schema.prisma    editable
 test/unit/              unit specs mirroring src/, no Docker
-test/integration/ e2e/  held, not created (.claude/rules/testing.md)
+test/integration/       held, not created (.claude/rules/testing.md)
 test/helpers/           helpers every test type loads
 docs/                   durable project documentation
 scripts/                generate-secret.ts, generate-package.ts

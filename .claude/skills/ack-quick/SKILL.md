@@ -30,7 +30,7 @@ A change the owner states: write the pin, and ask the owner for a missing part w
 ### Settle the symptom
 
 - State the input, the observed result, the expected result, and where it surfaces. Ask the owner for the missing part with `AskUserQuestion`.
-- A symptom only real storage can show (a rollback, a unique index, a transaction across repositories) is a hand-back: integration and e2e are held (`.claude/rules/testing.md`).
+- A symptom only real storage can show (a rollback, a unique index, a transaction across repositories) is a hand-back: integration is held (`.claude/rules/testing.md`).
 
 ### Diagnose
 

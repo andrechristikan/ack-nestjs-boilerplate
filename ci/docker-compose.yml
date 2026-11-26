@@ -1,6 +1,6 @@
 # Run from the repository root: docker compose --env-file .env.docker -f ci/docker-compose.yml --profile deps up -d
 # A release runs migrate and the application itself, so a release-managed instance starts deps alone. Without CI, add --profile apis to start migrate and apis; --profile vault starts Vault.
-# The DOCKER_* variables are read from .env.docker. The ten required keys (the eight credentials, DOCKER_APIS_UID, and DOCKER_APIS_GID) stop every command and name the one that is empty.
+# The DOCKER_* variables are read from .env.docker. The eleven required keys (the nine credentials, DOCKER_APIS_UID, and DOCKER_APIS_GID) stop every command and name the one that is empty.
 name: ack-nestjs-boilerplate
 
 services:

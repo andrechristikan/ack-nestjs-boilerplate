@@ -5,6 +5,7 @@
         "MD004": false,
         "MD007": false,
         "MD024": { "siblings_only": true },
+        "MD025": { "front_matter_title": "" },
         "MD028": "warning",
         "MD029": "warning",
         "MD033": false,

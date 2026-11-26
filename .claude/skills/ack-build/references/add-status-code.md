@@ -4,7 +4,7 @@ Invariants: `.claude/rules/exception-class.md`, `.claude/rules/exceptions.md` (5
 
 ## 1. Scan first
 
-The enum files are the machine registry. Run the scan before allocating; do not allocate from memory or from `docs/status-codes.md`.
+The enum files are the machine registry. Run the scan before allocating; do not allocate from memory or from `docs/reference/status-codes.md`.
 
 ```bash
 find src -name '*.status-code.enum.ts' | sort | while read -r f; do
@@ -13,7 +13,7 @@ find src -name '*.status-code.enum.ts' | sort | while read -r f; do
 done
 ```
 
-The output lists each owner's low and high member. Owners are feature modules under `src/modules/` and the `src/common/` sub-trees with an enum (`src/app`, `aws`, `database`, `file`, `firebase`, `helper`, `pagination`, `redis`, `request`, `response`). The next free hundred is the highest block base plus 100.
+The output lists each owner's low and high member; a number printed twice is a one-member block. Owners are feature modules under `src/modules/` and the `src/common/` sub-trees with an enum (`src/app`, `aws`, `database`, `file`, `firebase`, `helper`, `pagination`, `redis`, `request`, `response`). The free hundreds are the hundreds from `50000` up that no owner's low-to-high range touches; the next free hundred is the lowest of them.
 
 ## 2. Reuse before adding
 
@@ -30,9 +30,9 @@ Open the owner's enum and find a member that already means the thing. Add a memb
 
 ## 4. Claim a block for a new module
 
-1. Scan (step 1); take the next free hundred that overlaps no neighbor.
+1. Scan and take the next free hundred (step 1).
 2. Create `src/modules/<module>/enums/<module>.status-code.enum.ts` with the first member at the block base (`EnumDeviceStatusCodeError`, `src/modules/device/enums/device.status-code.enum.ts`).
-3. Report the claim in the hand-back: module, base, next free hundred, members.
+3. Report the claim in the hand-back: module, base, members, and the next free hundred after this claim.
 
 ## 5. Remove a member
 
@@ -58,4 +58,4 @@ Check by reading: members run from the block base without holes; every value is 
 
 ## 8. Hand back
 
-Every number allocated, renumbered, or removed, with its module and descriptor. The human catalog `docs/status-codes.md` is updated by `writer` from that hand-back; the enum files stay the only machine registry.
+Every number allocated, renumbered, or removed, with its module and descriptor. The human catalog `docs/reference/status-codes.md` is updated by `writer` from that hand-back; the enum files stay the only machine registry.

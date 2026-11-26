@@ -1,7 +1,7 @@
 ---
 name: ack-pr
 description: >-
-    Runs a GitHub pull request end to end: the description or the version notes through writer, the PR, a comment, a review reply, each gh write on the owner's go-ahead. Use when the owner asks for a PR, its description, a PR comment or review reply, or release notes. Not for a commit message, docs/*.md (ack-doc), or src/ (ack-design).
+    Runs a GitHub pull request end to end: the description or the version notes through writer, the PR, a comment, a review reply, each gh write on the owner's go-ahead. Use when the owner asks for a PR, its description, a PR comment or review reply, or release notes. Not for a commit message, docs/**/*.md (ack-doc), or src/ (ack-design).
 blurb: 'PR description, create, comment, version notes'
 disable-model-invocation: true
 argument-hint: 'description | create | comment | version [base branch, PR number, or tag]'

@@ -1,7 +1,7 @@
 ---
 name: writer
 description: >-
-    Writes reader-facing prose against the code on disk: docs/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, .github/ markdown except copilot-instructions.md, stale-fact repairs in .github/ YAML, and PR, PR comment, and version text under .scratch/pr/. Reports a conflict and does not resolve it. Use when a doc or a PR text is wanted. Not for .claude/**, AGENTS.md, the Copilot digest, decision entries, or docs/ai-harness.md (ack-harness), or for code or a workflow a change moves (coder).
+    Writes reader-facing prose against the code on disk: docs/**/*.md, README.md, SECURITY.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md, .github/ markdown except copilot-instructions.md, stale-fact repairs in .github/ YAML, and PR, PR comment, and version text under .scratch/pr/. Reports a conflict and does not resolve it. Use when a doc or a PR text is wanted. Not for .claude/**, AGENTS.md, the Copilot digest, decision entries, or docs/*/ai-harness.md (ack-harness), or for code or a workflow a change moves (coder).
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: sonnet
 effort: medium
@@ -35,12 +35,12 @@ A claim is anything the code can confirm: a path, a name, a route, a status code
 - CONTRADICTS a rule under `.claude/rules/`: repair; the rule wins.
 - CONFLICT: the doc and the code disagree about a decision (authorization, credentials, session invalidation, a guard or a validation the doc says exists), or the doc is newer than the code change. Report it with `git log -S'<identifier>' --oneline -- <path>` evidence for both sides and leave it unresolved.
 
-Mood, paragraph shape, bans, diagrams, and `.github/` YAML: `.claude/rules/authoring.md`, Documentation prose; the type of a page: its Page types.
+Mood, paragraph shape, bans, diagrams, and `.github/` YAML: `.claude/rules/authoring.md`, Documentation prose; the type and folder of a page: its Page types; the frame: its Frame.
 
 `documentation` is in force, with these departures:
 
 - The dispatch answers the skill's clarifying questions and its Step 1: `Type:` names the type, `Context:` the context.
-- A page created with no `Type:` line is a hand-back question.
+- A page created with no `Type:` line, or outside the folder Page types gives it, is a hand-back question.
 - A stale-fact repair keeps the page's type.
 - An explanation names no alternative the project rejected, and a reference carries no version stamp (`.claude/rules/authoring.md`, Final state only).
 
@@ -65,6 +65,8 @@ A designed diagram is drawn only when the `Diagram:` line names one and its subj
 
 ## Finish and hand back
 
+Check every page touched under `docs/` against the Frame, and that a topic whose home is another page is one sentence linking its section.
+
 Run `humanizer` in file mode on every markdown file touched. Leave code fences, tables, mermaid, and quotes alone. Not on YAML, HTML, or SVG.
 
 Then run `pnpm lint:docs` and `pnpm spell`: fix each error and each warning in a file touched, except a former-state word that contrasts two current options, and run both again.
@@ -80,6 +82,6 @@ Hand back:
 
 ## Not this agent
 
-- No `src/`, `test/`, `prisma/`, `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`, or `docs/ai-harness.md`.
-- No re-derivation of `docs/status-codes.md`: it takes the numbers a build handed back.
+- No `src/`, `test/`, `prisma/`, `.claude/**`, `AGENTS.md`, `.github/copilot-instructions.md`, or `docs/*/ai-harness.md`.
+- No re-derivation of `docs/reference/status-codes.md`: it takes the numbers a build handed back.
 - No database or seed command, no commit, no `gh` write.
