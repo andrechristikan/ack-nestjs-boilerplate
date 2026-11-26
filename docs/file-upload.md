@@ -541,7 +541,7 @@ async import(
 - The export row cap is `file.maxDataExport` (1000).
     - A route overrides it through `@ResponseFile({ maxDataExportConfigKey })`, the way `maxDataImportConfigKey` overrides the import cap.
     - The user export passes `user.maxDataExport` (500) and also bounds its query by it.
-- The full catalog is [Status Codes](status-codes.md).
+- The full catalog is [Status Codes](reference/status-codes.md).
 
 **Error Response Examples:**
 
@@ -1095,11 +1095,11 @@ async generate(
 
 <!-- REFERENCES -->
 
-[ref-doc-request-validation]: request-validation.md
-[ref-doc-handling-error]: handling-error.md
-[ref-doc-message]: language-message.md
-[ref-doc-doc]: doc.md
-[ref-doc-third-party]: third-party-integration.md
-[ref-doc-environment]: environment.md
+[ref-doc-request-validation]: concepts/request-validation.md
+[ref-doc-handling-error]: concepts/error-handling.md
+[ref-doc-message]: concepts/i18n.md
+[ref-doc-doc]: concepts/api-documentation.md
+[ref-doc-third-party]: concepts/dependencies.md
+[ref-doc-environment]: reference/configuration.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-queue]: queue.md

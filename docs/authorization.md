@@ -804,12 +804,12 @@ flowchart LR
 
 [casl]: https://casl.js.org/
 [ref-doc-authentication]: authentication.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-security-and-middleware]: concepts/security.md#rate-limiting
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-device]: device.md
 [ref-doc-workspace]: workspace.md
 [ref-doc-project]: project.md
 [ref-doc-feature-flag]: feature-flag.md
-[ref-doc-status-codes]: status-codes.md
-[ref-doc-handling-error]: handling-error.md
+[ref-doc-status-codes]: reference/status-codes.md
+[ref-doc-handling-error]: concepts/error-handling.md

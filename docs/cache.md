@@ -295,12 +295,12 @@ For cache operations (set, get, delete, etc.), see:
 
 [ref-nestjs-caching]: https://docs.nestjs.com/techniques/caching
 [ref-cache-manager]: https://www.npmjs.com/package/cache-manager
-[ref-doc-configuration]: configuration.md
-[ref-doc-environment]: environment.md
+[ref-doc-configuration]: reference/configuration.md
+[ref-doc-environment]: reference/configuration.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-queue]: queue.md
-[ref-doc-response]: response.md
-[ref-doc-handling-error]: handling-error.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
-[ref-doc-installation]: installation.md
+[ref-doc-response]: concepts/response.md
+[ref-doc-handling-error]: concepts/error-handling.md
+[ref-doc-security-and-middleware]: concepts/security.md#rate-limiting
+[ref-doc-installation]: getting-started/installation.md
 [ref-elasticache]: https://aws.amazon.com/elasticache/

@@ -23,7 +23,7 @@ Module wiring:
 - The analytic module owns no repository and opens no Prisma model.
 - Every public read on a `*.analytic.domain.ts` is a `get*` method.
 
-Status codes for this module live in the `52100` block ([Status Codes](status-codes.md)).
+Status codes for this module live in the `52100` block ([Status Codes](reference/status-codes.md)).
 
 ## Related Documents
 
@@ -285,7 +285,7 @@ A signal that the database cannot group and page in one query:
 
 `page` is 1-based and `totalPage` counts the whole computed set.
 
-Page metadata: [Pagination](pagination.md).
+Page metadata: [Pagination](concepts/pagination.md).
 
 Response declaration:
 
@@ -293,7 +293,7 @@ Response declaration:
 - Schemas live in `src/modules/analytic/dtos/response/`.
 - Handlers return `IResponseReturn<T>` or `IResponsePaginationReturn<T>`.
 - The response interceptors serialize `data` against the declared schema.
-- Flow: [Response](response.md).
+- Flow: [Response](concepts/response.md).
 
 OpenAPI:
 
@@ -301,7 +301,7 @@ OpenAPI:
 - Query parameters reach OpenAPI from the zod schema on `@Query({ schema })`.
 - Published OpenAPI errors are kit-only.
 - A domain exception such as `AnalyticInvalidDateRangeException` appears in OpenAPI only when an endpoint opts in with `@DocErrors`.
-- Flow: [Doc](doc.md).
+- Flow: [Doc](concepts/api-documentation.md).
 
 ## Caching and config
 
@@ -417,9 +417,9 @@ Workspace activity volume:
 
 [ref-doc-authorization]: authorization.md
 [ref-doc-cache]: cache.md
-[ref-doc-configuration]: configuration.md
+[ref-doc-configuration]: reference/configuration.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-workspace]: workspace.md
-[ref-doc-pagination]: pagination.md
-[ref-doc-response]: response.md
-[ref-doc-status-codes]: status-codes.md
+[ref-doc-pagination]: concepts/pagination.md
+[ref-doc-response]: concepts/response.md
+[ref-doc-status-codes]: reference/status-codes.md

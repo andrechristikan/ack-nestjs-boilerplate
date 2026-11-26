@@ -912,9 +912,9 @@ The notification list is cursor-paginated:
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-device]: device.md
-[ref-doc-third-party]: third-party-integration.md
+[ref-doc-third-party]: concepts/dependencies.md
 [ref-doc-email]: email.md
 [ref-doc-queue]: queue.md
 [ref-doc-database]: database.md
-[ref-doc-configuration]: configuration.md
-[ref-doc-environment]: environment.md
+[ref-doc-configuration]: reference/configuration.md
+[ref-doc-environment]: reference/configuration.md

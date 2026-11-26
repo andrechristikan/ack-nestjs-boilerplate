@@ -151,7 +151,7 @@ Work that does not touch the database runs before the transaction:
 - The `workspace` seed writes the same actor on each workspace and on the owner membership it creates with `tx.workspaceMember.create` (`createdBy` and `updatedBy`).
 - `createdBy` does not mark a row as seeded.
     - A row the superadmin later creates through the admin API carries the same id, so no `remove()` filters on it.
-    - The `workspace` seed's `remove()` finds its rows by the name `<username>'s Workspace` together with an owner membership of that user.
+    - The `workspace` seed's `remove()` finds its rows by the name `<username>'s workspace` together with an owner membership of that user.
 
 **Seed failures.**
 
@@ -174,13 +174,13 @@ Work that does not touch the database runs before the transaction:
 - `role`: Roles (superadmin, admin, user)
 - `policy`: Policy rows attached to each seeded role
 - `termPolicy`: Term policy documents (cookies, marketing, privacy, terms of service)
-- `user`: Initial accounts (Super Admin, Admin, User) with country, role, and credentials
+- `user`: Initial accounts (super admin, admin, user) with country, role, and credentials
 - `workspace`:
     - One default personal workspace per seeded user as owner.
     - Needs `user` first.
     - Skips users who already own a workspace.
     - Its `remove()` deletes, in one transaction and for the seeded workspaces only, their project members, invites, join requests, projects, activity logs, and members, then the workspaces.
-    - A seeded workspace is one named `<username>'s Workspace` where that user holds an owner membership.
+    - A seeded workspace is one named `<username>'s workspace` where that user holds an owner membership.
     - An activity log belongs to a workspace through `ActivityLog.workspaceId`. The `workspace` seed deletes the logs whose `workspaceId` is one of the seeded workspaces.
     - Workspaces and projects the seed did not create stay after `workspace` removal.
 
@@ -198,8 +198,8 @@ The seed creates them in the `local` environment only, so `development`, `stagin
 
 | Name | Type | Key | Secret | Usage |
 | --- | --- | --- | --- | --- |
-| Api Key Default | `default` | `local_fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
-| Api Key System | `system` | `local_UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
+| api key default | `default` | `local_fyFGb7ywyM37TqDY8nuhAmGW5` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For general API access |
+| api key system | `system` | `local_UTDH0fuDMAbd1ZVnwnyrQJd8Q` | `qbp7LmCxYUTHFwKvHnxGW1aTyjSNU6ytN21etK89MaP2Dj2KZP` | For system-level operations |
 
 - The seed data in `migration.api-key.data.ts` holds the bare random part.
 - `ApiKeyCredentialUtil.createKey()` prepends the environment prefix before the row is upserted, so the key a client sends is the prefixed value above.
@@ -228,9 +228,9 @@ Three user roles are created with different permission levels:
 
 | Role | Type | Description | Seeded policies |
 | --- | --- | --- | --- |
-| superadmin | `superAdmin` | Super Admin Role | None: `superAdmin` bypasses the policy check entirely |
-| admin | `admin` | Admin Role | Every policy action on every policy subject |
-| user | `user` | User Role | None |
+| superadmin | `superAdmin` | super admin role | None: `superAdmin` bypasses the policy check entirely |
+| admin | `admin` | admin role | Every policy action on every policy subject |
+| user | `user` | user role | None |
 
 **Admin role policies**: the `policy` seed writes one row per `EnumPolicySubject`, each carrying every member of `EnumPolicyAction` (`manage`, `read`, `create`, `update`, `delete`).
 
@@ -254,9 +254,9 @@ The seeded users differ per environment. This is controlled by `MigrationUserDat
 
 | Email | Username | Name | Role | Password | Country | Environments |
 | --- | --- | --- | --- | --- | --- | --- |
-| <superadmin@mail.com> | superadmin | Super Admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
-| <admin@mail.com> | admin | Admin | admin | `aaAA@123` | ID (Indonesia) | all |
-| <user@mail.com> | user | User | user | `aaAA@123` | ID (Indonesia) | `local` only |
+| <superadmin@mail.com> | superadmin | super admin | superadmin | `aaAA@123` | ID (Indonesia) | all |
+| <admin@mail.com> | admin | admin | admin | `aaAA@123` | ID (Indonesia) | all |
+| <user@mail.com> | user | user | user | `aaAA@123` | ID (Indonesia) | `local` only |
 
 Row ids and actor:
 
@@ -704,7 +704,7 @@ The module also owns five typed errors (`enums/database.status-code.enum.ts`):
 - `DatabaseIdInvalidException` (`51803`, HTTP 400, message `database.error.idInvalid`) is the mapped form of Prisma `P2023`, inconsistent column data such as a malformed ObjectId.
 - `DatabaseTransactionExpiredException` (`51804`, HTTP 503, message `database.error.transactionExpired`) is the mapped form of Prisma `P2028`, a transaction API failure such as an expired transaction.
 
-`DatabaseUtil.toException(error)` returns the mapped exception or `null`, and `AppGeneralFilter` renders it, also when a layer has wrapped the Prisma error in `AppUnknownException`. See [Handling Error](handling-error.md).
+`DatabaseUtil.toException(error)` returns the mapped exception or `null`, and `AppGeneralFilter` renders it, also when a layer has wrapped the Prisma error in `AppUnknownException`. See [Handling Error](concepts/error-handling.md).
 
 What that means for callers:
 
@@ -875,12 +875,12 @@ Setup and seeding for MongoDB are in the sections above.
 [ref-nest-commander]: https://nest-commander.jaymcdoniel.dev
 [ref-mongodb-atlas]: https://www.mongodb.com/products/platform/atlas-database
 [ref-elasticache]: https://aws.amazon.com/elasticache/
-[ref-doc-installation]: installation.md
-[ref-doc-environment]: environment.md
-[ref-doc-configuration]: configuration.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-installation]: getting-started/installation.md
+[ref-doc-environment]: reference/configuration.md
+[ref-doc-configuration]: reference/configuration.md
+[ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-email]: email.md
-[ref-doc-third-party-s3]: third-party-integration.md#bucket-setup
+[ref-doc-third-party-s3]: production.md#cloud-setup
 [ref-doc-term-policy]: term-policy.md#migration--seeding
 [ref-doc-notification]: notification.md#term-policy-publication-email

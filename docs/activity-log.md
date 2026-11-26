@@ -427,9 +427,9 @@ The response returns `metadata` through `ActivityLogMetadataResponseSchema` (`dt
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
-[ref-doc-response]: response.md
-[ref-doc-message]: language-message.md
-[ref-doc-pagination]: pagination.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-response]: concepts/response.md
+[ref-doc-message]: concepts/i18n.md
+[ref-doc-pagination]: concepts/pagination.md
+[ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store
 [ref-doc-analytic]: analytic.md
 [ref-doc-cache]: cache.md

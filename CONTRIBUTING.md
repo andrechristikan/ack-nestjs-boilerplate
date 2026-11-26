@@ -1,8 +1,6 @@
 # Contributing to ACK NestJS Boilerplate
 
-Thank you for your interest in contributing! This document outlines the process and guidelines to contribute effectively.
-
----
+This document describes how to contribute: the workflow, the setup, the coding standards, the commit rules, and the pull request process.
 
 ## Table of Contents
 
@@ -10,34 +8,30 @@ Thank you for your interest in contributing! This document outlines the process 
 - [Getting Started](#getting-started)
 - [How to Contribute](#how-to-contribute)
 - [Development Setup](#development-setup)
+- [Development Tooling](#development-tooling)
 - [Coding Standards](#coding-standards)
 - [Commit Message Guidelines](#commit-message-guidelines)
 - [Pull Request Process](#pull-request-process)
 - [Reporting Bugs](#reporting-bugs)
 - [Requesting Features](#requesting-features)
-
----
+- [Questions](#questions)
 
 ## Code of Conduct
 
 This project follows a [Code of Conduct][ref-code-of-conduct]. By participating, you agree to uphold it.
 
----
-
 ## Getting Started
 
-1. **Fork** the repository
-2. **Clone** your fork locally
+1. Fork the repository
+2. Clone your fork locally
     ```bash
     git clone https://github.com/YOUR_USERNAME/ack-nestjs-boilerplate.git
     cd ack-nestjs-boilerplate
     ```
-3. Add upstream remote
+3. Add the upstream remote
     ```bash
     git remote add upstream https://github.com/andrechristikan/ack-nestjs-boilerplate.git
     ```
-
----
 
 ## How to Contribute
 
@@ -46,81 +40,73 @@ This project follows a [Code of Conduct][ref-code-of-conduct]. By participating,
 - Documentation: PRs are always welcome.
 - Typo: a direct PR is fine.
 
-**Where to start**: improve docs under `/docs`, fix a typo, or ask in [Discussions][ref-discussions] before opening an issue.
-
----
+Where to start: improve the pages under `docs/`, fix a typo, or ask in [Discussions][ref-discussions] before opening an issue.
 
 ## Development Setup
 
-### Prerequisites
+- The step-by-step setup, from clone to a running API, is the [Installation][ref-doc-installation] tutorial.
+- Every script and Compose command is in the [Commands Reference][ref-doc-commands].
+- The tools are Node.js 26.13.x+ and pnpm 12.5.x+ (`engines` in `package.json`), plus Docker 28.5.x+ with Compose 2.40.x+ for the local MongoDB, Redis, JWKS server, and BullBoard.
 
-| Tool | Version |
-| --- | --- |
-| Node.js | 26.13.x+ |
-| pnpm | 10.25.x+ (pin pnpm 12.5.x+) |
-| Docker | 28.5.x+ (recommended for local MongoDB, Redis, JWKS, BullBoard) |
-| Docker Compose | 2.40.x+ |
-| MongoDB | 8.0.x+ replica set (Compose locally, or Atlas without Docker) |
-| Redis | 6.2.x+ (Compose locally, or a hosted Redis without Docker) |
+## Development Tooling
 
-### Steps
+Checks:
 
-```bash
-# Install dependencies
-pnpm install
+- `pnpm lint` runs ESLint with `--max-warnings 0`, and `pnpm lint:fix` applies the fixable rules.
+- `pnpm format` runs Prettier, `pnpm typecheck` runs `tsc --noEmit`, `pnpm deadcode` runs knip, and `pnpm spell` runs cspell.
+- `pnpm lint:docs` runs markdownlint, remark with link validation, and Vale over `docs/`, the root markdown files, and `.github/`.
+- `pnpm test` runs the unit specs, and `pnpm test:cov` adds the coverage thresholds.
+- `pnpm package:check` and `pnpm package:upgrade` drive `npm-check-updates`, and `pnpm clean` removes `dist` and `node_modules` before a fresh install.
 
-# Copy environment file
-cp .env.example .env
+ESLint (`eslint.config.mjs`):
 
-# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
-# AUTH_TWO_FACTOR_ISSUER=ACKNestJs
+- A flat configuration with the typescript-eslint recommended rules, `eslint-plugin-security` with every recommended rule at `error` but `detect-object-injection`, and `eslint-plugin-boundaries`, which enforces the layer matrix of [Architecture][ref-doc-architecture].
+- Inline directive comments are refused (`noInlineConfig`), and so are inline comments.
+- `any`, a missing explicit return type, a missing explicit module boundary type, `.forEach`, a literal `undefined` as a return value, and a relative import (use a path alias) are errors.
+- `new Date()` is refused in favor of `HelperDateService`, and `process.env` in favor of `ConfigService`. Only `src/configs/`, `src/bootstrap.ts`, and `src/instrument.ts` read `process.env`.
+- A naming convention applies to every identifier kind: an `I` prefix on interfaces, an `Enum` prefix on enums, and PascalCase types.
+- `test/` carries its own restrictions: no `fn.mock.*` access, no class declaration, and no `@ts-expect-error`, `@ts-ignore`, or `@ts-nocheck`.
 
-# Generate the JWT keys, JWKS files, and MongoDB keyfile under keys/,
-# and write the JWT keys and encryption secrets into .env
-pnpm generate:secret --direct-insert
+Vitest (`vitest.config.ts`):
 
-# Generate the Prisma client and src/generated/package/package.ts
-pnpm generate
+- One project, `unit`, runs `test/unit/**/*.spec.ts`. The specs mirror `src/` and double each collaborator. `test/helpers/test.logger.helper.ts` is the setup file.
+- SWC compiles the specs, and the `tsconfig.json` path aliases resolve. The settings are `isolate: true`, `maxWorkers: 4`, `restoreMocks`, `mockReset`, and a 5000 ms `testTimeout`.
+- Coverage is v8 over `src/**/*.ts` with a 100% threshold on branches, functions, lines, and statements. It runs only with `--coverage`.
+- Coverage excludes modules, enums, interfaces, constants, contracts, controllers, processors, repositories, `src/generated`, `src/migration`, `src/router`, `src/configs`, `src/languages`, and the root files in `src/`.
+- The integration suite is held: `package.json` defines no script for it and `test/` holds `unit/` and `helpers/` only.
 
-# Start infrastructure (MongoDB + Redis + JWKS server + BullBoard)
-docker-compose up -d
+TypeScript (`tsconfig.json`):
 
-# Push the schema (needs the MongoDB replica set above already running)
-pnpm db:migrate
+- It runs `strict` with `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess`, targets native ESM (`module` and `moduleResolution` `nodenext`, `verbatimModuleSyntax`, `isolatedModules`), and defines the path aliases.
+- `pnpm typecheck`, knip, Vitest, and the editor read it.
+- `tsconfig.build.json` extends it, narrows `include` to `src/**/*`, and excludes `test` and `scripts`. `nest build` reads it.
 
-# Build the seeds, then seed the initial data, including the API keys
-pnpm migration:build
-pnpm migration:seed
+Other files:
 
-# Run in development mode
-pnpm start:dev
-```
-
-For the full onboarding path (including Docker profiles and key material), see [Installation](docs/installation.md).
-
----
+- `knip.json` lists `src/main.ts`, `src/migration.ts`, `src/instrument.ts`, and `scripts/*.ts` as entries and sets every rule to `error`.
+- `.npmrc` sets `engine-strict = true`, so the `engines` versions are enforced on install.
+- `pnpm-workspace.yaml` lists the packages allowed to run install scripts (`allowBuilds`) and the packages exempt from the minimum release-age hold (`minimumReleaseAgeExclude`).
+- `cspell.json`, `.prettierrc`, `.commitlintrc`, `.swcrc`, and `nest-cli.json` configure the tools their names give.
 
 ## Coding Standards
 
-This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess` on. These standards apply:
+This project uses TypeScript with `strict`, `exactOptionalPropertyTypes`, and `noUncheckedIndexedAccess` on. These standards apply:
 
-- The code follows the **SOLID principles** and the **Repository Design Pattern** already established in this codebase.
-- All database interactions go through **Prisma ORM** and the repository layer.
-- Every new module has the existing **modular structure** in `src/`.
-- Run the linter before submitting:
+- The code follows the SOLID principles and the Repository Design Pattern already established in this codebase.
+- All database interactions go through Prisma ORM and the repository layer.
+- Every new module has the existing modular structure in `src/`: [Architecture][ref-doc-architecture].
+- Run the checks CI runs before submitting. Run them first, then fix what they report:
     ```bash
     pnpm lint
-    pnpm lint:fix
+    pnpm typecheck
+    pnpm test:cov
+    pnpm deadcode
+    pnpm spell
+    pnpm lint:docs
+    pnpm build
     ```
-- Run the tests:
-    ```bash
-    pnpm test
-    ```
-    - It runs the unit suite under `test/unit/`.
-    - The integration and e2e suites are held, so none exists: `package.json` defines no `test:integration` or `test:e2e` script, and `test/` holds `unit/` and `helpers/`.
-- `any` is a lint error in `src/` (`@typescript-eslint/no-explicit-any`).
-- `.forEach` is a lint error in `src/` and `test/`; iterate with `for...of`.
-- Every public method and function carries explicit types (`explicit-function-return-type`, `explicit-module-boundary-types`).
+    - `pnpm test:cov` runs the unit suite under `test/unit/` with the coverage thresholds.
+    - `pnpm lint:fix` applies the fixable lint rules, and `pnpm format` formats the code.
 - Claude Code and GitHub Copilot get these standards from the harness in `.claude/`: [AI Harness Documentation][ref-doc-ai-harness].
 
 ### Strict null convention
@@ -144,8 +130,6 @@ This project uses **TypeScript** with `strict`, `exactOptionalPropertyTypes`, an
 - `src/configs/` config interfaces use `field: Type | null`, and callers pass the value or `null` explicitly.
 - Exception and options-bag interfaces outside `src/configs/` may use `field?: Type`.
 
----
-
 ## Commit Message Guidelines
 
 This project follows [Conventional Commits][ref-conventional-commits]:
@@ -154,7 +138,7 @@ This project follows [Conventional Commits][ref-conventional-commits]:
 <type>(<scope>): <short description>
 ```
 
-**Types:**
+Types:
 
 | Type       | When to use                                |
 | ---------- | ------------------------------------------ |
@@ -173,15 +157,13 @@ This project follows [Conventional Commits][ref-conventional-commits]:
 
 The list above is the complete `type-enum` in `.commitlintrc`. Any other type is rejected by the `commit-msg` hook.
 
-**Examples:**
+Examples:
 
 ```text
 feat(auth): add refresh token rotation
 fix(user): resolve pagination offset issue
 docs(readme): update docker setup instructions
 ```
-
----
 
 ## Pull Request Process
 
@@ -191,18 +173,23 @@ docs(readme): update docker setup instructions
     git checkout -b feat/your-feature-name upstream/development
     ```
 2. Make your changes
-3. Ensure the husky pre-commit gates pass. The hook runs, in order:
-    - `pnpm lint:staged`
-    - `pnpm typecheck`
-    - `pnpm deadcode`
-    - `pnpm spell`
-    - `NODE_ENV=test pnpm test`
-4. Push the branch to your fork and open a PR against `development`.
-5. Fill in the PR template so a reviewer can follow the work:
-    - **Summary**, **Related Issue**, **Scope**, **How Has This Been Tested?**, **Checklist**
-    - **Out of scope**, **Breaking Changes**, **Additional Notes** when they apply
-6. Wait for review.
-    - Merging takes at least **1 maintainer approval**.
+3. Commit with a conventional message, and check that the husky hooks pass:
+    ```bash
+    git add <files>
+    git commit -m "feat(scope): short description"
+    ```
+    - `pre-commit` runs `pnpm lint:staged`, then `pnpm typecheck`. `lint-staged` formats and lints staged TypeScript, runs `stop-only` and the related unit specs, formats staged JSON, YAML, and markdown, and runs markdownlint, remark, and Vale on staged documentation.
+    - `commit-msg` runs commitlint against `.commitlintrc`.
+4. Push the branch to your fork:
+    ```bash
+    git push origin feat/your-feature-name
+    ```
+5. Open a PR against `development`.
+6. Fill in the PR template so a reviewer can follow the work:
+    - Summary, Related Issue, Scope, How Has This Been Tested?, Checklist
+    - Out of scope, Breaking Changes, Additional Notes when they apply
+7. Wait for review.
+    - Merging takes at least 1 maintainer approval.
 
 Branches:
 
@@ -211,47 +198,39 @@ Branches:
 
 The Checklist and the gates:
 
-- The Checklist covers lint, typecheck, boot, seed/env, layering, secrets, status codes, and i18n.
+- The Checklist covers lint, typecheck, boot, seed and env, layering, secrets, status codes, and i18n.
 - Tick only the rows that apply.
 - Tests go under How Has This Been Tested?.
-- The Husky pre-commit hook runs `lint-staged`, typecheck, deadcode, spell, and the unit tests locally.
-- The CI workflow (`.github/workflows/ci.yml`) runs lint, deadcode, spell, typecheck, and the build on pull requests to the branches it lists.
+- The CI workflow (`.github/workflows/ci.yml`) runs lint, deadcode, spell, docs lint, typecheck, and the build on pull requests to `main`, `staging`, and `development`, and a dependency review on pull requests.
 - Once those pass, CI calls `test-unit.yml` (the unit suite with coverage) and `test-integration.yml`, which passes while `test/integration/` holds no spec.
-- `test-e2e.yml` runs on manual dispatch and calls `pnpm test:e2e`, which `package.json` does not define, so it fails.
 
-**PR will be rejected if:**
+A PR is rejected if:
 
 - Tests are failing
 - Linting errors exist
-- No Summary of what changed and why
-- Scope / How Has This Been Tested? are empty, or describe checks that were clearly never run
-
----
+- There is no Summary of what changed and why
+- Scope or How Has This Been Tested? are empty, or describe checks that were never run
 
 ## Reporting Bugs
 
-Open an issue using the **Bug Report** template. Include:
+Open an issue using the Bug Report template. Include:
 
 - Description, steps to reproduce, expected vs actual behavior
 - Environment (Node, pnpm, Mongo setup, Docker vs manual, project version or commit)
 - Relevant logs, API request/response, or error identity when useful
 
----
-
 ## Requesting Features
 
-Open an issue using the **Feature Request** template. Include:
+Open an issue using the Feature Request template. Include:
 
 - Problem you are solving
 - Proposed solution
 - Acceptance criteria
 - Technical notes when useful (API shape, schema/seed, env keys, alternatives)
 
-A large feature is discussed in an issue **before** any implementation starts.
+A large feature is discussed in an issue before any implementation starts.
 
----
-
-## Questions?
+## Questions
 
 Open a [Discussion][ref-discussions], not an issue.
 
@@ -260,4 +239,7 @@ Open a [Discussion][ref-discussions], not an issue.
 [ref-code-of-conduct]: ./CODE_OF_CONDUCT.md
 [ref-conventional-commits]: https://www.conventionalcommits.org/
 [ref-discussions]: https://github.com/andrechristikan/ack-nestjs-boilerplate/discussions
-[ref-doc-ai-harness]: docs/ai-harness.md
+[ref-doc-ai-harness]: docs/concepts/ai-harness.md
+[ref-doc-installation]: docs/getting-started/installation.md
+[ref-doc-commands]: docs/reference/commands.md
+[ref-doc-architecture]: docs/concepts/architecture.md

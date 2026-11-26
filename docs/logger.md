@@ -948,8 +948,8 @@ When the DSN is not configured:
 <!-- REFERENCES -->
 
 [ref-nestjs]: http://nestjs.com
-[ref-doc-configuration]: configuration.md
-[ref-doc-environment]: environment.md
-[ref-doc-handling-error]: handling-error.md
+[ref-doc-configuration]: reference/configuration.md
+[ref-doc-environment]: reference/configuration.md
+[ref-doc-handling-error]: concepts/error-handling.md
 [ref-doc-queue]: queue.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-security-and-middleware]: concepts/request-pipeline.md#middleware-chain

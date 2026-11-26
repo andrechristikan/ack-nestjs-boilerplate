@@ -596,9 +596,9 @@ sequenceDiagram
 <!-- REFERENCES -->
 
 [ref-doc-authentication]: authentication.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-security-and-middleware]: concepts/security.md#rate-limiting
 [ref-doc-cache]: cache.md
 [ref-doc-activity-log]: activity-log.md
-[ref-doc-installation]: installation.md
-[ref-doc-environment]: environment.md
+[ref-doc-installation]: getting-started/installation.md
+[ref-doc-environment]: reference/configuration.md
 [ref-doc-device]: device.md

@@ -2,9 +2,9 @@
 
 [![NestJs][nestjs-shield]][ref-nestjs] [![NodeJs][nodejs-shield]][ref-nodejs] [![Typescript][typescript-shield]][ref-typescript] [![MongoDB][mongodb-shield]][ref-mongodb] [![JWT][jwt-shield]][ref-jwt] [![Vitest][vitest-shield]][ref-vitest] [![PNPM][pnpm-shield]][ref-pnpm] [![Docker][docker-shield]][ref-docker]
 
-# ACK NestJs Boilerplate 🔥 🚀
+# ACK NestJs Boilerplate
 
-[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, OAuth (Google & Apple), TOTP/2FA, and RBAC. It runs Prisma on **MongoDB** (replica set required), uses native ESM, and stays modular with a repository layer for data access.
+[ACK NestJs][ref-ack] is a [NestJs v12.x][ref-nestjs] boilerplate with JWT, Google and Apple sign-in, MFA (TOTP and passkeys), and RBAC. It runs Prisma on MongoDB (replica set required), uses native ESM, and stays modular with a repository layer for data access.
 
 _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 
@@ -12,15 +12,15 @@ _[Request a feature][ref-ack-issues] or [report a bug][ref-ack-issues]._
 
 A good fit when you are building:
 
-- 🏢 **Enterprise apps**: Auth with roles, CASL policies, and an activity log
-- 🔐 **Auth services**: JWT, Google and Apple sign-in, and TOTP 2FA
-- 📱 **Mobile backends**: REST API with social login, device tracking, and push notifications
-- 🌐 **Multi-tenant SaaS**: Every user belongs to a workspace. Projects stay workspace-scoped, with invites and join requests
-- 💼 **Startup MVPs**: Auth, workspaces, notifications, and file upload already wired
+- Enterprise apps: auth with roles, CASL policies, and an activity log
+- Auth services: JWT, Google and Apple sign-in, and MFA
+- Mobile backends: a REST API with social login, device tracking, and push notifications
+- Multi-tenant SaaS: every user belongs to a workspace, and projects stay workspace-scoped, with invites and join requests
+- Startup MVPs: auth, workspaces, notifications, and file upload already wired
 
 ## Table of Contents
 
-- [ACK NestJs Boilerplate 🔥 🚀](#ack-nestjs-boilerplate--)
+- [ACK NestJs Boilerplate](#ack-nestjs-boilerplate)
     - [Ideal For](#ideal-for)
     - [Table of Contents](#table-of-contents)
     - [Important](#important)
@@ -30,16 +30,8 @@ A good fit when you are building:
     - [Build with](#build-with)
     - [Objective](#objective)
     - [Features](#features)
-        - [🔐 Authentication \& Security](#-authentication--security)
-        - [🌐 Workspaces \& Projects](#-workspaces--projects)
-        - [📊 Database \& Storage](#-database--storage)
-        - [🔔 Notifications](#-notifications)
-        - [📈 Analytics](#-analytics)
-        - [🩺 Monitoring](#-monitoring)
-        - [🛠 Development](#-development)
     - [Quick Start](#quick-start)
     - [Database](#database)
-    - [Installation](#installation)
     - [Release](#release)
     - [License](#license)
     - [Contribute](#contribute)
@@ -49,47 +41,10 @@ A good fit when you are building:
 
 ## Important
 
-- MongoDB runs as a replica set because Prisma transactions need one.
-- Third-party integrations (AWS S3, AWS SES, Firebase, Google and Apple sign-in, Sentry) are optional. A blank `.env` line leaves one unset.
-    - S3 and SES turn on when their IAM credential key or secret is set.
-    - Firebase turns on when any of its three keys is set.
-    - Once S3, SES, or Firebase is on, a missing member of its group fails startup validation.
-    - Google, Apple, and Sentry each turn on from their own id or DSN and need nothing else.
-    - A region, bucket, or `EMAIL_*` value set alone boots fine.
-    - A route that needs S3, or a social sign-in, answers 404 when that integration is unset.
-- When `APP_ENV` is `production`:
-    - Swagger is off.
-    - Sentry Logs only get `warn`, `error`, and `fatal` (other environments send every level).
-- Protection decorators follow a fixed stack. A route carries only the ones it needs, in this relative order:
-
-    ```typescript
-    @Doc({ summary: '…' })
-    @Response('example.get')          // or @ResponsePagination / @ResponseFile
-    @TermPolicyAcceptanceProtected(...)
-    @PolicyProtected({...})
-    @RoleProtected(...)
-    @ProjectMemberProtected(...)      // never on /admin
-    @ProjectProtected()               // never on /admin
-    @WorkspaceMemberProtected(...)    // never on /admin
-    @WorkspaceProtected()             // never on /admin
-    @UserProtected()
-    @FeatureFlagProtected(...)
-    @AuthJwtAccessProtected()
-    @ApiKeyProtected()
-    @Get('/some-endpoint')
-    ```
-
-    Nest runs the stack bottom-up, so a decorator that needs state from another one sits above it:
-
-    - `@FeatureFlagProtected()` sits above `@AuthJwtAccessProtected()` so the flag guard can see `request.user`
-    - if you flip that order:
-        - there is no user yet
-        - `targetUserIds` is skipped
-        - rollout keys off the anonymous-ID header instead
-
-    Full detail: [Authorization Documentation][ref-doc-authorization].
-
-- Activity logging is separate from the stack: use cases stage events, and a global interceptor enqueues them as a job that writes them.
+- MongoDB runs as a replica set because Prisma transactions need one: [Dependencies][ref-doc-dependencies].
+- AWS S3, AWS SES, Firebase, Google and Apple sign-in, and Sentry are optional, and a blank `.env` line leaves one unset: [Integration triggers][ref-doc-integration-triggers].
+- A route carries only the protection decorators it needs, in a fixed order: [Authorization][ref-doc-authorization].
+- Swagger and the settings of a deployed environment: [Production][ref-doc-production].
 
 ## TODO
 
@@ -99,8 +54,6 @@ A good fit when you are building:
 
 ### Next Features
 
-- [ ] Login with biometrics (fingerprint or face detection)
-- [ ] Login with passkey
 - [ ] Login with Github SSO
 - [ ] Mobile number verification by WhatsApp and/or SMS
 - [ ] Versioning System (force the frontend to update, especially mobile)
@@ -109,15 +62,15 @@ A good fit when you are building:
 
 You will get more out of this project if you already know:
 
-1. **[NestJs Fundamentals][ref-nestjs]**: Decorators, modules, services, and dependency injection
-2. **[TypeScript][ref-typescript]**: Strong typing, interfaces, and generics
-3. **[Prisma ORM][ref-prisma]**: Schema design, `prisma db push`, and type-safe queries
-4. **[MongoDB][ref-mongodb]**: NoSQL basics, especially **replica sets** for transactions
-5. **[Redis][ref-redis]**: Caching, session storage, and queues
-6. **Repository Design Pattern**: Keeping data access behind a clear layer
-7. **SOLID Principles**: Clean architecture and dependencies
-8. **Queue Systems**: Background jobs with [BullMQ][ref-bullmq]
-9. **[Docker][ref-docker]** (optional): Handy for running the local stack
+1. [NestJs Fundamentals][ref-nestjs]: decorators, modules, services, and dependency injection
+2. [TypeScript][ref-typescript]: strong typing, interfaces, and generics
+3. [Prisma ORM][ref-prisma]: schema design, `prisma db push`, and type-safe queries
+4. [MongoDB][ref-mongodb]: NoSQL basics, especially replica sets for transactions
+5. [Redis][ref-redis]: caching, session storage, and queues
+6. Repository Design Pattern: keeping data access behind a clear layer
+7. SOLID Principles: clean architecture and dependencies
+8. Queue Systems: background jobs with [BullMQ][ref-bullmq]
+9. [Docker][ref-docker] (optional): handy for running the local stack
 
 ## Build with
 
@@ -127,7 +80,7 @@ Versions this project expects:
 | -------------- | -------------------------------------------- |
 | NestJs         | v12.x                                        |
 | NodeJs         | 26.13.x+                                     |
-| PNPM           | 10.25.x+ (pin pnpm 12.5.x+)                  |
+| PNPM           | 12.5.x+                                      |
 | TypeScript     | 6.0.x+                                       |
 | Prisma         | 6.19.x+                                      |
 | MongoDB        | 8.0.x+ replica set (compose: `mongo:latest`) |
@@ -148,123 +101,30 @@ See [package.json][ref-package-json] for the full list.
 
 ## Features
 
-### 🔐 Authentication & Security
+- Identity and auth: JWT with JWKS, social sign-in, sessions, devices, MFA, and API keys
+- Access control: roles, CASL policies, term-policy gating, and feature flags
+- Workspace and project: mandatory multi-workspace, invites, join requests, and workspace-scoped projects
+- Platform: notifications, file upload and S3 presign, activity log, analytic, i18n, health, and country data
 
-- **JWT + stateful sessions**: ES256 access and ES512 refresh tokens, Redis-backed sessions, and instant revocation
-- **Social sign-in**: Google OAuth and Apple Sign In for mobile and web
-- **TOTP 2FA**: Authenticator apps, encrypted secrets, and backup recovery codes
-- **RBAC & CASL policies**: Roles and fine-grained abilities on top of workspace and project membership
-- **API keys & rate limits**: `x-api-key` guards plus Redis sliding-window limits (per IP, per user, per route)
-
-### 🌐 Workspaces & Projects
-
-- **Multi-workspace tenancy**: Every user gets a workspace. It is personal by default, or the inviting workspace when the user joins through an invite
-- **Projects inside workspaces**: Membership, invites, and join requests, with a feature flag when you want the surface off
-- **Feature flags**: On/off, target users, and percentage rollout by user or anonymous ID
-
-### 📊 Database & Storage
-
-- **Prisma on MongoDB**: Type-safe queries with replica-set transactions
-- **Redis cache**: Shared across instances, with configurable TTLs
-- **AWS S3**: Presigned upload and download for public and private buckets
-- **Offset & cursor pagination**: List endpoints that still feel fast as data grows
-
-### 🔔 Notifications
-
-- **Multi-channel delivery**: Email, push, in-app, and silent, with per-type and per-channel preferences
-- **AWS SES + Firebase FCM**: Templated email and multicast push, including token cleanup and retry of transient send failures
-- **BullMQ workers**: Async delivery and other background jobs in the same process as the API
-
-📖 [Notification Documentation][ref-doc-notification] covers setup and usage.
-
-### 📈 Analytics
-
-- **Activity log**: Use cases stage user actions. A global interceptor enqueues them after the request settles and a queue processor writes them, including actor/target pairs
-- **Analytic dashboard**: Admin metrics, anomaly and fraud reports, and current-workspace user metrics ([docs][ref-doc-analytic])
-
-### 🩺 Monitoring
-
-- **Sentry**: Errors, performance, and Pino logs, with credentials scrubbed before send
-- **Health checks**: `/api/system/health/{database,aws,third-party,instance}` behind a system API key. Each answers 200 and reports an unconfigured integration as down
-
-### 🛠 Development
-
-- **NestJS 12 + TypeScript 6**: Strict mode, SWC builds, and hot reload next to a typecheck
-- **OpenAPI 3.1**: Swagger UI and `generated/swagger.json` from the same route schemas (off in production)
-- **Zod contracts**: Request and response shapes checked end to end
-- **i18n**: Localized messages via `x-custom-lang`
-- **Vitest**: Unit suite under `test/unit/`. `pnpm test:cov` enforces 100% coverage. The integration and e2e suites are held, so none exists.
-- **Lint & hooks**: ESLint (incl. security), Prettier, cspell, knip, Husky, and commitlint
-- **Docker Compose**: MongoDB replica set, Redis, BullBoard, and JWKS locally, with optional `apis` and `vault` profiles. A separate production Compose file and image run the stack on one Docker host ([release][ref-doc-release])
-- **HashiCorp Vault**: Optional secret sync into `.env` ([docs][ref-doc-vault])
-- **Docs**: 30+ guides, including the [status code catalog][ref-doc-status-codes]
-- **AI harness**: Claude Code skills, agents, rules, and hooks for a design, plan, and build flow, with a Copilot digest ([docs][ref-doc-ai-harness])
+Every feature with its pages: [Features][ref-doc-features].
 
 ## Quick Start
 
 ```bash
-# Clone repository
-git clone https://github.com/andrechristikan/ack-nestjs-boilerplate
-
-# Install dependencies
+git clone https://github.com/andrechristikan/ack-nestjs-boilerplate && cd ack-nestjs-boilerplate
 pnpm install
-
-# Setup environment
-cp .env.example .env
-
-# Set AUTH_TWO_FACTOR_ISSUER in .env (required, empty in .env.example)
-# AUTH_TWO_FACTOR_ISSUER=ACKNestJs
-
-# Generate the JWT keys, JWKS files, and MongoDB keyfile under keys/,
-# and write the JWT keys and encryption secrets into .env
 pnpm generate:secret --direct-insert
-
-# Generate the Prisma client and src/generated/package/package.ts
-pnpm generate
-
-# Start infrastructure (MongoDB + Redis + BullBoard + JWKS)
-docker-compose up -d
-
-# Push the schema (needs the MongoDB replica set above already running)
-pnpm db:migrate
-
-# Build the seeds, then seed the initial data, including the API keys
-pnpm migration:build
-pnpm migration:seed
-
-# Run the API on the host
-pnpm start:dev
 ```
 
-Swagger UI: `http://localhost:3000/docs`.
-
-The API also runs inside Compose through the `apis` profile: `docker-compose --profile apis up -d`. The container mounts the same `.env` the host app reads, so for it:
-
-- `HTTP_HOST` is `0.0.0.0`.
-- `DATABASE_URL`, `CACHE_REDIS_URL`, `QUEUE_REDIS_URL`, and the two JWKS URIs point at the Compose service hosts `mongo`, `redis`, and `jwks-server`.
-- MongoDB reports `host.docker.internal:27017` as its replica set member host. `DOCKER_MONGO_PORT` changes the port, and the port in `DATABASE_URL` matches it.
-- Compose maps `host.docker.internal` to the host gateway on the `mongo` and `apis` services (`extra_hosts`), so the name resolves inside those two containers.
-- The host machine resolves `host.docker.internal` through its own OS. When it does not resolve, add `127.0.0.1 host.docker.internal` to the host's `/etc/hosts`.
-
-The values, the steps, and the member host detail are in [Installation][ref-doc-installation].
+The tutorial continues with the Docker dependencies, the schema push, the seeds, and the first run: [Installation][ref-doc-installation].
 
 ## Database
 
-This boilerplate uses **MongoDB** (`prisma/schema.prisma` `provider = "mongodb"`). Prisma transactions need a replica set.
-
-- Schema sync: `pnpm db:migrate` (`prisma db push`)
-- No `prisma migrate` history, so shape changes go through `db push`
-- ObjectId helpers, transactions, and seeds assume MongoDB
-
-PostgreSQL is on the [TODO](#todo). Setup and seeding: [Database Documentation][ref-doc-database].
-
-## Installation
-
-Docker is the recommended setup. Step-by-step (Compose first, then Atlas + Redis if you cannot use Docker): [Installation][ref-doc-installation].
+This boilerplate uses MongoDB and applies the schema with `prisma db push`, with no migration files: [Commands][ref-doc-commands] and [Database][ref-doc-database]. PostgreSQL is on the [TODO](#todo).
 
 ## Release
 
-Releasing the application against existing MongoDB, Redis, and JWKS services, on one host with Docker Compose, or through the CI/CD workflows: [Release][ref-doc-release].
+Releasing the application against existing services, on one Docker Compose host, or through the release workflow: [Production][ref-doc-production].
 
 ## License
 
@@ -276,17 +136,11 @@ Contributions are welcome. Start with [CONTRIBUTING.md][ref-doc-contributing].
 
 ## Contributors
 
-- [Gzerox][ref-contributor-gzerox]
-    - [Workspace][ref-doc-workspace]: main contributor
-    - [Project][ref-doc-project]: main contributor
-- [ak2g][ref-contributor-ak2g]
-    - [Two-Factor Authentication][ref-doc-two-factor]
-    - [Notification][ref-doc-notification]
+The contributors and the features they built: [Contributors][ref-doc-contributors].
 
 ## Contact
 
-**Andre Christi Kan**  
-📧 [andrechristikan@gmail.com][ref-author-email]
+Andre Christi Kan [andrechristikan@gmail.com][ref-author-email]
 
 [![Github][github-shield]][ref-author-github] [![LinkedIn][linkedin-shield]][ref-author-linkedin]
 
@@ -300,7 +154,7 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
   </a>
 </div>
 
-**Or via PayPal**
+Or via PayPal
 
 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
   <a href='https://www.paypal.me/andrechristikan' target='_blank'>
@@ -334,11 +188,6 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 [ref-author-email]: mailto:andrechristikan@gmail.com
 [ref-author-github]: https://github.com/andrechristikan
 
-<!-- CONTRIBUTORS -->
-
-[ref-contributor-gzerox]: https://github.com/Gzerox
-[ref-contributor-ak2g]: https://github.com/ak2g
-
 <!-- Repo LINKS -->
 
 [ref-ack]: https://github.com/andrechristikan/ack-nestjs-boilerplate
@@ -365,16 +214,13 @@ If this boilerplate helped you, buy me a coffee to keep this project alive.
 
 <!-- DOCS LINKS -->
 
-[ref-doc-authorization]: docs/authorization.md
+[ref-doc-features]: docs/features.md
+[ref-doc-installation]: docs/getting-started/installation.md
+[ref-doc-commands]: docs/reference/commands.md
 [ref-doc-database]: docs/database.md
-[ref-doc-installation]: docs/installation.md
-[ref-doc-release]: docs/release.md
-[ref-doc-notification]: docs/notification.md
-[ref-doc-two-factor]: docs/two-factor.md
-[ref-doc-vault]: docs/vault.md
+[ref-doc-dependencies]: docs/concepts/dependencies.md
+[ref-doc-integration-triggers]: docs/reference/configuration.md#integration-triggers
+[ref-doc-authorization]: docs/authorization.md#decorator-order
+[ref-doc-production]: docs/production.md
+[ref-doc-contributors]: docs/contributors.md
 [ref-doc-contributing]: CONTRIBUTING.md
-[ref-doc-workspace]: docs/workspace.md
-[ref-doc-project]: docs/project.md
-[ref-doc-analytic]: docs/analytic.md
-[ref-doc-status-codes]: docs/status-codes.md
-[ref-doc-ai-harness]: docs/ai-harness.md

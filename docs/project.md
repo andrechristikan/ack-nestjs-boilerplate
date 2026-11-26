@@ -378,8 +378,8 @@ Full catalog: [Status Codes][ref-doc-status-codes].
 [ref-doc-workspace]: workspace.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-feature-flag]: feature-flag.md
-[ref-doc-status-codes]: status-codes.md
-[ref-doc-pagination]: pagination.md
+[ref-doc-status-codes]: reference/status-codes.md
+[ref-doc-pagination]: concepts/pagination.md
 [ref-doc-database-generated-unique-values]: database.md#generated-unique-values
 [ref-doc-activity-log]: activity-log.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store

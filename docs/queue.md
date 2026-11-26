@@ -793,9 +793,9 @@ redis-bullboard:
 
 [ref-bullmq]: https://bullmq.io
 [ref-redis]: https://redis.io
-[ref-doc-configuration]: configuration.md
-[ref-doc-environment]: environment.md
+[ref-doc-configuration]: reference/configuration.md
+[ref-doc-environment]: reference/configuration.md
 [ref-doc-notification]: notification.md
 [ref-doc-notification-snapshot]: notification.md#recipient-snapshot
-[ref-doc-installation]: installation.md
-[ref-doc-release]: release.md
+[ref-doc-installation]: getting-started/installation.md
+[ref-doc-release]: production.md

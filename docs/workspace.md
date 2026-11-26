@@ -239,7 +239,7 @@ See [Security and Middleware][ref-doc-security-and-middleware].
 
 ## Personal Workspace
 
-`UserCreateUtil.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s Workspace`) with a generated slug.
+`UserCreateUtil.buildPersonalWorkspaceContexts` builds a workspace named from `workspace.personalNamePattern` (`{username}'s workspace`) with a generated slug.
 
 Each creating HTTP service opens `withTransaction`: `UserRegistrationHttpService` (self sign-up, admin create, admin CSV import) and `UserAuthHttpService` (social sign-up). Inside it:
 
@@ -646,7 +646,7 @@ Two layers, and they are not the same check.
 ```typescript
 {
   maxWorkspacesPerUser: 10,
-  personalNamePattern: "{username}'s Workspace",
+  personalNamePattern: "{username}'s workspace",
   slugPrefix: 'w-',
   slugRegex: /^[0-9a-zA-Z-]+$/,
   slugMaxLength: 30,
@@ -713,10 +713,10 @@ Full catalog: [Status Codes][ref-doc-status-codes].
 
 [ref-doc-project]: project.md
 [ref-doc-authorization]: authorization.md
-[ref-doc-security-and-middleware]: security-and-middleware.md
+[ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-queue]: queue.md
-[ref-doc-status-codes]: status-codes.md
+[ref-doc-status-codes]: reference/status-codes.md
 [ref-doc-database-generated-unique-values]: database.md#generated-unique-values
 [ref-doc-notification]: notification.md
 [ref-doc-activity-log]: activity-log.md

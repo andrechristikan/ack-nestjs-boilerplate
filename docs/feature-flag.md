@@ -332,4 +332,4 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 
 [ref-doc-cache]: cache.md
 [ref-doc-authorization]: authorization.md
-[ref-doc-environment]: environment.md
+[ref-doc-environment]: reference/configuration.md

@@ -105,9 +105,9 @@ Queue names, rate limits, job ids, and payload encryption: [Notification Documen
 <!-- REFERENCES -->
 
 [ref-doc-notification]: notification.md
-[ref-doc-third-party]: third-party-integration.md
-[ref-doc-third-party-ses]: third-party-integration.md#ses-email
-[ref-doc-environment]: environment.md
-[ref-doc-configuration]: configuration.md
+[ref-doc-third-party]: concepts/dependencies.md
+[ref-doc-third-party-ses]: concepts/dependencies.md#optional-adapters
+[ref-doc-environment]: reference/configuration.md
+[ref-doc-configuration]: reference/configuration.md
 [ref-doc-logger]: logger.md#migration-command-failure
 [ref-doc-term-policy]: term-policy.md#migration--seeding
