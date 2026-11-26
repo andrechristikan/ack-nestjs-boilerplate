@@ -8,6 +8,7 @@ import {
 } from '@common/database/constants/database.constant';
 import { DatabaseEmptyErrorContract } from '@common/database/contracts/database.empty-error.contract';
 import { DatabaseRepositoryBase } from '@common/database/bases/database.repository.base';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import type { IDatabaseErrorContract } from '@common/database/interfaces/database.interface';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import { WorkspaceNotFoundException } from '@modules/workspace/exceptions/workspace.not-found.exception';
@@ -53,6 +54,13 @@ describe('DatabaseRepositoryBase', () => {
     });
 
     describe('toException', () => {
+        it('returns the same DatabaseUnavailableException instance it is given', () => {
+            const exception = new DatabaseUnavailableException();
+
+            expect(named['toException'](exception)).toBe(exception);
+            expect(empty['toException'](exception)).toBe(exception);
+        });
+
         it('returns a new instance of the contract class for a P2002 on the mapped field', () => {
             const error = buildPrismaKnownRequestError('P2002', 'slug');
 

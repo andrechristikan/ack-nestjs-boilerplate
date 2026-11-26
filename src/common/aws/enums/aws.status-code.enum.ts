@@ -8,4 +8,5 @@ export enum EnumAwsStatusCodeError {
     sesTemplateBodyRequired = 51405,
     s3NotConfigured = 51406,
     sesNotConfigured = 51407,
+    unavailable = 51408,
 }

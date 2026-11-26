@@ -8,6 +8,7 @@ import {
     GetTemplateCommand,
     ListTemplatesCommand,
     SESClient,
+    SESServiceException,
     SendBulkTemplatedEmailCommand,
     SendTemplatedEmailCommand,
     UpdateTemplateCommand,
@@ -21,13 +22,17 @@ import type {
     GetTemplateCommandOutput,
     ListTemplatesCommandInput,
     ListTemplatesCommandOutput,
+    SESClientResolvedConfig,
     SendBulkTemplatedEmailCommandInput,
     SendBulkTemplatedEmailCommandOutput,
     SendTemplatedEmailCommandInput,
     SendTemplatedEmailCommandOutput,
+    ServiceInputTypes,
+    ServiceOutputTypes,
     UpdateTemplateCommandInput,
     UpdateTemplateCommandOutput,
 } from '@aws-sdk/client-ses';
+import type { Command } from '@smithy/types';
 import type {
     IAwsSesGetTemplate,
     IAwsSesSend,
@@ -35,6 +40,7 @@ import type {
     IAwsSesTemplate,
 } from '@common/aws/interfaces/aws.ses.interface';
 import { AwsSesTemplateBodyRequiredException } from '@common/aws/exceptions/aws.ses-template-body-required.exception';
+import { AwsUnavailableException } from '@common/aws/exceptions/aws.unavailable.exception';
 
 @Injectable()
 export class AwsSesService implements OnModuleInit {
@@ -77,6 +83,34 @@ export class AwsSesService implements OnModuleInit {
         )!;
     }
 
+    private toException(
+        error: unknown
+    ): SESServiceException | AwsUnavailableException {
+        const isClientFault =
+            error instanceof SESServiceException && error.$fault === 'client';
+
+        return isClientFault ? error : new AwsUnavailableException(error);
+    }
+
+    private async sendCommand<
+        TInput extends ServiceInputTypes,
+        TOutput extends ServiceOutputTypes,
+    >(
+        command: Command<
+            ServiceInputTypes,
+            TInput,
+            ServiceOutputTypes,
+            TOutput,
+            SESClientResolvedConfig
+        >
+    ): Promise<TOutput> {
+        try {
+            return await this.sesClient.send<TInput, TOutput>(command);
+        } catch (error: unknown) {
+            throw this.toException(error);
+        }
+    }
+
     onModuleInit(): void {
         if (!this.accessKeyId || !this.secretAccessKey || !this.region) {
             this.logger.warn(
@@ -115,10 +149,7 @@ export class AwsSesService implements OnModuleInit {
         }
 
         try {
-            await this.sesClient.send<
-                ListTemplatesCommandInput,
-                ListTemplatesCommandOutput
-            >(new GetSendQuotaCommand({}));
+            await this.sendCommand(new GetSendQuotaCommand({}));
 
             return true;
         } catch {
@@ -146,11 +177,10 @@ export class AwsSesService implements OnModuleInit {
             ...(nextToken !== null && { NextToken: nextToken }),
         });
 
-        const listTemplate: ListTemplatesCommandOutput =
-            await this.sesClient.send<
-                ListTemplatesCommandInput,
-                ListTemplatesCommandOutput
-            >(command);
+        const listTemplate: ListTemplatesCommandOutput = await this.sendCommand<
+            ListTemplatesCommandInput,
+            ListTemplatesCommandOutput
+        >(command);
         return listTemplate;
     }
 
@@ -170,7 +200,7 @@ export class AwsSesService implements OnModuleInit {
             TemplateName: name,
         });
 
-        const getTemplate: GetTemplateCommandOutput = await this.sesClient.send<
+        const getTemplate: GetTemplateCommandOutput = await this.sendCommand<
             GetTemplateCommandInput,
             GetTemplateCommandOutput
         >(command);
@@ -206,7 +236,7 @@ export class AwsSesService implements OnModuleInit {
             },
         });
 
-        const create: CreateTemplateCommandOutput = await this.sesClient.send<
+        const create: CreateTemplateCommandOutput = await this.sendCommand<
             CreateTemplateCommandInput,
             CreateTemplateCommandOutput
         >(command);
@@ -242,7 +272,7 @@ export class AwsSesService implements OnModuleInit {
             },
         });
 
-        const update: UpdateTemplateCommandOutput = await this.sesClient.send<
+        const update: UpdateTemplateCommandOutput = await this.sendCommand<
             UpdateTemplateCommandInput,
             UpdateTemplateCommandOutput
         >(command);
@@ -266,7 +296,7 @@ export class AwsSesService implements OnModuleInit {
             TemplateName: name,
         });
 
-        const del: DeleteTemplateCommandOutput = await this.sesClient.send<
+        const del: DeleteTemplateCommandOutput = await this.sendCommand<
             DeleteTemplateCommandInput,
             DeleteTemplateCommandOutput
         >(command);
@@ -307,7 +337,7 @@ export class AwsSesService implements OnModuleInit {
             });
 
         const sendWithTemplate: SendTemplatedEmailCommandOutput =
-            await this.sesClient.send<
+            await this.sendCommand<
                 SendTemplatedEmailCommandInput,
                 SendTemplatedEmailCommandOutput
             >(command);
@@ -356,7 +386,7 @@ export class AwsSesService implements OnModuleInit {
             });
 
         const sendWithTemplate: SendBulkTemplatedEmailCommandOutput =
-            await this.sesClient.send<
+            await this.sendCommand<
                 SendBulkTemplatedEmailCommandInput,
                 SendBulkTemplatedEmailCommandOutput
             >(command);

@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@generated/prisma-client/client';
 import { ObjectId } from 'bson';
 import {
+    DatabaseRawQueryFailedCode,
+    DatabaseServerSelectionTimeoutMessage,
     DatabaseUniqueConstraintCode,
     DatabaseUrlCensoredValue,
 } from '@common/database/constants/database.constant';
@@ -86,6 +88,14 @@ export class DatabaseUtil {
             entry =>
                 typeof entry === 'string' &&
                 entry.toLowerCase().includes(field.toLowerCase())
+        );
+    }
+
+    isUnavailableError(error: unknown): boolean {
+        return (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === DatabaseRawQueryFailedCode &&
+            error.message.includes(DatabaseServerSelectionTimeoutMessage)
         );
     }
 

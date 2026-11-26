@@ -1,3 +1,4 @@
+import { HttpStatus } from '@nestjs/common';
 import * as firebaseAdmin from 'firebase-admin';
 import { getMessaging } from 'firebase-admin/messaging';
 import { mock } from 'vitest-mock-extended';
@@ -5,6 +6,8 @@ import type { MockProxy } from 'vitest-mock-extended';
 import type { Messaging } from 'firebase-admin/messaging';
 import type { App as FirebaseApp } from 'firebase-admin/app';
 import { FirebaseService } from '@common/firebase/services/firebase.service';
+import { FirebaseUnavailableException } from '@common/firebase/exceptions/firebase.unavailable.exception';
+import { EnumFirebaseStatusCodeError } from '@common/firebase/enums/firebase.status-code.enum';
 import { FirebaseMaxSendPushBatchSize } from '@common/firebase/constants/firebase.constant';
 import type { IFirebasePushPayload } from '@common/firebase/interfaces/firebase.interface';
 import {
@@ -362,24 +365,52 @@ describe('FirebaseService', () => {
             });
         });
 
-        it('returns every token of a rejected chunk as retryTokens', async () => {
+        it('throws FirebaseUnavailableException when the only chunk rejects', async () => {
             const messaging: MockProxy<Messaging> = mock<Messaging>();
             const initialized = await createInitializedFirebaseService(
                 fullCredentials,
                 messaging
             );
-            const tokens = ['t1', 't2'];
-            messaging.sendEachForMulticast.mockRejectedValueOnce(
-                new Error('fcm down')
+            const reason = new Error('fcm down');
+            messaging.sendEachForMulticast.mockRejectedValueOnce(reason);
+
+            const rejection = initialized.sendMulticast(['t1', 't2'], payload);
+
+            await expect(rejection).rejects.toBeInstanceOf(
+                FirebaseUnavailableException
             );
+            await expect(rejection).rejects.toMatchObject({
+                module: 'firebase',
+                statusCode: EnumFirebaseStatusCodeError.unavailable,
+                httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                rawError: reason,
+            });
+        });
 
-            const result = await initialized.sendMulticast(tokens, payload);
+        it('throws FirebaseUnavailableException carrying the first reason when every chunk rejects', async () => {
+            const messaging: MockProxy<Messaging> = mock<Messaging>();
+            const initialized = await createInitializedFirebaseService(
+                fullCredentials,
+                messaging
+            );
+            const firstReason = new Error('first chunk failed');
+            const secondReason = new Error('second chunk failed');
+            const tokens = new Array<string>(
+                FirebaseMaxSendPushBatchSize + 1
+            ).fill('token-a');
+            messaging.sendEachForMulticast
+                .mockRejectedValueOnce(firstReason)
+                .mockRejectedValueOnce(secondReason);
 
-            expect(result).toEqual({
-                successCount: 0,
-                failureCount: 2,
-                failureTokens: [],
-                retryTokens: ['t1', 't2'],
+            const rejection = initialized.sendMulticast(tokens, payload);
+
+            await expect(rejection).rejects.toBeInstanceOf(
+                FirebaseUnavailableException
+            );
+            await expect(rejection).rejects.toMatchObject({
+                module: 'firebase',
+                statusCode: EnumFirebaseStatusCodeError.unavailable,
+                rawError: firstReason,
             });
         });
 

@@ -20,6 +20,7 @@ import type { Notification } from 'firebase-admin/messaging';
 import { FirebaseCredentialMismatchException } from '@common/firebase/exceptions/firebase.credential-mismatch.exception';
 import { FirebaseInitializationFailedException } from '@common/firebase/exceptions/firebase.initialization-failed.exception';
 import { FirebasePrivateKeyInvalidException } from '@common/firebase/exceptions/firebase.private-key-invalid.exception';
+import { FirebaseUnavailableException } from '@common/firebase/exceptions/firebase.unavailable.exception';
 
 @Injectable()
 export class FirebaseService implements OnModuleInit {
@@ -163,6 +164,7 @@ export class FirebaseService implements OnModuleInit {
         }
     }
 
+    /** Throws FirebaseUnavailableException when every chunk's send rejects; a partial rejection returns that chunk's tokens as retryTokens. */
     async sendMulticast(
         tokens: string[],
         payload: IFirebasePushPayload
@@ -202,6 +204,15 @@ export class FirebaseService implements OnModuleInit {
                 })
             )
         );
+
+        const rejections = responses.filter(
+            (response): response is PromiseRejectedResult =>
+                response.status === 'rejected'
+        );
+        const [firstRejection] = rejections;
+        if (firstRejection && rejections.length === responses.length) {
+            throw new FirebaseUnavailableException(firstRejection.reason);
+        }
 
         let successCount = 0;
         let failureCount = 0;

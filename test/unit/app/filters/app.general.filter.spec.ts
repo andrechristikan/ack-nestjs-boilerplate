@@ -11,7 +11,6 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AppGeneralFilter } from '@app/filters/app.general.filter';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
-import { CacheService } from '@common/cache/services/cache.service';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
@@ -30,7 +29,6 @@ describe('AppGeneralFilter', () => {
     const responseMetadataService: MockProxy<ResponseMetadataService> =
         mock<ResponseMetadataService>();
     const sentryService: MockProxy<SentryService> = mock<SentryService>();
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const response: MockProxy<Response> = mock<Response>();
     const httpArgumentsHost: MockProxy<
         ReturnType<ArgumentsHost['switchToHttp']>
@@ -55,7 +53,6 @@ describe('AppGeneralFilter', () => {
         response.status.mockReturnValue(response);
         responseMetadataService.create.mockReturnValue(metadata);
         messageService.setMessage.mockReturnValue('Internal Server Error');
-        cacheService.isConnectionError.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -66,7 +63,6 @@ describe('AppGeneralFilter', () => {
                     useValue: responseMetadataService,
                 },
                 { provide: SentryService, useValue: sentryService },
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
 
@@ -206,30 +202,18 @@ describe('AppGeneralFilter', () => {
             }
         );
 
-        it('renders RedisUnavailableException (503, 52400) carrying the raw error as rawError when the raw error is a connection error', async () => {
-            const error = new Error('connection lost');
-            cacheService.isConnectionError.mockReturnValue(true);
+        it('renders a raw connection-shaped Error as a 500 AppUnknownException', async () => {
+            const error = new Error('Connection is closed.');
 
             await filter.catch(error, argumentsHost);
 
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
             expect(response.status).toHaveBeenCalledWith(
-                HttpStatus.SERVICE_UNAVAILABLE
+                HttpStatus.INTERNAL_SERVER_ERROR
             );
-            expect(response.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    statusCode: EnumRedisStatusCodeError.unavailable,
-                    statusCodeKey:
-                        EnumRedisStatusCodeError[
-                            EnumRedisStatusCodeError.unavailable
-                        ],
-                    module: 'redis',
-                })
-            );
-            expect(messageService.setMessage).toHaveBeenCalledWith(
-                'redis.error.unavailable',
-                { customLanguage: EnumMessageLanguage.en }
-            );
+            expect(response.json).toHaveBeenCalledWith({
+                ...unknownBody,
+                metadata,
+            });
             expect(sentryService.captureException).toHaveBeenCalledWith(
                 error,
                 null
@@ -465,9 +449,8 @@ describe('AppGeneralFilter', () => {
             }
         );
 
-        it('renders the mapped RedisUnavailableException for an AppUnknownException whose rawError is a connection error', async () => {
-            const rawError = new Error('connection lost');
-            cacheService.isConnectionError.mockReturnValue(true);
+        it('renders 500 for an AppUnknownException whose rawError is a connection-shaped error', async () => {
+            const rawError = new Error('Connection is closed.');
 
             await filter.catch(
                 new AppUnknownException(rawError),
@@ -475,14 +458,12 @@ describe('AppGeneralFilter', () => {
             );
 
             expect(response.status).toHaveBeenCalledWith(
-                HttpStatus.SERVICE_UNAVAILABLE
+                HttpStatus.INTERNAL_SERVER_ERROR
             );
-            expect(response.json).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    statusCode: EnumRedisStatusCodeError.unavailable,
-                    module: 'redis',
-                })
-            );
+            expect(response.json).toHaveBeenCalledWith({
+                ...unknownBody,
+                metadata,
+            });
             expect(sentryService.captureException).toHaveBeenCalledWith(
                 rawError,
                 null

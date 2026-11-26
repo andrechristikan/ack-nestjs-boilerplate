@@ -110,6 +110,7 @@
         "Vnwnyr",
         "weakpassword",
         "WITHSCORES",
+        "WRONGTYPE",
         "ZADD",
         "ZCARD",
         "ZRANGE",

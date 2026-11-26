@@ -8,6 +8,7 @@ import {
     DatabaseClient,
     DatabaseQueryTargetRegex,
 } from '@common/database/constants/database.constant';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import type {
     IDatabaseClient,
@@ -16,6 +17,7 @@ import type {
     IDatabaseTransactionClient,
     IDatabaseTransactionOptions,
 } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
@@ -32,7 +34,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         private readonly configService: ConfigService,
         private readonly databaseClientFactory: DatabaseClientFactory,
         @Inject(DatabaseClient)
-        private readonly databaseClient: IDatabaseClient
+        private readonly databaseClient: IDatabaseClient,
+        private readonly databaseUtil: DatabaseUtil
     ) {
         this.debugEnabled = this.configService.get<boolean>(
             'database.debugEnabled'
@@ -63,6 +66,12 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         } catch (error: unknown) {
             this.logger.error(error, 'Failed to disconnect from the database');
         }
+    }
+
+    private toException(error: unknown): unknown {
+        const isUnavailable = this.databaseUtil.isUnavailableError(error);
+
+        return isUnavailable ? new DatabaseUnavailableException(error) : error;
     }
 
     private async setupLogging(): Promise<void> {
@@ -137,17 +146,22 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
             beforeCommit: [],
             afterCommit: [],
         };
-        const result = await this.client.$transaction(async tx => {
-            this.callbacksByTx.set(tx, callbacks);
-            const fnResult = await fn(tx);
+        let result: T;
+        try {
+            result = await this.client.$transaction(async tx => {
+                this.callbacksByTx.set(tx, callbacks);
+                const fnResult = await fn(tx);
 
-            for (const callback of callbacks.beforeCommit) {
-                // Sequential by design: side effects whose order is part of the contract
-                await callback();
-            }
+                for (const callback of callbacks.beforeCommit) {
+                    // Sequential by design: side effects whose order is part of the contract
+                    await callback();
+                }
 
-            return fnResult;
-        }, options);
+                return fnResult;
+            }, options);
+        } catch (error: unknown) {
+            throw this.toException(error);
+        }
 
         for (const callback of callbacks.afterCommit) {
             await callback();

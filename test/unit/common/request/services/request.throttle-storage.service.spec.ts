@@ -5,7 +5,6 @@ import { ConfigService } from '@nestjs/config';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import type { MockInstance } from 'vitest';
-import { CacheService } from '@common/cache/services/cache.service';
 import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
@@ -16,7 +15,6 @@ import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 
 describe('RequestThrottleStorageService', () => {
     let configService: MockProxy<ConfigService>;
-    const cacheService: MockProxy<CacheService> = mock<CacheService>();
     const failOpenRecord = {
         totalHits: 0,
         timeToExpire: 0,
@@ -36,7 +34,6 @@ describe('RequestThrottleStorageService', () => {
             'request.throttle.sequenceKeyPattern':
                 'ThrottleSeq:{name}:{tracker}',
         });
-        cacheService.isConnectionError.mockReturnValue(false);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -44,7 +41,6 @@ describe('RequestThrottleStorageService', () => {
                 { provide: RedisCacheClient, useValue: redis },
                 { provide: ConfigService, useValue: configService },
                 HelperStringService,
-                { provide: CacheService, useValue: cacheService },
             ],
         }).compile();
 
@@ -205,80 +201,25 @@ describe('RequestThrottleStorageService', () => {
             );
         });
 
-        it('throws RedisUnavailableException carrying the caught error as rawError when the client rejects with a connection error', async () => {
-            const error = new Error('Connection is closed.');
-            redis.eval.mockRejectedValue(error);
-            cacheService.isConnectionError.mockReturnValue(true);
+        it.each([
+            ['a connection error', new Error('Connection is closed.')],
+            ['a script error', new Error('ERR Error running script')],
+            ['a non-Error value', 'script failed'],
+        ])(
+            'throws RedisUnavailableException carrying the rejection when the client rejects with %s',
+            async (_name, error) => {
+                redis.eval.mockRejectedValue(error);
 
-            await expect(
-                service.increment('tracker-1', 1000, 5, 2000, 'default')
-            ).rejects.toMatchObject({
-                module: 'redis',
-                statusCode: EnumRedisStatusCodeError.unavailable,
-                rawError: error,
-            });
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(warn).not.toHaveBeenCalled();
-        });
-
-        it('fails open and warns on every call when the client rejects with any other error', async () => {
-            const error = new Error('ERR Error running script');
-            redis.eval.mockRejectedValue(error);
-
-            const first = await service.increment(
-                'tracker-1',
-                1000,
-                5,
-                2000,
-                'default'
-            );
-            const result = await service.increment(
-                'tracker-1',
-                1000,
-                5,
-                2000,
-                'default'
-            );
-
-            expect(first).toEqual(failOpenRecord);
-            expect(result).toEqual(failOpenRecord);
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(error);
-            expect(warn).toHaveBeenCalledTimes(2);
-            expect(warn).toHaveBeenCalledWith(
-                { key: 'default', err: error },
-                'Throttler storage failed, allowing request'
-            );
-        });
-
-        it('fails open and warns on every call when the client rejects with a non-Error value', async () => {
-            redis.eval.mockRejectedValue('script failed');
-
-            const first = await service.increment(
-                'tracker-1',
-                1000,
-                5,
-                2000,
-                'default'
-            );
-            const result = await service.increment(
-                'tracker-1',
-                1000,
-                5,
-                2000,
-                'default'
-            );
-
-            expect(first).toEqual(failOpenRecord);
-            expect(result).toEqual(failOpenRecord);
-            expect(cacheService.isConnectionError).toHaveBeenCalledWith(
-                'script failed'
-            );
-            expect(warn).toHaveBeenCalledTimes(2);
-            expect(warn).toHaveBeenCalledWith(
-                { key: 'default', err: 'script failed' },
-                'Throttler storage failed, allowing request'
-            );
-        });
+                await expect(
+                    service.increment('tracker-1', 1000, 5, 2000, 'default')
+                ).rejects.toMatchObject({
+                    module: 'redis',
+                    statusCode: EnumRedisStatusCodeError.unavailable,
+                    rawError: error,
+                });
+                expect(warn).not.toHaveBeenCalled();
+            }
+        );
     });
 
     describe('buildKey', () => {

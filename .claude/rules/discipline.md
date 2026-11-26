@@ -17,8 +17,8 @@ They bind every flow and outrank the smaller diff. The rule named states each in
 - A module is a domain: its service injects no service or util of another module on its level, a feature util serves its own module and use cases, a level imports downward only, a queue class aside, and no import cycle exists (`layering.md`, Levels; `eslint.md`, Boundaries; `cross-module.md`).
 - Every `@db.ObjectId` field but `id` and the audit fields carries a relation (`repository.md`, Schema).
 - A result is fetched by one statement, never by a first query whose rows drive a second (`repository.md`, Queries).
-- MongoDB is the source of truth and the cache a side resource: every entry has a TTL, and no cache error breaks the flow (`cache.md`).
-- Every instance is interchangeable: no state another instance needs lives in process memory or on local disk, a cache-outage fallback aside (`cache.md`); shared state is in MongoDB or Redis, and a recurring job is a BullMQ job scheduler (`queue.md`, Enqueuing).
+- MongoDB is the source of truth and the cache a side resource: every entry has a TTL, and the cache Redis is required: a cache Redis error answers 503 `RedisUnavailableException` (`cache.md`).
+- Every instance is interchangeable: no state another instance needs lives in process memory or on local disk; shared state is in MongoDB or Redis, and a recurring job is a BullMQ job scheduler (`queue.md`, Enqueuing).
 - A row a guard loaded is taken from its context, whole, and never read again: its guard read it on this request, so it is fresh (`guards.md`, Contexts).
 - A status-code block never holds a gap (`exception-class.md`).
 - Behavior is built test-first (Checks).

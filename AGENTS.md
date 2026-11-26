@@ -9,7 +9,7 @@ An opinionated, production-shaped NestJS starter. It is a boilerplate: no extern
 
 ## Stack
 
-NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. MongoDB is the source of truth and the cache a side resource: while the cache Redis fails, a cache read falls back to the database and the rate limit to in-memory counters. The application runs as several interchangeable `apis` instances, on one host or several, sharing MongoDB and both Redis instances. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
+NestJS, TypeScript strict, native ESM (`"type": "module"`, `module: nodenext`, `verbatimModuleSyntax`), SWC build, Vitest (unit). Node and pnpm versions are `engines` and `packageManager` in `package.json`; pnpm only: `engines` and the `preinstall` guard reject `npm` and `yarn`. Prisma with a MongoDB replica set (transactions need one) and no migration files: `prisma db push` applies the schema. Redis: cache (`REDIS_CACHE_URL`) and BullMQ (`REDIS_QUEUE_URL`) on separate instances. MongoDB is the source of truth and the cache a side resource. MongoDB and the cache Redis are required: an outage answers 503 from the kit that owns the client; a queue Redis outage leaves the outbox row `pending`. The application runs as several interchangeable `apis` instances, on one host or several, sharing MongoDB and both Redis instances. Every transport shape is a zod schema, validated by `RequestSchemaValidationPipe` on the way in and `ResponseInterceptor` on the way out; Swagger through `zod-openapi`; nestjs-i18n from `src/languages/`; Pino logging; Sentry (`src/instrument.ts`); nest-commander seeds (`src/migration.ts`); Vault for secrets.
 
 ## Layout
 
@@ -59,7 +59,7 @@ Before an edit, read each rule `bash .claude/hooks/rules.sh <path>` prints. `.cl
 
 - Validation fails fast, before the transaction opens; the write keeps its guard; a failure is a typed exception with its own status code.
 - One statement per result; a guard-loaded row comes whole from its context; every relation scalar carries `@relation`; behavior is test-first.
-- A status-code block holds no gap; a notification snapshot is read before the transaction; the cache is a side resource whose failure never breaks a flow.
+- A status-code block holds no gap; a notification snapshot is read before the transaction; every cache entry has a TTL, and a cache Redis error answers 503 `RedisUnavailableException`.
 
 ## Commands
 

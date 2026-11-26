@@ -24,6 +24,7 @@ import {
     PutObjectCommand,
     PutPublicAccessBlockCommand,
     S3Client,
+    S3ServiceException,
     UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import type {
@@ -64,10 +65,14 @@ import type {
     PutObjectCommandOutput,
     PutPublicAccessBlockCommandInput,
     PutPublicAccessBlockCommandOutput,
+    S3ClientResolvedConfig,
+    ServiceInputTypes,
+    ServiceOutputTypes,
     UploadPartCommandInput,
     UploadPartCommandOutput,
     _Object,
 } from '@aws-sdk/client-s3';
+import type { Command } from '@smithy/types';
 import type {
     IAwsS3,
     IAwsS3ConfigBucket,
@@ -92,6 +97,7 @@ import type {
 } from '@common/aws/interfaces/aws.interface';
 import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { AwsS3PresignPartRequestDto } from '@common/aws/dtos/request/aws.s3-presign-part.request.dto';
@@ -103,6 +109,7 @@ import { AwsS3IterationLimitExceededException } from '@common/aws/exceptions/aws
 import { AwsS3KeyInvalidException } from '@common/aws/exceptions/aws.s3-key-invalid.exception';
 import { AwsS3MaxPartNumberExceededException } from '@common/aws/exceptions/aws.s3-max-part-number-exceeded.exception';
 import { AwsS3ObjectExistException } from '@common/aws/exceptions/aws.s3-object-exist.exception';
+import { AwsUnavailableException } from '@common/aws/exceptions/aws.unavailable.exception';
 
 @Injectable()
 export class AwsS3Service implements OnModuleInit {
@@ -261,6 +268,34 @@ export class AwsS3Service implements OnModuleInit {
         return this.config[access];
     }
 
+    private toException(
+        error: unknown
+    ): S3ServiceException | AwsUnavailableException {
+        const isClientFault =
+            error instanceof S3ServiceException && error.$fault === 'client';
+
+        return isClientFault ? error : new AwsUnavailableException(error);
+    }
+
+    private async sendCommand<
+        TInput extends ServiceInputTypes,
+        TOutput extends ServiceOutputTypes,
+    >(
+        command: Command<
+            ServiceInputTypes,
+            TInput,
+            ServiceOutputTypes,
+            TOutput,
+            S3ClientResolvedConfig
+        >
+    ): Promise<TOutput> {
+        try {
+            return await this.s3Client.send<TInput, TOutput>(command);
+        } catch (error: unknown) {
+            throw this.toException(error);
+        }
+    }
+
     private async assertObjectAbsent(
         bucket: string,
         key: string
@@ -271,14 +306,14 @@ export class AwsS3Service implements OnModuleInit {
         });
 
         try {
-            await this.s3Client.send<
+            await this.sendCommand<
                 HeadObjectCommandInput,
                 HeadObjectCommandOutput
             >(headCommand);
 
             throw new AwsS3ObjectExistException();
         } catch (error: unknown) {
-            if (error instanceof AwsS3ObjectExistException) {
+            if (error instanceof AppBaseException) {
                 throw error;
             }
 
@@ -340,10 +375,9 @@ export class AwsS3Service implements OnModuleInit {
             ServerSideEncryption: 'AES256',
         });
 
-        await this.s3Client.send<
-            CopyObjectCommandInput,
-            CopyObjectCommandOutput
-        >(copyCommand);
+        await this.sendCommand<CopyObjectCommandInput, CopyObjectCommandOutput>(
+            copyCommand
+        );
 
         const { extension, mime } = this.getFileInfoFromKey(destinationKey);
         const { completedUrl, cdnUrl } = this.buildUrls(
@@ -403,7 +437,7 @@ export class AwsS3Service implements OnModuleInit {
         }
 
         try {
-            await this.s3Client.send(new ListBucketsCommand({}));
+            await this.sendCommand(new ListBucketsCommand({}));
             return true;
         } catch {
             return false;
@@ -426,10 +460,9 @@ export class AwsS3Service implements OnModuleInit {
             Bucket: config.bucket,
         });
 
-        await this.s3Client.send<
-            HeadBucketCommandInput,
-            HeadBucketCommandOutput
-        >(command);
+        await this.sendCommand<HeadBucketCommandInput, HeadBucketCommandOutput>(
+            command
+        );
         return true;
     }
 
@@ -457,7 +490,7 @@ export class AwsS3Service implements OnModuleInit {
             Bucket: config.bucket,
             Key: key,
         });
-        const item = await this.s3Client.send<
+        const item = await this.sendCommand<
             HeadObjectCommandInput,
             HeadObjectCommandOutput
         >(headCommand);
@@ -510,7 +543,7 @@ export class AwsS3Service implements OnModuleInit {
                 }),
             });
 
-            const listItems: ListObjectsV2Output = await this.s3Client.send<
+            const listItems: ListObjectsV2Output = await this.sendCommand<
                 ListObjectsV2CommandInput,
                 ListObjectsV2CommandOutput
             >(command);
@@ -575,7 +608,7 @@ export class AwsS3Service implements OnModuleInit {
             Key: key,
             Range: `bytes=0-${length - 1}`,
         });
-        const item: GetObjectCommandOutput = await this.s3Client.send<
+        const item: GetObjectCommandOutput = await this.sendCommand<
             GetObjectCommandInput,
             GetObjectCommandOutput
         >(command);
@@ -605,7 +638,7 @@ export class AwsS3Service implements OnModuleInit {
             Bucket: config.bucket,
             Key: key,
         });
-        const item: GetObjectOutput = await this.s3Client.send<
+        const item: GetObjectOutput = await this.sendCommand<
             GetObjectCommandInput,
             GetObjectCommandOutput
         >(command);
@@ -671,7 +704,7 @@ export class AwsS3Service implements OnModuleInit {
             ChecksumAlgorithm: 'SHA256',
         });
 
-        await this.s3Client.send<PutObjectCommandInput, PutObjectCommandOutput>(
+        await this.sendCommand<PutObjectCommandInput, PutObjectCommandOutput>(
             command
         );
 
@@ -707,7 +740,7 @@ export class AwsS3Service implements OnModuleInit {
             Key: key,
         });
 
-        await this.s3Client.send<
+        await this.sendCommand<
             DeleteObjectCommandInput,
             DeleteObjectCommandOutput
         >(command);
@@ -736,7 +769,7 @@ export class AwsS3Service implements OnModuleInit {
             Delete: { Objects: obj },
         });
 
-        await this.s3Client.send<
+        await this.sendCommand<
             DeleteObjectsCommandInput,
             DeleteObjectsCommandOutput
         >(command);
@@ -779,7 +812,7 @@ export class AwsS3Service implements OnModuleInit {
                 }),
             });
 
-            const listItems: ListObjectsV2Output = await this.s3Client.send<
+            const listItems: ListObjectsV2Output = await this.sendCommand<
                 ListObjectsV2CommandInput,
                 ListObjectsV2CommandOutput
             >(listCommand);
@@ -796,7 +829,7 @@ export class AwsS3Service implements OnModuleInit {
                         },
                     });
 
-                await this.s3Client.send<
+                await this.sendCommand<
                     DeleteObjectsCommandInput,
                     DeleteObjectsCommandOutput
                 >(deleteObjectsCommand);
@@ -848,7 +881,7 @@ export class AwsS3Service implements OnModuleInit {
                 ChecksumAlgorithm: 'SHA256',
             });
 
-        const response = await this.s3Client.send<
+        const response = await this.sendCommand<
             CreateMultipartUploadCommandInput,
             CreateMultipartUploadCommandOutput
         >(multiPartCommand);
@@ -894,7 +927,7 @@ export class AwsS3Service implements OnModuleInit {
             UploadId: multipart.uploadId,
         });
 
-        const { ETag } = await this.s3Client.send<
+        const { ETag } = await this.sendCommand<
             UploadPartCommandInput,
             UploadPartCommandOutput
         >(uploadPartCommand);
@@ -943,7 +976,7 @@ export class AwsS3Service implements OnModuleInit {
                 },
             });
 
-        await this.s3Client.send<
+        await this.sendCommand<
             CompleteMultipartUploadCommandInput,
             CompleteMultipartUploadCommandOutput
         >(completeMultipartCommand);
@@ -974,7 +1007,7 @@ export class AwsS3Service implements OnModuleInit {
                 UploadId: uploadId,
             });
 
-        await this.s3Client.send<
+        await this.sendCommand<
             AbortMultipartUploadCommandInput,
             AbortMultipartUploadCommandOutput
         >(abortMultipartCommand);
@@ -1248,7 +1281,7 @@ export class AwsS3Service implements OnModuleInit {
                 },
             });
 
-        await this.s3Client.send<
+        await this.sendCommand<
             PutBucketLifecycleConfigurationCommandInput,
             PutBucketLifecycleConfigurationCommandOutput
         >(command);
@@ -1299,7 +1332,7 @@ export class AwsS3Service implements OnModuleInit {
                 Policy: JSON.stringify(bucketPolicy),
             });
 
-            await this.s3Client.send<
+            await this.sendCommand<
                 PutBucketPolicyCommandInput,
                 PutBucketPolicyCommandOutput
             >(command);
@@ -1309,7 +1342,7 @@ export class AwsS3Service implements OnModuleInit {
                     Bucket: config.bucket,
                 });
 
-            await this.s3Client.send<
+            await this.sendCommand<
                 DeleteBucketPolicyCommandInput,
                 DeleteBucketPolicyCommandOutput
             >(command);
@@ -1389,7 +1422,7 @@ export class AwsS3Service implements OnModuleInit {
             });
         }
 
-        await this.s3Client.send<
+        await this.sendCommand<
             PutBucketCorsCommandInput,
             PutBucketCorsCommandOutput
         >(command);
@@ -1423,7 +1456,7 @@ export class AwsS3Service implements OnModuleInit {
                 },
             });
 
-        await this.s3Client.send<
+        await this.sendCommand<
             PutBucketOwnershipControlsCommandInput,
             PutBucketOwnershipControlsCommandOutput
         >(command);
@@ -1467,7 +1500,7 @@ export class AwsS3Service implements OnModuleInit {
             });
         }
 
-        await this.s3Client.send<
+        await this.sendCommand<
             PutPublicAccessBlockCommandInput,
             PutPublicAccessBlockCommandOutput
         >(command);

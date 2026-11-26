@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { ThrottlerStorage } from '@nestjs/throttler';
 import { ThrottlerStorageRecord } from '@nestjs/throttler/dist/throttler-storage-record.interface.js';
 import type { Redis } from 'ioredis';
-import { CacheService } from '@common/cache/services/cache.service';
 import { RequestThrottleResponseInvalidException } from '@common/request/exceptions/request.throttle-response-invalid.exception';
 import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
@@ -19,8 +18,7 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
     constructor(
         @Inject(RedisCacheClient) private readonly redis: Redis,
         private readonly configService: ConfigService,
-        private readonly helperStringService: HelperStringService,
-        private readonly cacheService: CacheService
+        private readonly helperStringService: HelperStringService
     ) {
         this.keyPattern = this.configService.get<string>(
             'request.throttle.keyPattern'
@@ -195,17 +193,7 @@ export class RequestThrottleStorageService implements ThrottlerStorage {
                 timeToBlockExpire,
             };
         } catch (error: unknown) {
-            const isConnection = this.cacheService.isConnectionError(error);
-            if (isConnection) {
-                throw new RedisUnavailableException(error);
-            }
-
-            this.logger.warn(
-                { key: throttlerName, err: error },
-                'Throttler storage failed, allowing request'
-            );
-
-            return this.failOpenRecord();
+            throw new RedisUnavailableException(error);
         }
     }
 }

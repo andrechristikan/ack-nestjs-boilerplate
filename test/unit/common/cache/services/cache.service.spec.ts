@@ -21,6 +21,13 @@ describe('CacheService', () => {
     const entry = { id: 'entry-1', name: 'Entry One' };
     const loader = vi.fn<() => Promise<typeof entry | null>>();
     const connectionError = new Error('Connection is closed.');
+    const plainError = new Error(
+        'WRONGTYPE Operation against a key holding the wrong kind of value'
+    );
+    const failures = [
+        ['a plain error', plainError],
+        ['a connection error', connectionError],
+    ] as const;
     const redisUnavailable = {
         module: 'redis',
         statusCode: EnumRedisStatusCodeError.unavailable,
@@ -146,7 +153,7 @@ describe('CacheService', () => {
             );
         });
 
-        it('records a warning, loads, and sets the loaded value without an unlink when the entry is not JSON', async () => {
+        it('records one warning, unlinks the key, loads, and sets the loaded value when the entry is not JSON', async () => {
             redis.get.mockResolvedValue('not-json');
             loader.mockResolvedValue(entry);
 
@@ -158,11 +165,12 @@ describe('CacheService', () => {
             );
 
             expect(result).toEqual(entry);
+            expect(warn).toHaveBeenCalledTimes(1);
             expect(warn).toHaveBeenCalledWith(
                 { key, err: expect.any(Error) },
-                'Cache read failed'
+                'Cache entry failed its schema'
             );
-            expect(redis.unlink).not.toHaveBeenCalled();
+            expect(redis.unlink).toHaveBeenCalledWith(key);
             expect(redis.set).toHaveBeenCalledWith(
                 key,
                 JSON.stringify(entry),
@@ -171,71 +179,52 @@ describe('CacheService', () => {
             );
         });
 
-        it('loads and records a warning when the read fails with a non-connection error', async () => {
-            const error = new Error('wrong kind of value');
-            redis.get.mockRejectedValue(error);
-            loader.mockResolvedValue(entry);
+        it.each(failures)(
+            'throws RedisUnavailableException carrying the error when the read fails with %s',
+            async (_name, error) => {
+                redis.get.mockRejectedValue(error);
 
-            await service.readThrough(key, entrySchema, ttlInMs, loader);
-            const result = await service.readThrough(
-                key,
-                entrySchema,
-                ttlInMs,
-                loader
-            );
+                await expect(
+                    service.readThrough(key, entrySchema, ttlInMs, loader)
+                ).rejects.toMatchObject({
+                    ...redisUnavailable,
+                    rawError: error,
+                });
+                expect(loader).not.toHaveBeenCalled();
+            }
+        );
 
-            expect(result).toEqual(entry);
-            expect(loader).toHaveBeenCalledTimes(2);
-            expect(warn).toHaveBeenCalledTimes(2);
-            expect(warn).toHaveBeenCalledWith(
-                { key, err: error },
-                'Cache read failed'
-            );
-        });
+        it.each(failures)(
+            'throws RedisUnavailableException carrying the error when the set fails with %s',
+            async (_name, error) => {
+                redis.get.mockResolvedValue(null);
+                redis.set.mockRejectedValue(error);
+                loader.mockResolvedValue(entry);
 
-        it('throws RedisUnavailableException carrying the caught error as rawError when the read fails with a connection error', async () => {
-            redis.get.mockRejectedValue(connectionError);
+                await expect(
+                    service.readThrough(key, entrySchema, ttlInMs, loader)
+                ).rejects.toMatchObject({
+                    ...redisUnavailable,
+                    rawError: error,
+                });
+            }
+        );
 
-            await expect(
-                service.readThrough(key, entrySchema, ttlInMs, loader)
-            ).rejects.toMatchObject({
-                ...redisUnavailable,
-                rawError: connectionError,
-            });
-            expect(loader).not.toHaveBeenCalled();
-        });
+        it.each(failures)(
+            'throws RedisUnavailableException carrying the error when the unlink of a corrupt entry fails with %s',
+            async (_name, error) => {
+                redis.get.mockResolvedValue('not-json');
+                redis.unlink.mockRejectedValue(error);
 
-        it('returns the loaded value and records a warning when the set fails with a non-connection error', async () => {
-            redis.get.mockResolvedValue(null);
-            redis.set.mockRejectedValue(new Error('OOM'));
-            loader.mockResolvedValue(entry);
-
-            const result = await service.readThrough(
-                key,
-                entrySchema,
-                ttlInMs,
-                loader
-            );
-
-            expect(result).toEqual(entry);
-            expect(warn).toHaveBeenCalledWith(
-                { key, err: expect.any(Error) },
-                'Cache write failed'
-            );
-        });
-
-        it('throws RedisUnavailableException when the set fails with a connection error', async () => {
-            redis.get.mockResolvedValue(null);
-            redis.set.mockRejectedValue(connectionError);
-            loader.mockResolvedValue(entry);
-
-            await expect(
-                service.readThrough(key, entrySchema, ttlInMs, loader)
-            ).rejects.toMatchObject({
-                ...redisUnavailable,
-                rawError: connectionError,
-            });
-        });
+                await expect(
+                    service.readThrough(key, entrySchema, ttlInMs, loader)
+                ).rejects.toMatchObject({
+                    ...redisUnavailable,
+                    rawError: error,
+                });
+                expect(loader).not.toHaveBeenCalled();
+            }
+        );
 
         it('propagates a loader error unchanged and records no warning', async () => {
             const failure = new Error('database down');
@@ -331,42 +320,23 @@ describe('CacheService', () => {
             expect(redis.set).toHaveBeenCalledTimes(1);
         });
 
-        it('serves the loaded value without a set and records a warning when the lease take fails with a non-connection error', async () => {
-            redis.get.mockResolvedValue(null);
-            redis.set.mockRejectedValue(new Error('READONLY'));
-            loader.mockResolvedValue(entry);
+        it.each(failures)(
+            'throws RedisUnavailableException carrying the error before the loader when the lease take fails with %s',
+            async (_name, error) => {
+                redis.get.mockResolvedValue(null);
+                redis.set.mockRejectedValue(error);
 
-            const result = await service.readThrough(
-                key,
-                entrySchema,
-                ttlInMs,
-                loader,
-                { lease }
-            );
-
-            expect(result).toEqual(entry);
-            expect(redis.eval).not.toHaveBeenCalled();
-            expect(redis.set).toHaveBeenCalledTimes(1);
-            expect(warn).toHaveBeenCalledWith(
-                { key, err: expect.any(Error) },
-                'Cache lease take failed'
-            );
-        });
-
-        it('throws RedisUnavailableException before the loader when the lease take fails with a connection error', async () => {
-            redis.get.mockResolvedValue(null);
-            redis.set.mockRejectedValue(connectionError);
-
-            await expect(
-                service.readThrough(key, entrySchema, ttlInMs, loader, {
-                    lease,
-                })
-            ).rejects.toMatchObject({
-                ...redisUnavailable,
-                rawError: connectionError,
-            });
-            expect(loader).not.toHaveBeenCalled();
-        });
+                await expect(
+                    service.readThrough(key, entrySchema, ttlInMs, loader, {
+                        lease,
+                    })
+                ).rejects.toMatchObject({
+                    ...redisUnavailable,
+                    rawError: error,
+                });
+                expect(loader).not.toHaveBeenCalled();
+            }
+        );
 
         it('does not run the script for a null result', async () => {
             redis.get.mockResolvedValue(null);
@@ -385,26 +355,24 @@ describe('CacheService', () => {
             expect(redis.eval).not.toHaveBeenCalled();
         });
 
-        it('records a warning when the script fails with a non-connection error', async () => {
-            redis.get.mockResolvedValue(null);
-            redis.set.mockResolvedValue('OK');
-            redis.eval.mockRejectedValue(new Error('NOSCRIPT'));
-            loader.mockResolvedValue(entry);
+        it.each(failures)(
+            'throws RedisUnavailableException carrying the error when the script fails with %s',
+            async (_name, error) => {
+                redis.get.mockResolvedValue(null);
+                redis.set.mockResolvedValue('OK');
+                redis.eval.mockRejectedValue(error);
+                loader.mockResolvedValue(entry);
 
-            const result = await service.readThrough(
-                key,
-                entrySchema,
-                ttlInMs,
-                loader,
-                { lease }
-            );
-
-            expect(result).toEqual(entry);
-            expect(warn).toHaveBeenCalledWith(
-                { key, err: expect.any(Error) },
-                'Cache write failed'
-            );
-        });
+                await expect(
+                    service.readThrough(key, entrySchema, ttlInMs, loader, {
+                        lease,
+                    })
+                ).rejects.toMatchObject({
+                    ...redisUnavailable,
+                    rawError: error,
+                });
+            }
+        );
     });
 
     describe('invalidate', () => {
@@ -428,27 +396,17 @@ describe('CacheService', () => {
             expect(redis.unlink).not.toHaveBeenCalled();
         });
 
-        it('throws RedisUnavailableException on a connection error', async () => {
-            redis.unlink.mockRejectedValue(connectionError);
+        it.each(failures)(
+            'throws RedisUnavailableException carrying the error on %s',
+            async (_name, error) => {
+                redis.unlink.mockRejectedValue(error);
 
-            await expect(service.invalidate(keys)).rejects.toMatchObject({
-                ...redisUnavailable,
-                rawError: connectionError,
-            });
-        });
-
-        it('records a warning and resolves on a non-connection error', async () => {
-            redis.unlink.mockRejectedValue(new Error('READONLY'));
-
-            await expect(service.invalidate(keys)).resolves.toBeUndefined();
-            expect(warn).toHaveBeenCalledWith(
-                {
-                    key: 'Entry:entry-1,Entry:Lease:entry-1',
-                    err: expect.any(Error),
-                },
-                'Cache invalidation failed'
-            );
-        });
+                await expect(service.invalidate(keys)).rejects.toMatchObject({
+                    ...redisUnavailable,
+                    rawError: error,
+                });
+            }
+        );
     });
 
     describe('flush', () => {
@@ -460,82 +418,16 @@ describe('CacheService', () => {
             expect(redis.flushdb).toHaveBeenCalledTimes(1);
         });
 
-        it('throws RedisUnavailableException on a connection error', async () => {
-            redis.flushdb.mockRejectedValue(connectionError);
+        it.each(failures)(
+            'throws RedisUnavailableException carrying the error on %s',
+            async (_name, error) => {
+                redis.flushdb.mockRejectedValue(error);
 
-            await expect(service.flush()).rejects.toMatchObject({
-                ...redisUnavailable,
-                rawError: connectionError,
-            });
-        });
-
-        it('records a warning and resolves on a non-connection error', async () => {
-            redis.flushdb.mockRejectedValue(new Error('READONLY'));
-
-            await expect(service.flush()).resolves.toBeUndefined();
-            expect(warn).toHaveBeenCalledWith(
-                { key: 'flushdb', err: expect.any(Error) },
-                'Cache flush failed'
-            );
-        });
-    });
-
-    describe('isConnectionError', () => {
-        it.each([
-            "Stream isn't writeable and enableOfflineQueue options is false",
-            'Command timed out',
-            'Connection is closed.',
-        ])("returns true for the message '%s'", message => {
-            expect(service.isConnectionError(new Error(message))).toBe(true);
-        });
-
-        it.each(['MaxRetriesPerRequestError', 'AbortError'])(
-            "returns true for the name '%s'",
-            name => {
-                const error = new Error('redis failure');
-                error.name = name;
-
-                expect(service.isConnectionError(error)).toBe(true);
+                await expect(service.flush()).rejects.toMatchObject({
+                    ...redisUnavailable,
+                    rawError: error,
+                });
             }
         );
-
-        it.each([
-            'ECONNREFUSED',
-            'ETIMEDOUT',
-            'ECONNRESET',
-            'EPIPE',
-            'ENOTFOUND',
-            'EHOSTUNREACH',
-        ])("returns true for the code '%s'", code => {
-            const error = Object.assign(new Error('socket failure'), { code });
-
-            expect(service.isConnectionError(error)).toBe(true);
-        });
-
-        it('returns false for any other Error', () => {
-            const error = Object.assign(new Error('READONLY'), {
-                code: 'READONLY',
-            });
-
-            expect(service.isConnectionError(error)).toBe(false);
-        });
-
-        it('returns false for a SyntaxError', () => {
-            expect(
-                service.isConnectionError(new SyntaxError('Unexpected token'))
-            ).toBe(false);
-        });
-
-        it('returns false for a plain object carrying a connection code', () => {
-            expect(service.isConnectionError({ code: 'ECONNREFUSED' })).toBe(
-                false
-            );
-        });
-
-        it('returns false for a string', () => {
-            expect(service.isConnectionError('Connection is closed.')).toBe(
-                false
-            );
-        });
     });
 });

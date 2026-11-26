@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import type { IDocResponseEntry } from '@common/doc/interfaces/doc.interface';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { EnumHelperStatusCodeError } from '@common/helper/enums/helper.status-code.enum';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
@@ -60,6 +61,16 @@ export const DocGlobalErrors: IDocResponseEntry[] = [
         httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
         statusCode: EnumRedisStatusCodeError.unavailable,
         messagePath: 'redis.error.unavailable',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumDatabaseStatusCodeError.unavailable,
+        messagePath: 'database.error.unavailable',
+    },
+    {
+        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+        statusCode: EnumAwsStatusCodeError.unavailable,
+        messagePath: 'aws.error.unavailable',
     },
     {
         httpStatus: HttpStatus.NOT_IMPLEMENTED,

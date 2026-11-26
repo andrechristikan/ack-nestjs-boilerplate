@@ -11,8 +11,14 @@ import { RequestStoreService } from '@common/request/services/request.store.serv
 import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import { TestUnitKitConfigValues } from '@test/unit/helpers/test.unit.kit.helper';
-import { extractDatabaseExtension } from '@test/unit/helpers/test.unit.database.helper';
+import {
+    extractDatabaseExtension,
+    extractDatabaseUnavailableExtension,
+} from '@test/unit/helpers/test.unit.database.helper';
 import { EnumDatabaseAuditField } from '@common/database/enums/database.enum';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 
 describe('DatabaseExtensionFactory', () => {
     const requestStoreService: MockProxy<RequestStoreService> =
@@ -37,6 +43,7 @@ describe('DatabaseExtensionFactory', () => {
                     useValue: requestStoreService,
                 },
                 HelperDateService,
+                DatabaseUtil,
                 {
                     provide: ConfigService,
                     useValue: buildConfigService(TestUnitKitConfigValues),
@@ -383,6 +390,81 @@ describe('DatabaseExtensionFactory', () => {
                     },
                 });
             });
+        });
+    });
+
+    describe('buildUnavailable', () => {
+        const outage = new Prisma.PrismaClientKnownRequestError(
+            'Raw query failed. Server selection timeout: No available servers.',
+            { code: 'P2010', clientVersion: '6.19.0' }
+        );
+
+        it('returns the resolved query value', async () => {
+            const ext = extractDatabaseUnavailableExtension(factory);
+            const query = vi.fn().mockResolvedValue('rows');
+            const args = { where: { id: '1' } };
+
+            const result = await ext.query.$allOperations({
+                model: 'ApiKey',
+                operation: 'findFirst',
+                args,
+                query,
+            });
+
+            expect(result).toBe('rows');
+            expect(query).toHaveBeenCalledWith(args);
+        });
+
+        it('throws DatabaseUnavailableException carrying the outage error', async () => {
+            const ext = extractDatabaseUnavailableExtension(factory);
+            const query = vi.fn().mockRejectedValue(outage);
+
+            const rejection = ext.query.$allOperations({
+                model: 'ApiKey',
+                operation: 'findFirst',
+                args: {},
+                query,
+            });
+
+            await expect(rejection).rejects.toBeInstanceOf(
+                DatabaseUnavailableException
+            );
+            await expect(rejection).rejects.toMatchObject({
+                module: 'database',
+                statusCode: EnumDatabaseStatusCodeError.unavailable,
+                rawError: outage,
+            });
+        });
+
+        it('throws DatabaseUnavailableException for a raw command with no model', async () => {
+            const ext = extractDatabaseUnavailableExtension(factory);
+            const query = vi.fn().mockRejectedValue(outage);
+
+            await expect(
+                ext.query.$allOperations({
+                    operation: '$runCommandRaw',
+                    args: { ping: 1 },
+                    query,
+                })
+            ).rejects.toBeInstanceOf(DatabaseUnavailableException);
+        });
+
+        it('rethrows any other rejection as the same instance', async () => {
+            const ext = extractDatabaseUnavailableExtension(factory);
+            const error = new Prisma.PrismaClientKnownRequestError(
+                'Unique constraint failed',
+                { code: 'P2002', clientVersion: '6.19.0' }
+            );
+            const query = vi.fn().mockRejectedValue(error);
+
+            await expect(
+                ext.query.$allOperations({
+                    model: 'ApiKey',
+                    operation: 'create',
+                    args: {},
+                    query,
+                })
+            ).rejects.toBe(error);
         });
     });
 

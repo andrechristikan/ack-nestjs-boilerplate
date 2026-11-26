@@ -5,8 +5,6 @@ import { AppRefusalLogStatuses } from '@app/constants/app.constant';
 import { AppBaseException } from '@app/exceptions/app.base.exception';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { MessageService } from '@common/message/services/message.service';
-import { CacheService } from '@common/cache/services/cache.service';
-import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 import { SentryService } from '@common/sentry/services/sentry.service';
 import type { ResponseMetadataDto } from '@common/response/dtos/response.metadata.dto';
 import type { ResponseErrorDto } from '@common/response/dtos/response.error.dto';
@@ -19,30 +17,15 @@ export class AppGeneralFilter implements ExceptionFilter {
     constructor(
         private readonly messageService: MessageService,
         private readonly responseMetadataService: ResponseMetadataService,
-        private readonly sentryService: SentryService,
-        private readonly cacheService: CacheService
+        private readonly sentryService: SentryService
     ) {}
 
-    private map(error: unknown): AppBaseException | null {
-        const isConnectionError = this.cacheService.isConnectionError(error);
-
-        return isConnectionError ? new RedisUnavailableException(error) : null;
-    }
-
     private resolve(exception: unknown): AppBaseException {
-        if (exception instanceof AppUnknownException) {
-            const mapped = this.map(exception.rawError);
-
-            return mapped ?? exception;
-        }
-
         if (exception instanceof AppBaseException) {
             return exception;
         }
 
-        const mapped = this.map(exception);
-
-        return mapped ?? new AppUnknownException(exception);
+        return new AppUnknownException(exception);
     }
 
     private getReported(exception: unknown): unknown {

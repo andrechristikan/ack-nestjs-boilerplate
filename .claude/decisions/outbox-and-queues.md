@@ -244,11 +244,12 @@ Rule: `notify.md`; `notification.md`, Fan-out and send.
 - One result kind and template per process: a template per job, and a new job adds a kind.
 - A status the template derives from counts: the code would decide success or failure per process.
 
-### The term-policy broadcast is delivered at most once per recipient
+### The term-policy broadcast is delivered at most once per recipient, its unknown outcome kept on an SES outage
 
-Rule: `notification.md`, Term-policy publish.
+Rule: `notification.md`, Term-policy publish; `exceptions.md`, Who throws.
 
 - At-least-once, releasing the claim on an unknown SES outcome: a duplicate legal notice to every user costs more than one missed mail, which a resend covers.
+- Releasing the claim and retrying on an SES outage: a timeout may have delivered, so a retry risks a double send.
 
 ### The term-policy module owns `TermPolicyRecipient`, the fan-out, and the `publish` job
 

@@ -11,4 +11,10 @@ export const DatabaseUniqueConstraintCode = 'P2002';
 export const DatabaseRecordNotFoundCode = 'P2025';
 
 /** @public */
+export const DatabaseRawQueryFailedCode = 'P2010';
+
+/** @public */
+export const DatabaseServerSelectionTimeoutMessage = 'Server selection timeout';
+
+/** @public */
 export const DatabaseUrlCensoredValue = '***';

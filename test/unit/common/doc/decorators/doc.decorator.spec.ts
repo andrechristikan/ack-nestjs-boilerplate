@@ -1,6 +1,7 @@
 import { HttpStatus } from '@nestjs/common';
 import { z } from 'zod';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { EnumRequestStatusCodeError } from '@common/request/enums/request.status-code.enum';
 import { EnumRedisStatusCodeError } from '@common/redis/enums/redis.status-code.enum';
 import { Doc, DocErrors } from '@common/doc/decorators/doc.decorator';
@@ -329,6 +330,46 @@ describe('doc.decorator', () => {
                         httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
                         statusCode: EnumRedisStatusCodeError.unavailable,
                         messagePath: 'redis.error.unavailable',
+                    }),
+                ])
+            );
+        });
+
+        it('documents the database kit error at the status its exception answers', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+
+            Doc()({}, 'exampleMethod', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                        statusCode: EnumDatabaseStatusCodeError.unavailable,
+                        messagePath: 'database.error.unavailable',
+                    }),
+                ])
+            );
+        });
+
+        it('documents the aws kit error at the status its exception answers', () => {
+            const descriptor: IMethodDescriptor = { value: vi.fn() };
+
+            Doc()({}, 'exampleMethod', descriptor);
+
+            const stored = Reflect.getMetadata(
+                DocResponseEntryMetaKey,
+                descriptor.value
+            ) as IDocResponseEntry[];
+            expect(stored).toEqual(
+                expect.arrayContaining([
+                    expect.objectContaining({
+                        httpStatus: HttpStatus.SERVICE_UNAVAILABLE,
+                        statusCode: EnumAwsStatusCodeError.unavailable,
+                        messagePath: 'aws.error.unavailable',
                     }),
                 ])
             );

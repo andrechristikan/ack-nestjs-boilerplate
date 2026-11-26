@@ -7,6 +7,7 @@
         "s3IterationLimitExceeded": "The storage operation exceeded its iteration limit.",
         "sesTemplateBodyRequired": "An email template needs an HTML or plain-text body.",
         "s3NotConfigured": "File storage is not configured.",
-        "sesNotConfigured": "Email delivery is not configured."
+        "sesNotConfigured": "Email delivery is not configured.",
+        "unavailable": "The service is temporarily unavailable. Please try again later."
     }
 }

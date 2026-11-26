@@ -46,12 +46,25 @@ Rule: `repository.md`, Writes; `exceptions.md`, Who throws; `transaction.md`, Qu
 - A kit retry helper `withUniqueRetry`: the transaction shape stays the use case's.
 - A module exhaustion exception per field: no client acts on it.
 
-### `AppGeneralFilter` maps no database error
+### `AppGeneralFilter` maps no dependency error
 
 Rule: `filter.md`.
 
-- Keeping 400 for an invalid id and 503 for an unreachable database: reads and writes would answer two ways.
+- Mapping a dependency error in the filter: the filter translates HTTP-level failures, and the kit owning the client knows its errors.
 - Mapping only wrapped errors: a raw error and a wrapped one of the same failure would answer two ways.
+
+### A database outage converts to `DatabaseUnavailableException` in one client query extension
+
+Rule: `database.md`.
+
+- A catch in every repository read: a new read forgetting it answers 500, and reads and writes would answer two ways.
+
+### The database outage signal is P2010 with a server-selection timeout
+
+Rule: `database.md`; `transaction.md`, Access.
+
+- Every database error no contract names answering 503: a bug answers "try again later", and clients retry a request that cannot pass.
+- The P1001, P1002, P1008, P1017, and P2024 codes: a probe on Prisma 6.19.x raised none of them for an outage.
 
 ### Every `ObjectId` field carries a relation
 
@@ -174,11 +187,12 @@ Rule: `cache.md`.
 - Redis as the session authority: a Redis error after a login or refresh commit revokes the committed session or signs the user out.
 - Write-through as the consistency mechanism: a failed write-through leaves old data, while a failed delete leaves it only until the TTL.
 
-### MongoDB is required; Redis is required to boot and for the queue; the cache falls back to the database and the rate limit to memory
+### MongoDB and the cache Redis are required, and an outage answers 503 from the kit owning the client
 
-Rule: `cache.md` and `database.md`.
+Rule: `discipline.md`, Hard rules; `cache.md`; `database.md`; `exceptions.md`, The hierarchy.
 
-- 503 on a cache read or from the rate limit while Redis is down: a side resource takes every request down with it.
+- The cache falling back to the database and the rate limit to memory: Redis is a required dependency, and the fallback is a second path no outage exercises.
+- A classifier over Redis errors: every Redis error means the required dependency failed.
 - No rate limit while Redis is down: the API is unbounded for the whole outage.
 - Mongo-based rate limiting: it costs one write per request on every route, landing while MongoDB already carries the uncached reads.
 - Fail-open on a MongoDB outage: MongoDB is always on, so its outage answers an error, fast.
@@ -211,7 +225,7 @@ Rule: `cache.md`.
 
 Rule: `config.md`; the API key: `guards.md`, Decorator order.
 
-- An informational indicator: without Redis the queue stops and the API runs on its fallbacks, an outage a monitor has to see.
+- An informational indicator: without Redis the queue stops and the API answers 503, an outage a monitor has to see.
 - An unauthenticated readiness route: every health route stays behind an API key.
 - 200 with the status in the body only: a monitor reads the status code.
 
@@ -234,7 +248,14 @@ Rule: `guards.md`, Guards.
 - A `none` relation filter on the acceptances: its `$lookup` may scan every acceptance of a policy.
 - A cache of the published policies: a key, an effect, and an invalidation job for one small indexed read.
 
-## Outage logging
+## Outages
+
+### Each kit owns one unavailable exception, shared by its clients
+
+Rule: `exceptions.md`, The hierarchy and Who throws.
+
+- One exception per client: S3 and SES share the `aws` kit, so two classes would carry two status codes and two messages for one answer.
+- One application-wide exception: the response stops naming the dependency.
 
 ### Every 5xx and every warning an outage causes is logged, and every 5xx reported, with no window
 

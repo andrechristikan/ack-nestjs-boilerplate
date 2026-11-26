@@ -195,6 +195,50 @@ describe('DatabaseUtil', () => {
         });
     });
 
+    describe('isUnavailableError', () => {
+        it('returns true for a P2010 error with the server selection timeout text', () => {
+            const error = new Prisma.PrismaClientKnownRequestError(
+                'Raw query failed. Server selection timeout: No available servers.',
+                { code: 'P2010', clientVersion: '6.19.0' }
+            );
+
+            expect(util.isUnavailableError(error)).toBe(true);
+        });
+
+        it('returns false for a P2010 error with another message', () => {
+            const error = new Prisma.PrismaClientKnownRequestError(
+                'Raw query failed. Code: 40324, Message: Unrecognized pipeline stage name',
+                { code: 'P2010', clientVersion: '6.19.0' }
+            );
+
+            expect(util.isUnavailableError(error)).toBe(false);
+        });
+
+        it('returns false for a P2002 error', () => {
+            const error = new Prisma.PrismaClientKnownRequestError(
+                'Server selection timeout',
+                { code: 'P2002', clientVersion: '6.19.0' }
+            );
+
+            expect(util.isUnavailableError(error)).toBe(false);
+        });
+
+        it('returns false for a Prisma validation error', () => {
+            const error = new Prisma.PrismaClientValidationError(
+                'Server selection timeout',
+                { clientVersion: '6.19.0' }
+            );
+
+            expect(util.isUnavailableError(error)).toBe(false);
+        });
+
+        it('returns false for a plain error', () => {
+            const error = new Error('Server selection timeout');
+
+            expect(util.isUnavailableError(error)).toBe(false);
+        });
+    });
+
     describe('toPlainObject', () => {
         it('deep-clones the object into a distinct, structurally equal instance', () => {
             const data = { a: 1, nested: { b: 2 } };

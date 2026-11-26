@@ -1,5 +1,10 @@
-import { SESClient } from '@aws-sdk/client-ses';
+import {
+    MessageRejected,
+    SESClient,
+    SESServiceException,
+} from '@aws-sdk/client-ses';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsUnavailableException } from '@common/aws/exceptions/aws.unavailable.exception';
 import type {
     IAwsSesSend,
     IAwsSesSendBulk,
@@ -28,6 +33,20 @@ describe('AwsSesService', () => {
         'aws.ses.maxAttempts': 1,
         'aws.ses.timeoutInMs': 30000,
     };
+
+    const messageRejectedError = new MessageRejected({
+        $metadata: {},
+        message: 'Message rejected',
+    });
+    const serverFaultError = new SESServiceException({
+        name: 'ServiceUnavailable',
+        $fault: 'server',
+        $metadata: {},
+        message: 'Service unavailable',
+    });
+    const networkError = Object.assign(new Error('connect ECONNREFUSED'), {
+        code: 'ECONNREFUSED',
+    });
 
     beforeEach(() => {
         vi.mocked(SESClient).mockImplementation(function AwsSesClientDouble() {
@@ -149,6 +168,16 @@ describe('AwsSesService', () => {
                 {}
             );
             send.mockRejectedValueOnce(new Error('down'));
+
+            await expect(service.checkConnection()).resolves.toBe(false);
+        });
+
+        it('returns false when the client reports a server fault', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(serverFaultError);
 
             await expect(service.checkConnection()).resolves.toBe(false);
         });
@@ -441,6 +470,50 @@ describe('AwsSesService', () => {
                 })
             );
         });
+
+        it('rejects with the same instance on a client fault', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(messageRejectedError);
+
+            await expect(service.send(payload)).rejects.toBe(
+                messageRejectedError
+            );
+        });
+
+        it('throws AwsUnavailableException carrying a server fault', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            const promise = service.send(payload);
+
+            await expect(promise).rejects.toBeInstanceOf(
+                AwsUnavailableException
+            );
+            await expect(promise).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: serverFaultError,
+            });
+        });
+
+        it('throws AwsUnavailableException carrying a network error', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(networkError);
+
+            await expect(service.send(payload)).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: networkError,
+            });
+        });
     });
 
     describe('sendBulk', () => {
@@ -548,6 +621,44 @@ describe('AwsSesService', () => {
                     }),
                 })
             );
+        });
+
+        it('rejects with the same instance on a client fault', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(messageRejectedError);
+
+            await expect(service.sendBulk(payload)).rejects.toBe(
+                messageRejectedError
+            );
+        });
+
+        it('throws AwsUnavailableException carrying a server fault', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(service.sendBulk(payload)).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: serverFaultError,
+            });
+        });
+
+        it('throws AwsUnavailableException carrying a network error', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(networkError);
+
+            await expect(service.sendBulk(payload)).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: networkError,
+            });
         });
     });
 });

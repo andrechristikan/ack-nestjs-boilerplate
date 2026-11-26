@@ -1,6 +1,6 @@
 import { Prisma } from '@generated/prisma-client/client';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
-import type { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppBaseException } from '@app/exceptions/app.base.exception';
 import {
     DatabaseRecordNotFoundCode,
     DatabaseUniqueConstraintCode,
@@ -15,8 +15,12 @@ export abstract class DatabaseRepositoryBase {
     protected abstract readonly databaseUtil: DatabaseUtil;
     protected abstract readonly errorContract: IDatabaseErrorContract;
 
-    /** Returns, never throws: a new instance of the class the contract names for the error's code or its P2002 field, else `AppUnknownException` carrying the error. */
+    /** Returns, never throws: an `AppBaseException` it receives, as is; else a new instance of the class the contract names for the error's code or its P2002 field; else `AppUnknownException` carrying the error. */
     protected toException(error: unknown): AppBaseException {
+        if (error instanceof AppBaseException) {
+            return error;
+        }
+
         const recordNotFound = this.errorContract[DatabaseRecordNotFoundCode];
         if (
             recordNotFound &&

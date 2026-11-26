@@ -6,12 +6,7 @@ import type {
     ICacheReadThroughOptions,
 } from '@common/cache/interfaces/cache.interface';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
-import {
-    RedisCacheClient,
-    RedisConnectionErrorCodes,
-    RedisConnectionErrorMessages,
-    RedisConnectionErrorNames,
-} from '@common/redis/constants/redis.constant';
+import { RedisCacheClient } from '@common/redis/constants/redis.constant';
 import { RedisUnavailableException } from '@common/redis/exceptions/redis.unavailable.exception';
 
 @Injectable()
@@ -27,29 +22,40 @@ export class CacheService {
         key: string,
         schema: ZodType<T>
     ): Promise<T | null> {
+        let cached: string | null;
         try {
-            const cached = await this.redis.get(key);
-            if (cached === null) {
-                return null;
-            }
+            cached = await this.redis.get(key);
+        } catch (error: unknown) {
+            throw new RedisUnavailableException(error);
+        }
 
+        if (cached === null) {
+            return null;
+        }
+
+        let failure: unknown;
+        try {
             const parsed = schema.safeParse(JSON.parse(cached));
             if (parsed.success) {
                 return parsed.data;
             }
 
-            this.logger.warn(
-                { key, err: parsed.error },
-                'Cache entry failed its schema'
-            );
-            await this.redis.unlink(key);
-
-            return null;
+            failure = parsed.error;
         } catch (error: unknown) {
-            this.handleError(key, error, 'Cache read failed');
-
-            return null;
+            failure = error;
         }
+
+        this.logger.warn(
+            { key, err: failure },
+            'Cache entry failed its schema'
+        );
+        try {
+            await this.redis.unlink(key);
+        } catch (error: unknown) {
+            throw new RedisUnavailableException(error);
+        }
+
+        return null;
     }
 
     private async writeEntry<T>(
@@ -60,14 +66,11 @@ export class CacheService {
         try {
             await this.redis.set(key, JSON.stringify(value), 'PX', ttlInMs);
         } catch (error: unknown) {
-            this.handleError(key, error, 'Cache write failed');
+            throw new RedisUnavailableException(error);
         }
     }
 
-    private async takeLease(
-        key: string,
-        lease: ICacheLease
-    ): Promise<string | null> {
+    private async takeLease(lease: ICacheLease): Promise<string | null> {
         const token = this.helperStringService.random(32);
         try {
             const reply = await this.redis.set(
@@ -80,9 +83,7 @@ export class CacheService {
 
             return reply === 'OK' ? token : null;
         } catch (error: unknown) {
-            this.handleError(key, error, 'Cache lease take failed');
-
-            return null;
+            throw new RedisUnavailableException(error);
         }
     }
 
@@ -113,20 +114,11 @@ export class CacheService {
                 `${ttlInMs}`
             );
         } catch (error: unknown) {
-            this.handleError(key, error, 'Cache write failed');
-        }
-    }
-
-    private handleError(key: string, error: unknown, message: string): void {
-        const isConnection = this.isConnectionError(error);
-        if (isConnection) {
             throw new RedisUnavailableException(error);
         }
-
-        this.logger.warn({ key, err: error }, message);
     }
 
-    /** The cached value when it passes the schema, else the loader's result, stored best-effort unless null; a connection error throws RedisUnavailableException. */
+    /** The cached value when it passes the schema, else the loader's result, stored unless it is null or another reader holds the lease; any Redis error throws RedisUnavailableException. */
     async readThrough<T, TLoaded extends T | null>(
         key: string,
         schema: ZodType<T>,
@@ -150,7 +142,7 @@ export class CacheService {
         }
 
         // Sequential by design: side effects whose order is part of the contract (the lease is taken before the read it guards)
-        const token = await this.takeLease(key, lease);
+        const token = await this.takeLease(lease);
         const value = await loader();
         if (value !== null && token !== null) {
             await this.writeLeasedEntry(key, value, ttlInMs, lease, token);
@@ -159,7 +151,7 @@ export class CacheService {
         return value;
     }
 
-    /** Deletes the keys; a connection error throws RedisUnavailableException, any other error logs one warn. */
+    /** Deletes the keys; any Redis error throws RedisUnavailableException. */
     async invalidate(keys: string[]): Promise<void> {
         if (keys.length === 0) {
             return;
@@ -168,31 +160,16 @@ export class CacheService {
         try {
             await this.redis.unlink(...keys);
         } catch (error: unknown) {
-            const warnKey = keys.join(',');
-            this.handleError(warnKey, error, 'Cache invalidation failed');
+            throw new RedisUnavailableException(error);
         }
     }
 
-    /** Empties the cache connection's database; a connection error throws RedisUnavailableException, any other error logs one warn. */
+    /** Empties the cache connection's database; any Redis error throws RedisUnavailableException. */
     async flush(): Promise<void> {
         try {
             await this.redis.flushdb();
         } catch (error: unknown) {
-            this.handleError('flushdb', error, 'Cache flush failed');
+            throw new RedisUnavailableException(error);
         }
-    }
-
-    isConnectionError(error: unknown): boolean {
-        if (!(error instanceof Error)) {
-            return false;
-        }
-
-        return (
-            RedisConnectionErrorMessages.has(error.message) ||
-            RedisConnectionErrorNames.has(error.name) ||
-            ('code' in error &&
-                typeof error.code === 'string' &&
-                RedisConnectionErrorCodes.has(error.code))
-        );
     }
 }

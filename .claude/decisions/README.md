@@ -3,7 +3,7 @@
 Each entry names a choice a rule in `.claude/rules/`, or a harness file, carries and gives the reason each plausible alternative was rejected.
 
 - [Layering][ref-decisions-layering]: layers and modules, naming, lint and tests, the logging line shape
-- [Database and cache][ref-decisions-database-and-cache]: database, concurrency, cache and Redis, outage logging
+- [Database and cache][ref-decisions-database-and-cache]: database, concurrency, cache and Redis, outages
 - [Outbox and queues][ref-decisions-outbox-and-queues]: outbox, queues, notification jobs
 - [HTTP][ref-decisions-http]: routes and responses, response headers, files and import
 - [Configuration][ref-decisions-configuration]: environment keys, constants, feature flags, optional integrations, Sentry

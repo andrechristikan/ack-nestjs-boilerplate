@@ -4,7 +4,9 @@ import type { MockProxy } from 'vitest-mock-extended';
 import { DatabaseClientFactory } from '@common/database/factories/database.client.factory';
 import { DatabaseService } from '@common/database/services/database.service';
 import type { IDatabaseClient } from '@common/database/interfaces/database.client.interface';
-import type { Prisma } from '@generated/prisma-client/client';
+import { Prisma } from '@generated/prisma-client/client';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import { EnumDatabaseStatusCodeError } from '@common/database/enums/database.status-code.enum';
 import { createDatabaseService } from '@test/unit/helpers/test.unit.database.helper';
 import { buildDeferred } from '@test/unit/helpers/test.unit.deferred.helper';
 
@@ -181,6 +183,56 @@ describe('DatabaseService', () => {
                 expect.any(Function),
                 options
             );
+        });
+
+        it('throws DatabaseUnavailableException carrying the outage error and runs no after-commit callback', async () => {
+            const outage = new Prisma.PrismaClientKnownRequestError(
+                'Raw query failed. Server selection timeout: No available servers.',
+                { code: 'P2010', clientVersion: '6.19.0' }
+            );
+            client.$transaction.mockRejectedValueOnce(outage);
+            const after = vi.fn().mockResolvedValue(undefined);
+            const body = vi
+                .fn()
+                .mockImplementation(async (tx: IDatabaseClient) => {
+                    service.afterCommit(tx, after);
+                });
+
+            const rejection = service.withTransaction(body);
+
+            await expect(rejection).rejects.toBeInstanceOf(
+                DatabaseUnavailableException
+            );
+            await expect(rejection).rejects.toMatchObject({
+                module: 'database',
+                statusCode: EnumDatabaseStatusCodeError.unavailable,
+                rawError: outage,
+            });
+            expect(after).not.toHaveBeenCalled();
+        });
+
+        it('rejects with the same instance for another Prisma error', async () => {
+            const error = new Prisma.PrismaClientKnownRequestError(
+                'Unique constraint failed',
+                { code: 'P2002', clientVersion: '6.19.0' }
+            );
+            client.$transaction.mockRejectedValueOnce(error);
+
+            await expect(
+                service.withTransaction(vi.fn() as never)
+            ).rejects.toBe(error);
+        });
+
+        it('rejects with the same instance for an exception the callback raised', async () => {
+            const exception = new DatabaseUnavailableException();
+            client.$transaction.mockImplementationOnce(async (fn: unknown) =>
+                (fn as (tx: IDatabaseClient) => Promise<unknown>)(
+                    mock<IDatabaseClient>()
+                )
+            );
+            const body = vi.fn().mockRejectedValue(exception);
+
+            await expect(service.withTransaction(body)).rejects.toBe(exception);
         });
     });
 

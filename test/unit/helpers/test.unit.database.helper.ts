@@ -60,6 +60,34 @@ export function extractDatabaseExtension(
     }) as IExtension;
 }
 
+export interface IUnavailableExtensionQueryArgs {
+    model?: string;
+    operation: string;
+    args: unknown;
+    query: (args: unknown) => Promise<unknown>;
+}
+
+export interface IUnavailableExtension {
+    query: {
+        $allOperations: (
+            input: IUnavailableExtensionQueryArgs
+        ) => Promise<unknown>;
+    };
+}
+
+/** The stub client's $extends returns its argument, so the unavailable extension's hook is reachable. */
+export function extractDatabaseUnavailableExtension(
+    factory: DatabaseExtensionFactory
+): IUnavailableExtension {
+    const applyExtension = factory.buildUnavailable() as unknown as (client: {
+        $extends: (ext: unknown) => unknown;
+    }) => unknown;
+
+    return applyExtension({
+        $extends: (ext: unknown) => ext,
+    }) as IUnavailableExtension;
+}
+
 export async function createDatabaseService(
     configValues: Record<string, boolean | number>,
     databaseClientFactory: MockProxy<DatabaseClientFactory>,

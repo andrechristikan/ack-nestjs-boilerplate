@@ -33,8 +33,11 @@ export class DatabaseClientFactory extends PrismaClient<
     }
 
     create(): IDatabaseClient {
-        const extension = this.databaseExtensionFactory.build();
+        const audit = this.databaseExtensionFactory.build();
+        const unavailable = this.databaseExtensionFactory.buildUnavailable();
 
-        return this.$extends(extension);
+        const audited = this.$extends(audit);
+
+        return audited.$extends(unavailable);
     }
 }

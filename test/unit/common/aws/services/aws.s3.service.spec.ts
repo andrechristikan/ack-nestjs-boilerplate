@@ -1,11 +1,17 @@
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { NotFound, S3Client } from '@aws-sdk/client-s3';
+import {
+    NoSuchKey,
+    NotFound,
+    S3Client,
+    S3ServiceException,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3MaxPartNumber } from '@common/aws/constants/aws.constant';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
+import { AwsUnavailableException } from '@common/aws/exceptions/aws.unavailable.exception';
 import type {
     IAwsS3,
     IAwsS3ConfigBucket,
@@ -95,6 +101,25 @@ describe('AwsS3Service', () => {
     };
 
     const notFoundError = new NotFound({ $metadata: {}, message: 'Not Found' });
+    const noSuchKeyError = new NoSuchKey({
+        $metadata: {},
+        message: 'No such key',
+    });
+    const accessDeniedError = new S3ServiceException({
+        name: 'AccessDenied',
+        $fault: 'client',
+        $metadata: {},
+        message: 'Access Denied',
+    });
+    const serverFaultError = new S3ServiceException({
+        name: 'InternalError',
+        $fault: 'server',
+        $metadata: {},
+        message: 'Internal Error',
+    });
+    const networkError = Object.assign(new Error('connect ECONNREFUSED'), {
+        code: 'ECONNREFUSED',
+    });
 
     beforeEach(() => {
         vi.mocked(S3Client).mockImplementation(function AwsS3ClientDouble() {
@@ -262,6 +287,17 @@ describe('AwsS3Service', () => {
 
             await expect(service.checkConnection()).resolves.toBe(false);
         });
+
+        it('returns false when the client reports a server fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(service.checkConnection()).resolves.toBe(false);
+        });
     });
 
     describe('checkBucket', () => {
@@ -288,6 +324,22 @@ describe('AwsS3Service', () => {
             await expect(
                 service.checkBucket({ access: EnumAwsS3Accessibility.public })
             ).resolves.toBe(true);
+        });
+
+        it('throws AwsUnavailableException on a server fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(
+                service.checkBucket({ access: EnumAwsS3Accessibility.public })
+            ).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: serverFaultError,
+            });
         });
     });
 
@@ -358,6 +410,57 @@ describe('AwsS3Service', () => {
             });
 
             expect(result?.size).toBe(0);
+        });
+
+        it('rejects with the same instance on a client fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(notFoundError);
+
+            await expect(
+                service.checkItem('users/avatar.jpg', {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toBe(notFoundError);
+        });
+
+        it('throws AwsUnavailableException carrying a server fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(
+                service.checkItem('users/avatar.jpg', {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: serverFaultError,
+            });
+        });
+
+        it('throws AwsUnavailableException carrying a network error', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(networkError);
+
+            await expect(
+                service.checkItem('users/avatar.jpg', {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: networkError,
+            });
         });
     });
 
@@ -607,6 +710,61 @@ describe('AwsS3Service', () => {
                 })
             ).resolves.toEqual(Buffer.alloc(0));
         });
+
+        it('throws AwsUnavailableException carrying a network error', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(networkError);
+
+            const promise = service.getItemBytes('users/avatar.jpg', 4100, {
+                access: EnumAwsS3Accessibility.public,
+            });
+
+            await expect(promise).rejects.toBeInstanceOf(
+                AwsUnavailableException
+            );
+            await expect(promise).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: networkError,
+            });
+        });
+
+        it('throws AwsUnavailableException carrying a server fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(
+                service.getItemBytes('users/avatar.jpg', 4100, {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: serverFaultError,
+            });
+        });
+
+        it('rejects with the same instance on a client fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(noSuchKeyError);
+
+            await expect(
+                service.getItemBytes('users/avatar.jpg', 4100, {
+                    access: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toBe(noSuchKeyError);
+        });
     });
 
     describe('putItem', () => {
@@ -741,14 +899,33 @@ describe('AwsS3Service', () => {
             );
         });
 
+        it('throws AwsUnavailableException when the head check hits an outage', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(
+                service.putItem(
+                    { key: 'users/avatar.jpg', size: file.length, file },
+                    { access: EnumAwsS3Accessibility.public }
+                )
+            ).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: serverFaultError,
+            });
+            expect(send).toHaveBeenCalledTimes(1);
+        });
+
         it('wraps an unrelated head-check error in AppUnknownException', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
                 {},
                 s3Doubles
             );
-            const error = new Error('network down');
-            send.mockRejectedValueOnce(error);
+            send.mockRejectedValueOnce(accessDeniedError);
 
             await expect(
                 service.putItem(
@@ -758,7 +935,7 @@ describe('AwsS3Service', () => {
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                rawError: error,
+                rawError: accessDeniedError,
             });
         });
 
@@ -1108,8 +1285,7 @@ describe('AwsS3Service', () => {
                 {},
                 s3Doubles
             );
-            const error = new Error('network down');
-            send.mockRejectedValueOnce(error);
+            send.mockRejectedValueOnce(accessDeniedError);
 
             await expect(
                 service.createMultiPart(
@@ -1120,7 +1296,7 @@ describe('AwsS3Service', () => {
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                rawError: error,
+                rawError: accessDeniedError,
             });
         });
 
@@ -1463,8 +1639,7 @@ describe('AwsS3Service', () => {
                 {},
                 s3Doubles
             );
-            const error = new Error('network down');
-            send.mockRejectedValueOnce(error);
+            send.mockRejectedValueOnce(accessDeniedError);
 
             await expect(
                 service.presignPutItem(dto, {
@@ -1473,7 +1648,7 @@ describe('AwsS3Service', () => {
             ).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
-                rawError: error,
+                rawError: accessDeniedError,
             });
         });
 
@@ -1717,6 +1892,60 @@ describe('AwsS3Service', () => {
             });
         });
 
+        it('rejects with the same instance on a client fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(noSuchKeyError);
+
+            await expect(
+                service.copyItem(source, 'archive', {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toBe(noSuchKeyError);
+        });
+
+        it('throws AwsUnavailableException carrying a server fault', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(
+                service.copyItem(source, 'archive', {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: serverFaultError,
+            });
+        });
+
+        it('throws AwsUnavailableException carrying a network error', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockRejectedValueOnce(networkError);
+
+            await expect(
+                service.copyItem(source, 'archive', {
+                    accessFrom: EnumAwsS3Accessibility.private,
+                    accessTo: EnumAwsS3Accessibility.public,
+                })
+            ).rejects.toMatchObject({
+                statusCode: EnumAwsStatusCodeError.unavailable,
+                rawError: networkError,
+            });
+        });
+
         it('encodes every segment of the source key in the copy source', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
@@ -1819,15 +2048,14 @@ describe('AwsS3Service', () => {
                 {},
                 s3Doubles
             );
-            const copyError = new Error('copy failed');
             send.mockResolvedValueOnce({});
-            send.mockRejectedValueOnce(copyError);
+            send.mockRejectedValueOnce(accessDeniedError);
 
             await expect(
                 service.copyItems(sources, 'archive', {
                     access: EnumAwsS3Accessibility.public,
                 })
-            ).rejects.toBe(copyError);
+            ).rejects.toBe(accessDeniedError);
         });
 
         it('returns every copied item when all copies succeed', async () => {

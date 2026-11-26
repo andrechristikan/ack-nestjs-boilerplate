@@ -58,11 +58,12 @@ Rule: `config.md`, Files.
 - A static `import '@instrument'` above the application imports: in ESM the whole static graph loads before the instrument module runs, so the instrumented libraries are loaded unpatched.
 - One bootstrap file per entry: two files would repeat the failure handler.
 
-### An optional integration left unset boots as a no-op
+### An optional integration boots without its provider: unset as a no-op, set with no reachability check until a call
 
 Rule: `config.md`, Files.
 
 - Failing the boot when S3, SES, or Firebase is unset: a project built from the boilerplate could not start without accounts it may never use.
+- A reachability probe at boot: an optional third party's outage would stop every deploy and restart.
 
 ### A request whose purpose is an email answers 501 while SES is unset
 
@@ -82,6 +83,12 @@ Rule: `exceptions.md`, The hierarchy.
 - 409 or 422: the request is valid, and the server is the side not ready.
 - Keeping 501 out of Sentry: an email-purpose route called with SES unset in production is an operator fault worth a report.
 - A report once per exception class per window: the count of requests that hit a missing credential is lost.
+
+### An S3 or SES client fault keeps its answer, and any other SDK error answers 503
+
+Rule: `config.md`, Files.
+
+- Every SDK error answering 503: a missing object key would answer 503, and the `NotFound` and `NoSuchKey` callers would change.
 
 ### Feature flags are seeded, with keys the code names
 

@@ -35,6 +35,17 @@ export type IDatabaseExtension = (client: unknown) => {
     $extends: { extArgs: IDatabaseExtensionArgs };
 };
 
+export type IDatabaseUnavailableExtension = (client: unknown) => {
+    $extends: {
+        extArgs: runtime.Types.Extensions.InternalArgs<
+            Record<never, never>,
+            Record<never, never>,
+            Record<never, never>,
+            Record<never, never>
+        >;
+    };
+};
+
 type IDatabaseMergedArgs = runtime.Types.Extensions.MergeExtArgs<
     Prisma.TypeMap,
     runtime.Types.Extensions.DefaultArgs,

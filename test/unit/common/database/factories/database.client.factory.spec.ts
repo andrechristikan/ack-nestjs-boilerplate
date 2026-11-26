@@ -54,19 +54,30 @@ describe('DatabaseClientFactory', () => {
     });
 
     describe('create', () => {
-        it('builds the audit extension and applies it through $extends', () => {
-            const extension = Symbol('audit-extension');
-            const extendedClient = Symbol('extended-client');
-            databaseExtensionFactory.build.mockReturnValue(extension as never);
+        it('applies the audit extension, then the unavailable extension on its result, and returns that client', () => {
+            const auditExtension = Symbol('audit-extension');
+            const unavailableExtension = Symbol('unavailable-extension');
+            const finalClient = Symbol('final-client');
+            const auditedClient = {
+                $extends: vi.fn().mockReturnValue(finalClient),
+            };
+            databaseExtensionFactory.build.mockReturnValue(
+                auditExtension as never
+            );
+            databaseExtensionFactory.buildUnavailable.mockReturnValue(
+                unavailableExtension as never
+            );
             const extendSpy = vi
                 .spyOn(factory, '$extends')
-                .mockReturnValue(extendedClient as never);
+                .mockReturnValue(auditedClient as never);
 
             const result = factory.create();
 
-            expect(databaseExtensionFactory.build).toHaveBeenCalledTimes(1);
-            expect(extendSpy).toHaveBeenCalledWith(extension);
-            expect(result).toBe(extendedClient);
+            expect(extendSpy).toHaveBeenCalledWith(auditExtension);
+            expect(auditedClient.$extends).toHaveBeenCalledWith(
+                unavailableExtension
+            );
+            expect(result).toBe(finalClient);
         });
     });
 });

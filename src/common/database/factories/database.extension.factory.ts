@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@generated/prisma-client/client';
 import { EnumDatabaseAuditField } from '@common/database/enums/database.enum';
-import type { IDatabaseExtension } from '@common/database/interfaces/database.client.interface';
+import { DatabaseUnavailableException } from '@common/database/exceptions/database.unavailable.exception';
+import type {
+    IDatabaseExtension,
+    IDatabaseUnavailableExtension,
+} from '@common/database/interfaces/database.client.interface';
 import type {
     IDatabaseData,
     IDatabaseModelContext,
@@ -10,6 +14,7 @@ import type {
     IDatabaseSoftDeleteArgs,
     IDatabaseSoftDeleteResult,
 } from '@common/database/interfaces/database.extension.interface';
+import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { RequestActorStoreKey } from '@common/request/constants/request.constant';
 import { RequestStoreService } from '@common/request/services/request.store.service';
@@ -20,7 +25,8 @@ export class DatabaseExtensionFactory {
 
     constructor(
         private readonly requestStoreService: RequestStoreService,
-        private readonly helperDateService: HelperDateService
+        private readonly helperDateService: HelperDateService,
+        private readonly databaseUtil: DatabaseUtil
     ) {
         this.modelFields = new Map(
             Object.values(Prisma.ModelName).map(model => [
@@ -30,6 +36,12 @@ export class DatabaseExtensionFactory {
                 ),
             ])
         );
+    }
+
+    private toException(error: unknown): unknown {
+        const isUnavailable = this.databaseUtil.isUnavailableError(error);
+
+        return isUnavailable ? new DatabaseUnavailableException(error) : error;
     }
 
     private modelHasField(
@@ -105,6 +117,21 @@ export class DatabaseExtensionFactory {
                 payload.updatedBy = actor;
             }
         }
+    }
+
+    buildUnavailable(): IDatabaseUnavailableExtension {
+        return Prisma.defineExtension({
+            name: 'unavailable',
+            query: {
+                $allOperations: async ({ args, query }) => {
+                    try {
+                        return await query(args);
+                    } catch (error: unknown) {
+                        throw this.toException(error);
+                    }
+                },
+            },
+        });
     }
 
     build(): IDatabaseExtension {
