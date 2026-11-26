@@ -49,13 +49,13 @@ flowchart LR
     P -->|tickets and plan.md| H["/ack-harness"]
     P -->|no harness change| B["/ack-build"]
     H -->|rules and decisions| B
-    B -->|working tree| V["/ack-review"]
-    V -->|review.md and fixes| DOC["/ack-doc"]
+    B -->|working tree and review.md| V["/ack-review"]
+    V -->|settled findings and fixes| DOC["/ack-doc"]
     DOC --> C[Owner commits]
     C --> PR["/ack-pr"]
 ```
 
-Each command runs in a fresh session, so it starts from the files the previous one wrote.
+A feature runs in one session: each command starts from the files the previous one wrote, and the session suggests `/compact` at a command boundary once its context is large.
 
 ### Design
 
@@ -71,11 +71,10 @@ Each command runs in a fresh session, so it starts from the files the previous o
 `/ack-plan .scratch/<feature>/spec.md` runs in the session.
 
 1. It breaks the spec into tickets, one file each, with the tickets that block it, its seam, its first failing spec, and its acceptance criteria.
-2. It sets the effort each ticket is built at.
-3. It writes `plan.md`, the index a person reads: ticket order, efforts, harness changes, status, evidence.
-4. A fresh `reviewer` reads the tickets cold and reports every guess a builder would have to make. A read with no question and no mismatch ends the step.
-5. The session fixes the tickets and a second fresh `reviewer` reads them. When it still has a question or a mismatch, `advisor` makes the third and last attempt and edits the files itself.
-6. The owner approves the plan.
+2. It writes `plan.md`, the index a person reads: ticket order, harness changes, status, evidence.
+3. A fresh `reader` reads the tickets cold and reports every guess a builder would have to make. A read with no question and no mismatch ends the step.
+4. The session fixes the tickets and a second fresh `reader` reads them. When it still has a question or a mismatch, `advisor` makes the third and last attempt and edits the files itself.
+5. The owner approves the plan.
 
 ### Harness
 
@@ -92,12 +91,16 @@ Each command runs in a fresh session, so it starts from the files the previous o
 2. The session ticks the ticket, records the evidence in `plan.md`, and reports the position to the owner (`3/10`), then moves to the next ticket whose blockers are done.
 3. A choice the ticket, the spec, and the rules leave open stops the `coder`, which hands back `NEEDS_DECISION` with the options and its recommendation. The first route that fits answers it:
     - The spec, its owner decisions, or a decision entry: the session answers.
-    - A choice of what the product does: the owner answers.
-    - A choice of how to build it: `advisor` answers, and passes to the owner what only the owner can answer.
+    - Otherwise `.claude/hooks/jev.sh decision` asks TypeSafe's Jev whether the choice is what the product does or how to build it. When Jev is sure it is how to build, `advisor` answers, and passes to the owner what only the owner can answer.
+    - Any other answer, an unsure or failed call included: the owner answers, and may hand the choice to `advisor`.
 4. The answer corrects the ticket step, its acceptance criterion, and the spec. One line under the ticket's `## Deviations` records what differs, why, and who decided.
 5. A check that still fails after two attempts goes to `debugger` for a root cause.
-6. The session runs the gates (`pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, the module specs, coverage per changed file) and boots the app when wiring changed.
-7. The session hands back the result and names `/ack-review`, which reviews the build and settles the findings. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
+6. One `reviewer` checks the whole build and writes `.scratch/<feature>/review.md`:
+    - It runs the gates: `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, the module specs, and coverage per changed file.
+    - When wiring changed, it boots the app, calls each changed endpoint, and reads through MCP the MongoDB rows, cache keys, and queue jobs the call wrote.
+    - It checks every acceptance criterion, every rule binding the changed files, and each changed endpoint and job beside the nearest flow of the same kind.
+7. Each red result goes to `coder` as a pinned fix, and a `reviewer` checks it again. The findings wait in `review.md`.
+8. The session hands back the result and names `/ack-review`, which settles the findings in `review.md`. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
 
 A build that was interrupted resumes from the first ticket that is not done.
 
@@ -105,19 +108,19 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 `/ack-review .scratch/<feature>/plan.md` runs in the session on every feature, once.
 
-1. One `reviewer` checks three things: every acceptance criterion of the spec, every rule binding the changed files, and each changed endpoint and job traced end to end beside the nearest flow of the same kind.
-2. It writes `.scratch/<feature>/review.md`: a coverage table with a row per rule file, decision entry, and flow, and one section per finding with the exact change to make.
+1. It starts from the `review.md` the build wrote: a results table with a row per command, endpoint call, and data check, a coverage table with a row per rule file, decision entry, and flow, and one section per finding with the exact change to make.
+2. A feature built outside `/ack-build` has no `review.md`, so one `reviewer` writes it first, as the build does.
 3. The session puts each finding to the owner, one at a time, with a recommendation. The owner keeps it, drops it, or changes it.
 4. The session writes the fix list into `review.md` and the owner approves it.
 5. `coder` applies each kept finding as written, a defect outside the feature that a pinned fix repairs included. A finding about the spec goes to `/ack-design`, one about a rule to `/ack-harness`, and a defect outside the feature that needs a design, an owner-only command, or held work to the sweep log.
-6. The gates run again and a second `reviewer` reads the fixed findings. A finding still open goes to the owner.
+6. A second `reviewer` runs the gates again and reads the fixed findings. A finding still open goes to the owner.
 7. The session names `/ack-doc`, which brings the docs in line with the code and ends by proposing the commit subject. An owner answer that rejected a named alternative is listed as a decision candidate for `/ack-harness`.
 
 ## Standalone Commands
 
 | Command | Use it when | Principle |
 | --- | --- | --- |
-| `/ack-debug <symptom>` | something is wrong and the cause is unknown | root cause first, then a fix with a spec; an owner answer that rejected a named alternative is a decision candidate for `/ack-harness` |
+| `/ack-quick <a change or a symptom>` | a small change spans files, or something is wrong and the cause is unknown | a pin first, a symptom's root cause included, then the owner's call beside Jev's three signals, then the fix, with a spec where behavior changes, and its review |
 | `/ack-spec <module or path>` | existing code lacks unit specs, or a spec went stale | the code wins; `tester` changes no behavior, so each defect goes to the sweep log |
 | `/ack-doc <files, a plan path, or all>` | a doc is stale, missing, or needs a diagram | the code wins; each page holds one type |
 | `/ack-pr <mode>` | a branch is settled and needs a pull request or release notes | every claim traces to the diff |
@@ -125,30 +128,36 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 ## Agents
 
-| Agent | Does | Writes | Default level |
+| Agent | Does | Writes | Level |
 | --- | --- | --- | --- |
-| `coder` | builds one ticket or one pinned fix, test-first | `src/`, `test/unit/`, `prisma/schema.prisma`, the run surface | sonnet, medium |
-| `reviewer` | cold-reads a plan, reviews a built feature, judges a fix or the harness | `.scratch/<feature>/review.md` | opus, high |
-| `advisor` | settles what two cold reads of a plan left open, or a coder's decision on how to build a ticket | the spec, the plan, and the tickets under `.scratch/` | fable, medium |
+| `coder` | builds one ticket or one pinned fix, test-first | `src/`, `test/unit/`, `prisma/schema.prisma`, the run surface | sonnet, high |
+| `reviewer` | runs and reads a built feature or a pinned fix: the gates, a boot, each changed endpoint and the data it wrote, then the spec, the rules, and each flow | `.scratch/<feature>/review.md` | opus, high |
+| `reader` | cold-reads a plan, reviews the harness files | nothing | sonnet, high |
+| `advisor` | settles what two cold reads of a plan left open, or a coder's decision on how to build a ticket | the spec, the plan, and the tickets under `.scratch/` | opus, high |
 | `debugger` | reproduces a symptom and finds its root cause | nothing | opus, high |
 | `tester` | covers existing code with unit specs | `test/unit/` | sonnet, high |
 | `writer` | docs, root people files, pull request text | `docs/`, `.scratch/pr/` | sonnet, medium |
 | `harness` | writes the harness from a settled requirement | `.claude/`, `AGENTS.md`, the Copilot digest, decision entries, this page | opus, high |
+| `Explore` | locates code and hands back `file:line` pointers | nothing | haiku, medium |
+| `researcher` | answers a question from the web, each finding with its URL and date | nothing | haiku, medium |
 
 - An agent cannot ask the owner. It hands the question back, and the session asks.
-- The session itself designs, plans, and orchestrates; it settles a harness change with the owner and `harness` writes it.
+- The session itself designs, plans, and orchestrates: it assigns, asks the owner, and reads hand-backs. Gates, boots, endpoint calls, and data reads are `reviewer`'s, and a symptom's are `debugger`'s.
+- The session settles a harness change with the owner and `harness` writes it.
 
 ## Work Artifacts
 
-`.scratch/` is gitignored. It holds one folder per feature, and the `requirements/` and `pr/` folders:
+`.scratch/` is gitignored. It holds one folder per feature, and the `quick/`, `requirements/`, and `pr/` folders:
 
 ```text
 .scratch/<feature>/
     spec.md                  the approved spec
-    plan.md                  the index: approval, order, levels, status, evidence
+    plan.md                  the index: approval, order, status, evidence
     issues/01-<slug>.md      one ticket per file
     issues/02-<slug>.md
-    review.md                the review: coverage, findings, the owner's answers, the fix list
+    review.md                the review: results, coverage, findings, the owner's answers, the fix list
+.scratch/quick/
+    <slug>.md                a /ack-quick pin
 .scratch/requirements/
     harness-<slug>.md        a requirement settled for a later /ack-harness run
     doc-<slug>.md            a requirement settled for a later /ack-doc run
@@ -164,11 +173,16 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 ## Model and Effort
 
-- `coder` builds every ticket and every review fix on sonnet. `/ack-plan` picks its effort per ticket, `/ack-review` and `/ack-debug` per fix: high for work that touches the schema, a transaction, concurrency, or security, medium for any other.
-- TypeSafe's Jev can pick that effort instead. It is optional: set `TYPESAFE_API_KEY` in `.env.harness` at the repository root, and remove it or add `JEV_ROUTER_ENABLED=false` there to turn it off. The file is gitignored and no agent reads it.
-- `reviewer` runs on opus at high effort for every dispatch, the plan's cold read included.
+- `coder` builds every ticket and every review fix on sonnet at high effort.
+- `advisor` settles a plan's last cold read and a build decision on opus at high effort.
+- `reviewer` runs on opus at high effort for every dispatch.
+- `reader` reads a plan cold and reviews the harness files on sonnet at high effort.
 - `/ack-harness` runs `harness` on opus at high effort.
-- No agent runs below the `model` and `effort` in its own file.
+- `Explore` locates code on haiku at medium effort, for the session and every skill.
+- `researcher` answers a question from the web on haiku at medium effort, for the session and every skill.
+- Every agent runs at the `model` and `effort` in its own file, and no skill sets a level per dispatch.
+- TypeSafe's Jev is optional: it routes a build decision ([Build](#build), step 3), and shows the owner three signals beside a `/ack-quick` pin ([Standalone Commands](#standalone-commands)). Set `TYPESAFE_API_KEY` in `.env.harness` at the repository root to turn it on. Remove the key or add `JEV_ROUTER_ENABLED=false` there to turn it off, and the owner answers every decision the spec leaves open.
+- `.env.harness` is gitignored, and no agent reads it.
 
 ## Rules and Hooks
 
@@ -177,12 +191,14 @@ A build that was interrupted resumes from the first ticket that is not done.
 
 | Hook | Runs | Does |
 | --- | --- | --- |
-| `guard-bash.sh` | before every Bash call | denies owner-only database commands, secret reads, non-pnpm installs, and a command that writes `.claude/rules/discipline.md` |
+| `guard-bash.sh` | before every Bash call | denies owner-only database commands, secret reads, non-pnpm installs, a command that writes `.claude/rules/discipline.md`, and a command that writes under `src/` or `test/`, which Edit and Write change |
 | `guard-write.sh` | before every file write | denies secrets, generated trees, edits to a copied skill, an `eslint-disable` comment, and a focused or skipped spec |
+| `guard-session.sh` | before every MongoDB and Redis MCP call, web search, and web fetch | denies the session's own call, naming the agent to dispatch; a call inside an agent runs |
 | `rules-gate.sh` | before every file write, and after every file read | denies a write until the session or agent has read whole every path-scoped rule that binds the file, and names the rules still unread |
 | `format.sh` | after every file write | formats the file |
-| `verify.sh` | after every file write, and when a session stops | records each `src/` and `test/` file the session writes; at stop, for those still changed, runs typecheck and the unit specs of their modules, skipped when those files are unchanged since the last green run |
+| `verify.sh` | at session start, and when a session stops | records the `src/` and `test/` files already changed at start; at stop, for every `src/` and `test/` file changed since, whatever wrote it, runs typecheck and the unit specs of their modules, skipped when those files are unchanged since the last green run |
 | `roster.sh` | at session start | prints the `/ack-*` commands |
+| `context-hint.sh` | when the owner sends a prompt | on an `/ack-*` command with the context at 150k tokens or more, suggests `/compact` first; it never blocks |
 
 `jev.sh` and `check.sh` are scripts a skill runs, and `mcp.sh` is the launcher `.mcp.json` runs. None is a hook.
 
@@ -208,7 +224,8 @@ A build that was interrupted resumes from the first ticket that is not done.
 - No URL is written in a tracked file, and none reaches the session.
 - Each value is the URL the host reaches the container at: the same as `DATABASE_URL`, `REDIS_CACHE_URL`, and `REDIS_QUEUE_URL` for a local setup.
 - The MongoDB server runs through `npx`, the Redis servers through `uvx`, which needs [uv][ref-uv].
-- The session, `debugger`, and `reviewer` have the tools. The other agents do not.
+- `debugger` and `reviewer` have the tools. The other agents do not.
+- `guard-session.sh` denies the session's own call to any of the three servers: the session dispatches `reviewer` to check a change's data, or `debugger` to trace a symptom's.
 - The Redis server has no read-only mode, so `.claude/settings.json` denies each of its writing tools by name.
 - `mongosh`, `redis-cli`, and every command that writes to a database stay denied and owner-only.
 
@@ -271,17 +288,17 @@ After a change to a skill or an agent, run its scenarios in a fresh session and 
 | `/ack-design` | a request a decision entry rejects | names the entry and offers no option it rejects |
 | `/ack-design` | the owner answers "you decide" | decides and lists the assumption in the spec |
 | `/ack-plan` | a spec that adds a status code | the ticket names the status-code procedure |
-| `/ack-plan` | a spec with an unnamed message key | the cold read asks for it, the ticket is fixed, a fresh reviewer reads again |
-| `/ack-plan` | no `TYPESAFE_API_KEY` | levels come from the table, and `plan.md` says so |
-| `/ack-plan` | a first cold read with no question and no mismatch | no second `reviewer` runs |
+| `/ack-plan` | a spec with an unnamed message key | the cold read asks for it, the ticket is fixed, a fresh `reader` reads again |
+| `/ack-plan` | a first cold read with no question and no mismatch | no second `reader` runs |
 | `/ack-plan` | a ticket two readers still question | `advisor` edits the tickets and no reader runs after it |
 | `/ack-build` | a plan that is not approved | stops and names `/ack-plan` |
 | `/ack-build` | one ticket | the hand-back quotes the spec failing, then passing, and `plan.md` records it |
 | `/ack-build` | a plan with two tickets done | continues from the third |
 | `/ack-build` | a plan with an open harness change | stops and names `/ack-harness` |
-| `/ack-build` | a `coder` hands back `NEEDS_DECISION` on how to build a ticket | `advisor` corrects the ticket step and criterion and adds one `## Deviations` line, and the next `coder` builds the corrected step |
+| `/ack-build` | no `TYPESAFE_API_KEY`, and a `coder` hands back `NEEDS_DECISION` | `jev.sh decision` prints `owner (off).`, the owner answers, and no `advisor` runs unless the owner names it |
+| `/ack-build` | a `NEEDS_DECISION` on how to build a ticket that `jev.sh decision` routes to `advisor` | `advisor` corrects the ticket step and criterion and adds one `## Deviations` line, and the next `coder` builds the corrected step |
 | `/ack-review` | a plan with a ticket not done | stops and names `/ack-build` |
-| `/ack-review` | a built feature | `review.md` has a coverage row per rule file and per changed flow, and each finding names its exact change |
+| `/ack-build` | a finished build | `review.md` has a results row per command, endpoint call, and data check, a coverage row per rule file and per changed flow, and each finding names its exact change |
 | `/ack-review` | a finding the owner drops | no `coder` runs for it, and `review.md` records the answer |
 | `/ack-review` | a fix `coder` cannot apply as written | the finding goes to the owner, and `coder` picks no other fix |
 | `/ack-doc` | a new how-to page | the dispatch carries `Type: how-to`, `writer` quotes `pnpm lint:docs` and `pnpm spell`, and the reader test asks the how-to check first |

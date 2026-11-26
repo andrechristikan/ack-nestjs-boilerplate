@@ -50,7 +50,7 @@ bash .claude/hooks/check.sh
 ```
 
 - Every line it prints is a defect.
-- When a skill, an agent, or a rule body changed, dispatch `reviewer` with `Depth: harness` and the changed paths. Confirm or reject each finding by opening the file.
+- When a skill, an agent, or a rule body changed, dispatch `reader` with the changed paths. Confirm or reject each finding by opening the file.
 - The `check.sh` lines and the confirmed findings go back to `harness` in one repair dispatch; run `check.sh` again after it.
 
 ## Boundaries
@@ -63,9 +63,9 @@ bash .claude/hooks/check.sh
 
 - The settled requirement; for `diagnose`, the transcript read and each finding kept or dropped.
 - Each file written or deleted, with `wc -w` and what it now says.
-- The `check.sh` output and the reviewer's findings with their state.
+- The `check.sh` output and the reader's findings with their state.
 - Every `src/` finding recorded rather than fixed.
 
 ## Next
 
-After a plan's `## Harness changes`, `/ack-build <the plan path>`: builds every ticket test-first. `/ack-review <the plan path>` when a review added the line: reviews the build and settles the findings. `/ack-debug` with the symptom for a recorded `src/` finding: finds the root cause and fixes it.
+After a plan's `## Harness changes`, `/ack-build <the plan path>`: builds every ticket test-first. `/ack-review <the plan path>` when a review added the line: settles the findings in `review.md` and fixes the kept ones. `/ack-quick` with the symptom for a recorded `src/` finding: finds the root cause, fixes it test-first, and reviews the fix.

@@ -20,5 +20,6 @@ Budgets are words, measured by `wc -w` on the whole file, frontmatter included: 
 
 ## Levels
 
-- `coder` runs on sonnet at an effort set per ticket by `/ack-plan` and per fix by `/ack-review` and `/ack-debug`. TypeSafe's Jev is optional there, through `bash .claude/hooks/jev.sh level`, never as a hook.
-- Without `TYPESAFE_API_KEY` in `.env.harness`, or with `JEV_ROUTER_ENABLED=false`, it prints `off`; a failed call prints `unavailable`; the `/ack-plan` table then gives the effort.
+- Every agent runs at the `model` and `effort` of its frontmatter; no skill sets a level per dispatch.
+- TypeSafe's Jev is optional, through `bash .claude/hooks/jev.sh`, never as a hook: it answers yes-or-no questions and the script holds the decision; mode `guard` shows three signals beside a `/ack-quick` pin and decides nothing.
+- A coder's open item goes to `advisor` only when Jev is sure it asks how to build; every other answer goes to the owner: an unsure one, a failed call, `JEV_ROUTER_ENABLED=false`, or no `TYPESAFE_API_KEY` in `.env.harness`.

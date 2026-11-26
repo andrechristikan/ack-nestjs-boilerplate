@@ -8,10 +8,10 @@
 
 ### Skills
 
-The owner types every `/ack-*` skill (`disable-model-invocation: true`), and no skill starts another: each ends with a Next line naming the command the owner types and what it does. A feature runs seven in order: `/ack-design` (question rounds, the spec), `/ack-plan` (tickets, the plan index, the owner's approval), `/ack-harness` (a requirement settled with the owner, written by the `harness` agent: `.claude/**`, `AGENTS.md`, the Copilot digest, decision entries), `/ack-build` (every ticket test-first), `/ack-review` (`review.md`, findings settled and fixed), `/ack-doc` (docs against the code), `/ack-pr` (a pull request and its text); the owner commits before `/ack-pr`. `/ack-debug` takes a symptom to its root cause and the fix; `/ack-spec`, a fork running as `tester`, writes unit specs for code that exists.
+The owner types every `/ack-*` skill (`disable-model-invocation: true`), and no skill starts another: each ends with a Next line: the owner's next command and what it does. Each feature runs seven in order in its own session: `/ack-design` (question rounds, the spec), `/ack-plan` (tickets, the plan index, the owner's approval), `/ack-harness` (a requirement settled with the owner, written by `harness`: `.claude/**`, `AGENTS.md`, the Copilot digest, decision entries), `/ack-build` (every ticket test-first), `/ack-review` (`review.md`, findings settled and fixed), `/ack-doc` (docs against the code), `/ack-pr` (a pull request and its text); the owner commits before `/ack-pr`. `/ack-quick` pins a small change or a symptom, fixes it, and reviews it; `/ack-spec`, a `tester` fork, writes unit specs for existing code.
 
-- A request for a feature or a cross-module change that arrives without a skill: name `/ack-design` and wait. A question, a lookup, or an edit inside one file needs none.
-- A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it with the answer in the argument.
+- A request without a skill: a feature or cross-module change names `/ack-design`, a small change across files or something broken `/ack-quick`; wait. A question, a lookup, or an edit inside one file needs none.
+- A fork runs in a subagent: it sees no conversation and cannot call `AskUserQuestion`; every question is a hand-back, and the owner re-runs it, the answer in the argument.
 
 ### Copied skills
 
@@ -23,30 +23,31 @@ The other folders under `.claude/skills/` are third-party skills copied by the `
 
 ### Work artifacts
 
-`.scratch/` is the local tracker, gitignored. One folder per feature, kebab-case, `pr`, `requirements`, and `plans` reserved:
+`.scratch/` is the local tracker, gitignored. One folder per feature, kebab-case, `pr`, `requirements`, `plans`, and `quick` reserved:
 
-- `.scratch/<feature>/spec.md`: the spec, from `/ack-design`.
+- `.scratch/<feature>/spec.md`: from `/ack-design`.
 - `.scratch/<feature>/issues/<NN>-<slug>.md`: one ticket per file, from `/ack-plan`. `**Status:**` is `ready-for-agent`, then `done`.
 - `.scratch/<feature>/plan.md`: the plan index, from `/ack-plan`.
-- `.scratch/<feature>/review.md`: from `/ack-review`.
-- `.scratch/requirements/`: a requirement settled for a later `/ack-harness` or `/ack-doc`. `.scratch/pr/`: PR, comment, and version text.
+- `.scratch/<feature>/review.md`: from `/ack-build`.
+- `.scratch/quick/<slug>.md`: a `/ack-quick` pin.
+- `.scratch/requirements/`: a settled requirement awaiting `/ack-harness` or `/ack-doc`. `.scratch/pr/`: PR, comment, and version text.
 
-A platform issue is created only on the owner's word (`gh issue create` is an `ask`). The sweep log is `generated/report-src-sweep.md`.
+A platform issue needs the owner's word (`gh issue create` asks). The sweep log is `generated/report-src-sweep.md`.
 
 ### Levels
 
-- No agent runs below its frontmatter `model` and `effort`, `reviewer` on the plan's cold read included.
-- Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override the per-call `effort` and `model`.
-- How `coder`'s effort is set: `.claude/rules/harness.md`, Levels.
+- No agent runs below its frontmatter `model` and `effort`.
+- Keep `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` unset: they override each agent's `effort` and `model`.
+- What Jev decides: `.claude/rules/harness.md`, Levels.
 
 ### Agents
 
-Skills dispatch the agents in `.claude/agents/`; each agent's `description` states its job. The session locates code with the built-in `Explore` agent. An agent missing something hands the question back; the session asks the owner and dispatches again.
+Skills dispatch the agents in `.claude/agents/`; the session locates code with `Explore` there and dispatches `researcher` for a fact outside the repository. An agent missing something hands the question back. In an `ack-*` skill the session assigns, asks the owner, and reads hand-backs; gates, boots, endpoint calls, and data reads are `reviewer`'s, a symptom's `debugger`'s.
 
 ### Gotchas
 
 - `tsc` aborts on a `tsconfig.json` error and reports zero source errors, and `| grep -c 'error TS'` prints `0` on a crashed runner's empty output. Read the raw output and exit code.
-- The `Stop` hook `.claude/hooks/verify.sh` runs `pnpm typecheck` and the unit specs of the changed modules when a file under `src/` or `test/` that this session wrote through a file tool differs from `HEAD` or is untracked, and blocks the stop on failure; a file changed through Bash is not gated. A stop whose gated files are unchanged since the last green run skips both checks. A changed path outside `src/modules/<name>/`, `src/common/<name>/`, and their `test/unit/` mirrors runs the full suite.
+- The `Stop` hook `.claude/hooks/verify.sh` runs `pnpm typecheck` and the unit specs of the changed modules when a `src/` or `test/` path differing from `HEAD` or untracked has changed since the session started, whatever wrote it, and blocks the stop on failure. A stop whose gated files are unchanged since the last green run skips both checks. A changed path outside `src/modules/<name>/`, `src/common/<name>/`, and their `test/unit/` mirrors runs the full suite.
 - Claude worktrees live under `.claude/worktrees/` (gitignored).
 - A Bash call's `timeout` is 10 minutes at most, also the default (`BASH_DEFAULT_TIMEOUT_MS`, `.claude/settings.json` `env`). Claude Code moves a call running at its timeout to the background and reports when it ends, so a test run is never wrapped in GNU `timeout`.
 - `pnpm spell` and `pnpm deadcode` exit codes: `.claude/rules/code-style.md`, Lint. `pnpm test` and `pnpm test:cov`: `.claude/rules/testing.md`, Layout and runs. A boot: `.claude/skills/ack-build/references/boot.md`.

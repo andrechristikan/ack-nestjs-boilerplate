@@ -1,20 +1,33 @@
 {
     "model": "jev-1.14.0",
     "timeout_seconds": 1,
-    "max": { "model": "opus", "effort": "high" },
     "thresholds": {
-        "effort_high": 1.8
+        "yes": 0.7,
+        "no": 0.3
     },
     "repository": "A NestJS API boilerplate. src/ holds the application in feature modules (auth, user, workspace, project, notification, and more). test/unit/ holds unit specs. docs/ holds documentation. .claude/ holds the Claude Code agents, skills, rules, hooks, and settings.",
-    "level_questions": {
-        "effort": {
-            "type": "score",
-            "instructions": "How much work does `request` need, given the files and modules in `location`?",
-            "criteria": [
-                "A lookup, a rename, or a one-line edit",
-                "A change inside one feature module, with its tests",
-                "Data-model, transaction, concurrency, or security work"
-            ]
+    "decision_questions": {
+        "product": {
+            "type": "noul",
+            "instructions": "Does `question` ask what the application does for its user or its API consumer: a behavior, a response, a status code, a message, or a limit?"
+        },
+        "build": {
+            "type": "noul",
+            "instructions": "Does `question` ask how to write the code (which class, method, layer, or order of steps) while what the user or the API consumer sees stays the same?"
+        }
+    },
+    "guard_questions": {
+        "schema": {
+            "type": "noul",
+            "instructions": "Does `pin` ask for an edit to `prisma/schema.prisma`?"
+        },
+        "wire": {
+            "type": "noul",
+            "instructions": "Does `pin` ask for an edit to a request or response DTO schema?"
+        },
+        "cross": {
+            "type": "noul",
+            "instructions": "Does `pin` name files to edit that belong to different feature modules?"
         }
     }
 }

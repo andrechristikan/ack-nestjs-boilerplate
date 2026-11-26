@@ -68,7 +68,7 @@ Report: per question, the answer with its line, or "not answered"; every assumpt
 
 - Put each one to the owner with `AskUserQuestion`, the evidence for both sides as the context.
 - The doc is wrong: one repair dispatch to `writer`.
-- The code is suspected wrong: the doc stays as it is; name `/ack-debug` with the symptom.
+- The code is suspected wrong: the doc stays as it is; name `/ack-quick` with the symptom.
 
 ## Hand back
 
@@ -77,8 +77,8 @@ Report: per question, the answer with its line, or "not answered"; every assumpt
 - The reader-test result per file, or the line that the step was skipped; each finding and its state (fixed, rejected with the reason, open).
 - The diagram paths, when one was drawn.
 - One line per thing noticed outside the scope.
-- The proposed commit subject (`.claude/CLAUDE.md`, Etiquette); omit it when Next is `/ack-debug`.
+- The proposed commit subject (`.claude/CLAUDE.md`, Etiquette); omit it when Next is `/ack-quick`.
 
 ## Next
 
-`/ack-debug` for a CONFLICT resolved as the code being wrong: finds the root cause and fixes it. Otherwise the owner commits, then `/ack-pr`: writes the pull request text and opens it on the owner's word.
+`/ack-quick` for a CONFLICT resolved as the code being wrong: finds the root cause, fixes it test-first, and reviews the fix. Otherwise the owner commits, then `/ack-pr`: writes the pull request text and opens it on the owner's word.

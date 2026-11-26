@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
-# Jev, TypeSafe's decision model, for the coder effort. Run by the session in two places, never as a hook: ack-plan's
-# level step (one ticket) and ack-review's fix list (one finding). TYPESAFE_API_KEY and JEV_ROUTER_ENABLED come from
-# the environment, else from the root .env.harness (NAME=value lines, the owner's, gitignored). Calls Jev only when the
-# key is set and JEV_ROUTER_ENABLED is not false; otherwise it prints an off block and the caller uses the ack-plan table.
-#   level     one ticket or finding, JSON on stdin {"request","location"}: prints a <jev_level> block with the effort
-#             coder runs it at.
-# The question, its threshold, and the ceiling (max) live in jev.json; coder's floor is the model: and effort: of
-# .claude/agents/coder.md. coder keeps its floor model and rises in effort only.
+# Jev, TypeSafe's decision model, answers yes-or-no questions. Run by ack-build and ack-quick, never as a hook:
+#   decision <ticket path>   the coder's question, options, and recommendation as plain text on stdin. Asks Jev the two
+#                            Nouls of jev.json (product, build) and prints a <jev_decision> block: advisor. when Jev is
+#                            sure the item is how to build, else owner, with the reason in parentheses when Jev did not say.
+#   guard <pin path>         asks Jev the three guard_questions of jev.json (schema, wire, cross) about the pin and prints a
+#                            <jev_guard> block with the signals, else off., unavailable (<reason>)., or no pin given. It
+#                            decides nothing: the owner does.
+# TYPESAFE_API_KEY and JEV_ROUTER_ENABLED come from the environment, else from the root .env.harness (NAME=value lines,
+# the owner's, gitignored). Without the key, with JEV_ROUTER_ENABLED=false, or after a failed call, the owner decides.
 set -uo pipefail
 
 mode="${1:-}"
-payload="$(cat)"
+ticket="${2:-}"
+payload=""
+[ "$mode" = decision ] && payload="$(cat)"
 
 root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 harness_env="$root/.env.harness"
@@ -23,23 +26,18 @@ from_harness() {
 export TYPESAFE_API_KEY
 
 state=on
-[ -n "${TYPESAFE_API_KEY:-}" ] || state=no-key
-[ "${JEV_ROUTER_ENABLED:-true}" = "false" ] && state=disabled
+[ -n "${TYPESAFE_API_KEY:-}" ] || state=off
+[ "${JEV_ROUTER_ENABLED:-true}" = "false" ] && state=off
 
 config="$root/.claude/hooks/jev.json"
 [ -f "$config" ] || exit 0
 
-JEV_STATE="$state" JEV_MODE="$mode" JEV_PAYLOAD="$payload" JEV_CONFIG="$config" JEV_ROOT="$root" python3 - <<'PY'
+JEV_STATE="$state" JEV_MODE="$mode" JEV_TICKET="$ticket" JEV_PAYLOAD="$payload" JEV_CONFIG="$config" JEV_ROOT="$root" python3 - <<'PY'
 import json, os, sys, urllib.error, urllib.request
 
 cfg = json.load(open(os.environ["JEV_CONFIG"]))
 t = cfg["thresholds"]
-raw = os.environ.get("JEV_PAYLOAD") or ""
 debug = os.environ.get("JEV_ROUTER_DEBUG") == "1"
-fallback = "use the ack-plan table"
-
-MODELS = ["haiku", "sonnet", "opus"]
-EFFORTS = ["low", "medium", "high"]
 
 
 def ask(state, questions):
@@ -65,60 +63,61 @@ def ask(state, questions):
     return answers
 
 
-def floor(agent):
-    """The model: and effort: lines of the agent's frontmatter; a missing file or line is haiku, low."""
-    found = {"model": "haiku", "effort": "low"}
-    try:
-        lines = open(os.path.join(os.environ["JEV_ROOT"], ".claude", "agents", f"{agent}.md"), encoding="utf-8").read().splitlines()
-    except OSError:
-        return found
-    if lines[:1] != ["---"]:
-        return found
-    for line in lines[1:]:
-        if line.strip() == "---":
-            break
-        key, _, value = line.partition(":")
-        value = value.strip()
-        if (key == "model" and value in MODELS) or (key == "effort" and value in EFFORTS):
-            found[key] = value
-    return found
+def block(tag, *lines):
+    print(f"<{tag}>\n" + "\n".join(lines) + f"\n</{tag}>")
 
 
-def at(agent, model_up, effort_up):
-    """The agent at its floor, an axis raised to the ceiling when asked."""
-    base, cap = floor(agent), cfg["max"]
-    m = max(base["model"], cap["model"], key=MODELS.index) if model_up else base["model"]
-    e = max(base["effort"], cap["effort"], key=EFFORTS.index) if effort_up else base["effort"]
-    return f"{agent} ({m}, {e})"
+def file_arg():
+    path = os.environ["JEV_TICKET"]
+    if path and not os.path.isfile(path):
+        path = os.path.join(os.environ["JEV_ROOT"], path)
+    return path
 
 
-def block(*lines):
-    print("<jev_level>\n" + "\n".join(lines) + "\n</jev_level>")
+def decision():
+    block_ = lambda *lines: block("jev_decision", *lines)
+    question = (os.environ.get("JEV_PAYLOAD") or "").strip()
+    path = file_arg()
+    if not question or not os.path.isfile(path):
+        return block_("owner (no question given).")
+    if os.environ["JEV_STATE"] == "off":
+        return block_("owner (off).")
 
-
-def level():
-    try:
-        payload = json.loads(raw)
-        request, location = payload["request"], payload["location"]
-        if not str(request).strip() or not str(location).strip():
-            raise ValueError("empty request or location")
-    except (ValueError, KeyError, TypeError) as e:
-        return block(f"malformed input ({type(e).__name__}: {e}); {fallback}")
-
-    state = os.environ["JEV_STATE"]
-    if state == "no-key":
-        return block(f"off (TYPESAFE_API_KEY not set); {fallback}")
-    if state == "disabled":
-        return block(f"off (JEV_ROUTER_ENABLED=false); {fallback}")
-
-    a = ask({"repository": cfg["repository"], "request": request, "location": location}, cfg["level_questions"])
+    ticket = open(path, encoding="utf-8").read()
+    a = ask({"repository": cfg["repository"], "ticket": ticket, "question": question}, cfg["decision_questions"])
     if isinstance(a, str):
-        return block(f"unavailable ({a}); {fallback}")
+        return block_(f"owner (unavailable: {a}).")
+    try:
+        product, build = float(a["product"]["noul"]), float(a["build"]["noul"])
+    except (KeyError, TypeError, ValueError) as e:
+        return block_(f"owner (unavailable: {type(e).__name__}).")
 
-    effort = a["effort"]["score"]
-    hard = effort >= t["effort_high"]
-    block(f"{at('coder', False, hard)}.", f"Signals: effort={effort:.1f}.")
+    if build > t["yes"] and product < t["no"]:
+        route = "advisor."
+    elif product > t["yes"] and build < t["no"]:
+        route = "owner."
+    else:
+        route = "owner (unsure)."
+    block_(route, f"Signals: product={product:.2f} build={build:.2f}.")
 
 
-{"level": level}.get(os.environ["JEV_MODE"], lambda: None)()
+def guard():
+    path = file_arg()
+    if not os.path.isfile(path):
+        return block("jev_guard", "no pin given.")
+    if os.environ["JEV_STATE"] == "off":
+        return block("jev_guard", "off.")
+
+    pin = open(path, encoding="utf-8").read()
+    a = ask({"repository": cfg["repository"], "pin": pin}, cfg["guard_questions"])
+    if isinstance(a, str):
+        return block("jev_guard", f"unavailable ({a}).")
+    try:
+        s = {k: float(a[k]["noul"]) for k in ("schema", "wire", "cross")}
+    except (KeyError, TypeError, ValueError) as e:
+        return block("jev_guard", f"unavailable ({type(e).__name__}).")
+    block("jev_guard", f"Signals: schema={s['schema']:.2f} wire={s['wire']:.2f} cross={s['cross']:.2f}.")
+
+
+{"decision": decision, "guard": guard}.get(os.environ["JEV_MODE"], lambda: None)()
 PY

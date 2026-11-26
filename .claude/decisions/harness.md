@@ -19,11 +19,68 @@ Rule: `.claude/agents/reviewer.md`, frontmatter; `.claude/CLAUDE.md`, Levels.
 - Effort medium: the reviewer is the only judge of a build and may miss no rule.
 - The reviewer's effort set per review by Jev: a low-effort review misses a rule, and the reviewer is the only judge.
 
+### `reader` runs at sonnet, high
+
+Rule: `.claude/agents/reader.md`, frontmatter.
+
+- Opus for the cold read: the question is whether a builder holding only the ticket must guess, the builder is sonnet, and `advisor` on opus reads third.
+
+### `coder` runs at sonnet, high, on every dispatch
+
+Rule: `.claude/agents/coder.md`, frontmatter; `.claude/rules/harness.md`, Levels.
+
+- An effort per ticket from a Jev score: the score sat at its top value for close to half the tickets, and effort moves a small share of a dispatch's cost.
+- Medium, rising after a failed dispatch: a failed dispatch costs a second build and a second review.
+
+### `advisor` runs at opus, high
+
+Rule: `.claude/agents/advisor.md`, frontmatter.
+
+- Fable, medium: the owner runs fable for a limited time, and the harness names no model the owner does not always run.
+
+### Jev routes a decision; it sets no level
+
+Rule: `.claude/rules/harness.md`, Levels; `.claude/hooks/jev.sh`.
+
+- Jev choosing a model or an effort: levels are static.
+- An unsure or failed answer acted on: it goes to the owner.
+
+### One `reviewer` runs and reads a build, dispatched by `/ack-build`
+
+Rule: `.claude/agents/reviewer.md`; `.claude/skills/ack-build/SKILL.md`, Review.
+
+- Named depths: three labels for three call sites of one job.
+- The session running the gates and the boot: their output lands in the context every later call re-reads.
+- A run-only dispatch in the build and a read-only one in the review: two agents orient on the same diff.
+
 ### Agents read MongoDB and Redis through read-only MCP servers
 
-Rule: `AGENTS.md`, Prisma schema; `.claude/agents/reviewer.md` and `.claude/agents/debugger.md`, `tools:`.
+Rule: `AGENTS.md`, Prisma schema; `.claude/agents/reviewer.md` and `.claude/agents/debugger.md`, `tools:`; `.claude/hooks/guard-session.sh`.
 
 - A database or Redis shell for an agent: every write stays the owner's.
+- The session reading the data itself: the check belongs to the agent that judges the change.
+
+### `Explore` runs on haiku
+
+Rule: `.claude/agents/Explore.md`, frontmatter.
+
+- The built-in on the session's model: a location lookup is mechanical work, and it ran on the session's most expensive model.
+
+### `/ack-quick` takes a small change and a symptom
+
+Rule: `.claude/skills/ack-quick/SKILL.md`.
+
+- A separate debug skill: after the pin, its steps are the same as a small change's.
+- Jev stopping the skill on its own: on past pins it flagged more than half of the ones that touched no schema, shape, or second module.
+
+### `researcher` reads the web, on haiku, with the web tools only
+
+Rule: `.claude/agents/researcher.md`, frontmatter.
+
+- The session searching itself: fetched pages stay in the context every later call re-reads.
+- `Explore` given the web tools: an agent that reads untrusted pages would hold a shell.
+- `Read` in its tools: beside `WebFetch`, a page's instruction could send a repository file out.
+- Sonnet: a lookup extracts and cites what a page says, which the cheaper model does.
 
 ## Hooks and checks
 
@@ -34,6 +91,20 @@ Rule: `.claude/hooks/rules-gate.sh`, registered in `.claude/settings.json`.
 - The reader runs `rules.sh` on its own word: an agent told to read each rule it prints searched the rule files for keywords and read few of them whole.
 - Claude Code's path-scoped loading alone: a file read through Bash loads no rule, and a new file's rules arrive after it is written.
 - A `SubagentStop` hook running the gates: `coder` runs its gates and `/ack-review` runs them again.
+
+### A feature runs in one session, with a compaction suggested at a skill boundary
+
+Rule: `.claude/CLAUDE.md`, Skills; `.claude/hooks/context-hint.sh`.
+
+- A fresh session per command: the owner settles a feature in one conversation.
+- A hook that blocks the command: the owner decides when a summary is safe.
+- A lower automatic compaction threshold: it can fall in the middle of a skill.
+
+### `src/` and `test/` are written through the file tools
+
+Rule: `.claude/hooks/guard-bash.sh`.
+
+- A Bash write allowed and gated at Stop alone: the rules gate, the write guard, and the formatter never see it.
 
 ### The code follows the rule, never the count of sites
 

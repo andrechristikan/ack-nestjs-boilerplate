@@ -19,12 +19,15 @@
             "WebSearch",
             "Agent(general-purpose)",
             "Agent(Explore)",
+            "Agent(researcher)",
             "Agent(coder)",
             "Agent(reviewer)",
+            "Agent(reader)",
             "Agent(writer)",
             "Agent(tester)",
             "Agent(debugger)",
             "Agent(advisor)",
+            "Agent(harness)",
             "Bash",
             "mcp__mongodb",
             "mcp__redis-cache",
@@ -221,6 +224,15 @@
                         "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/rules-gate.sh"
                     }
                 ]
+            },
+            {
+                "matcher": "mcp__mongodb__.*|mcp__redis-cache__.*|mcp__redis-queue__.*|WebSearch|WebFetch",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard-session.sh"
+                    }
+                ]
             }
         ],
         "PostToolUse": [
@@ -240,10 +252,16 @@
                         "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format.sh",
                         "timeout": 120
-                    },
+                    }
+                ]
+            }
+        ],
+        "UserPromptSubmit": [
+            {
+                "hooks": [
                     {
                         "type": "command",
-                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify.sh"
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-hint.sh"
                     }
                 ]
             }
@@ -266,6 +284,15 @@
                     {
                         "type": "command",
                         "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/roster.sh"
+                    }
+                ]
+            },
+            {
+                "matcher": "startup|resume|clear|compact",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify.sh"
                     }
                 ]
             }

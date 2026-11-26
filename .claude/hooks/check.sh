@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Harness check, run by ack-harness, the harness agent, and reviewer at Depth harness, never as a hook. Prints one line per defect and
+# Harness check, run by ack-harness, the harness agent, and reader, never as a hook. Prints one line per defect and
 # exits 1 when it printed any: JSON, hook syntax and exec bits, the roster and Jev off blocks, frontmatter, word budgets, the Copilot
 # digest's character limit, the path-scoped rules binding one src file (.claude/rules/harness.md), all-caps emphasis, retired names, cited paths, and the copied-skill lock.
 # Copied skills (skills-lock.json) are checked for presence only: their text is not ours to hold to these rules.
@@ -21,8 +21,8 @@ done
 
 echo '{}' | bash .claude/hooks/roster.sh | jq -e '.systemMessage | contains("/ack-design")' >/dev/null 2>&1 \
     || bad ".claude/hooks/roster.sh: no roster with /ack-design"
-printf '{"request":"x","location":"src/modules/user"}' | env JEV_ROUTER_ENABLED=false bash .claude/hooks/jev.sh level | grep -q '^off ' \
-    || bad ".claude/hooks/jev.sh: level with JEV_ROUTER_ENABLED=false does not print an off block"
+printf 'x' | env JEV_ROUTER_ENABLED=false bash .claude/hooks/jev.sh decision .claude/hooks/jev.json | grep -qx 'owner (off).' \
+    || bad ".claude/hooks/jev.sh: decision with JEV_ROUTER_ENABLED=false does not print owner (off)."
 
 python3 - <<'PY' || fail=1
 import glob, json, os, re, sys
@@ -69,8 +69,8 @@ for path in glob.glob('.claude/agents/*.md'):
 
 shout = re.compile('|'.join(['NEV' + 'ER', 'ALW' + 'AYS', 'MU' + 'ST', 'HA' + 'RD']))
 retired = re.compile('|'.join([
-    'ack-' + 'work', 'super' + 'powers', r'`explor' + 'er`', r'`plann' + 'er`',
-    r'Agent: (explor' + 'er|plann' + 'er)', r'jev\.sh (rou' + 'te|follow' + 'up)', 'caveman' + ':cave',
+    'ack-' + 'work', 'ack-' + 'debug', 'super' + 'powers', r'`explor' + 'er`', r'`plann' + 'er`',
+    r'Agent: (explor' + 'er|plann' + 'er)', r'jev\.sh (rou' + 'te|follow' + 'up|lev' + 'el)', 'caveman' + ':cave',
 ]))
 cited = re.compile(r'(?<![\w/.-])((?:\.claude|\.github|docs|scripts|ci)/[\w./-]+\.(?:md|sh|json|ya?ml|ts|mjs))')
 

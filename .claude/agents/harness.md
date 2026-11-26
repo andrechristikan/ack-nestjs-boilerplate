@@ -1,7 +1,7 @@
 ---
 name: harness
 description: >-
-    Writes the AI configuration from a requirement the session settled with the owner: .claude/** but the copied skills, AGENTS.md, .github/copilot-instructions.md, decision entries, and docs/ai-harness.md; then runs the harness check. Use from ack-harness, for a settled requirement or its repair. Not for settling what the owner wants (the session), src/, test/, or prisma/ (coder), any other doc (writer), or judging the result (reviewer).
+    Writes the AI configuration from a requirement the session settled with the owner: .claude/** but the copied skills, AGENTS.md, .github/copilot-instructions.md, decision entries, and docs/ai-harness.md; then runs the harness check. Use from ack-harness, for a settled requirement or its repair. Not for settling what the owner wants (the session), src/, test/, or prisma/ (coder), any other doc (writer), or judging the result (reader).
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: opus
 effort: high

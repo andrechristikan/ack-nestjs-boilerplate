@@ -1,7 +1,7 @@
 ---
 name: ack-build
 description: >-
-    Builds every ticket of an approved plan, one ticket per coder dispatch and test-first, and does not stop until every ticket is done and the gates are green. Use with a plan path under .scratch/, also to resume a build. Not for a plan the owner has not approved (ack-plan) or a bug whose cause is unknown (ack-debug).
+    Builds every ticket of an approved plan, one ticket per coder dispatch and test-first, and does not stop until every ticket is done and the gates are green. Use with a plan path under .scratch/, also to resume a build. Not for a plan the owner has not approved (ack-plan) or a bug whose cause is unknown (ack-quick).
 blurb: 'build every ticket test-first, gates'
 disable-model-invocation: true
 argument-hint: '<a .scratch/ plan path>'
@@ -13,7 +13,7 @@ argument-hint: '<a .scratch/ plan path>'
 
 Input: $ARGUMENTS
 
-The session assigns and checks; it writes no file under `src/` or `test/`. `coder` builds one ticket per dispatch, `debugger` is called only when a check will not pass. Commands, gates, and owner-only commands are in `AGENTS.md`. Read each hand-back before the next step.
+The session assigns and reads hand-backs; it writes no file under `src/` or `test/`. `coder` builds one ticket per dispatch, `reviewer` runs the gates, the boot, and the data checks, and `debugger` is called only when a check will not pass. Commands, gates, and owner-only commands are in `AGENTS.md`. Read each hand-back before the next step.
 
 ## Start
 
@@ -27,7 +27,7 @@ Work the frontier until every ticket is `done`. One ticket at a time: two coders
 
 For each ticket whose blockers are `done`, in number order:
 
-1. Dispatch `coder` at the model and effort its plan row gives:
+1. Dispatch `coder`:
 
 ```
 Agent: coder
@@ -45,8 +45,7 @@ Decisions to honor: <the plan's line>
 2. A `DONE <n>/<total>` hand-back that quotes each spec failing, then passing: record each deviation it names (step 3), tick the ticket's criteria, set its `**Status:**` to `done`, and fill the plan row's `Status` and `Evidence` with the command and its decisive line.
 3. `NEEDS_CONTEXT`, `NEEDS_DECISION`, `BLOCKED`, `DONE_WITH_CONCERNS`, or a line that is not green: route each open item, the first match only.
     - The spec, its `## Owner decisions`, or an entry `Decisions to honor` names answers it: answer it.
-    - A choice of what the product does: ask the owner with `AskUserQuestion`. The answer joins the spec's `## Owner decisions`.
-    - A choice of how to build it: dispatch `advisor` (below). Ask the owner each item it hands back `NEEDS_OWNER`, as above.
+    - Otherwise write the item as the coder gave it to `.scratch/<feature>/decision.txt` with the Write tool and run `bash .claude/hooks/jev.sh decision <the ticket path> < .scratch/<feature>/decision.txt`. A block that says `advisor`: dispatch `advisor` (below), and ask the owner each item it hands back `NEEDS_OWNER`. Any other block: ask the owner with `AskUserQuestion`; the owner may name `advisor`. An owner answer joins the spec's `## Owner decisions`.
 
     Then, before the next dispatch on the ticket and before it is set `done`, record each decision answered and each deviation a hand-back names, a rule-wins one included:
     - Correct the ticket step and the acceptance criterion it changes. The next coder builds them, and step 2 ticks them.
@@ -55,7 +54,7 @@ Decisions to honor: <the plan's line>
     - An item `advisor` settled: `advisor` has written these three. Add no second line.
     - Change the plan row only when a blocker or a seam moved.
 
-The `advisor` dispatch, with the Agent call's `model` set to `fable`:
+The `advisor` dispatch:
 
 ```
 Agent: advisor
@@ -74,16 +73,35 @@ Stop before the last ticket only when:
 - The work reaches a module or a dependency no ticket names.
 - A rule has to change first: a plan defect, since `## Harness changes` missed it. Add the line there and name `/ack-harness <the plan path>`.
 
-## 2. Prove
+## 2. Review
 
-1. Run `pnpm typecheck`, `pnpm lint`, `pnpm deadcode`, `pnpm spell`, and `pnpm test <filter>` for each module the build touched. Read the output, not only the exit code (`.claude/rules/code-style.md`, Lint; `.claude/rules/testing.md`, Layout and runs).
-2. Run `pnpm test:cov <filter>` and read the row of each file the build changed. A row under 100 is behavior without a spec: one more `coder` dispatch on that ticket.
-3. Name the spec or the command that proves each acceptance criterion of each ticket. A criterion without proof goes back to step 1.
-4. When the build touched a module file, a router, a config, or a queue, boot the app as `.claude/skills/ack-build/references/boot.md` gives. A schema delta the owner has not applied holds the boot check: say so in the hand-back.
+Dispatch one `reviewer` over the whole build:
+
+```
+Agent: reviewer
+Requirement: <the plan path>, <the spec path>, <the tickets folder>
+Changed paths: <git diff --name-only HEAD plus git ls-files --others --exclude-standard>
+Rules to read: <the output of bash .claude/hooks/rules.sh over the changed paths, pasted>
+Decisions to honor: <the plan's line>
+Output: .scratch/<feature>/review.md
+```
+
+1. Each red result goes to one `coder` dispatch as a pin, then to one `reviewer` dispatch with the same lines and `Fixed: <the red results>`. A red result whose **Cause** reads `unknown` takes step 1's `debugger` route instead of the `coder` dispatch.
+
+```
+Agent: coder
+Pin: <the result's files, cause, and change, copied from review.md>
+First failing spec: <the result's line, or none>
+Decisions to honor: <the plan's line>
+```
+
+2. A check still red after two `coder` dispatches takes step 1's `debugger` route.
+3. The findings stay in `review.md` for `/ack-review`.
 
 ## Hand back
 
-- The acceptance criteria as a table: ticket, criterion, proof, status.
+- The acceptance criteria as a table: ticket, criterion, proof from `review.md`, status.
+- Each check `reviewer` held, with its reason.
 - Each deviation from the spec, with its reason.
 - Each decision and assumption made during the build.
 - Each owner answer that rejected a named alternative, as a decision candidate (the choice, the rejected option, the owner's reason): name `/ack-harness`.
@@ -91,4 +109,4 @@ Stop before the last ticket only when:
 
 ## Next
 
-`/ack-review .scratch/<feature>/plan.md`: reviews the build into `review.md`, then settles and fixes the findings.
+`/ack-review .scratch/<feature>/plan.md`: settles the findings in `review.md` with the owner and fixes the kept ones.

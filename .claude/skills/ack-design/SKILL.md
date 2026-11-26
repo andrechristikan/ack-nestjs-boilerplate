@@ -1,7 +1,7 @@
 ---
 name: ack-design
 description: >-
-    Settles a feature or a behavior change with the owner through rounds of questions, agrees the test seams, and writes the spec to the feature folder under .scratch/. Use first for any feature or cross-module change. Not for a bug whose cause is unknown (ack-debug), tickets and a plan from an existing spec (ack-plan), or building (ack-build).
+    Settles a feature or a behavior change with the owner through rounds of questions, agrees the test seams, and writes the spec to the feature folder under .scratch/. Use first for any feature or cross-module change. Not for a small change or a bug (ack-quick), tickets and a plan from an existing spec (ack-plan), or building (ack-build).
 blurb: 'question rounds with the owner, seams, the spec'
 disable-model-invocation: true
 argument-hint: '<the feature or behavior change, in one sentence>'
@@ -25,7 +25,7 @@ The session works alone and writes one spec. Write nothing under `src/`, `test/`
 Follow `.claude/skills/grilling/SKILL.md`, with these departures:
 
 - Ask each round with `AskUserQuestion`, the recommended answer first. A frontier larger than four questions takes several calls.
-- A fact the code, a rule, or a decision entry answers is yours to find. Read it, or dispatch the built-in `Explore` agent. Never ask the owner for it.
+- A fact the code, a rule, or a decision entry answers is yours to find: read it, or dispatch the `Explore` agent. A fact from outside the repository comes from the `researcher` agent. Never ask the owner for either.
 - When the owner says "you decide", decide and record it as an assumption.
 
 The frontier covers what the owner has not named:

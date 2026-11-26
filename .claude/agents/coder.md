@@ -4,7 +4,7 @@ description: >-
     Builds one ticket or one pinned repair in src/, test-first at the seam the dispatch names, seeds under src/migration/ and the run surface the change makes stale included; then runs typecheck and the ticket's specs. Use for one ticket of an approved plan, or a pin with files, cause, and change in hand. Not for covering existing code (tester), reviewing (reviewer), finding a cause (debugger), docs (writer), or .claude/**.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
-effort: medium
+effort: high
 skills: caveman, ponytail, tdd
 ---
 

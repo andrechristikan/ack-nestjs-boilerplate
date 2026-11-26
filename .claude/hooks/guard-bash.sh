@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse Bash: foreground only; pnpm only; owner-only database commands; no read of the root .env, .env.harness,
 # .env.docker, keys/, or generated/vault/; no print of the session environment; no write of .claude/rules/discipline.md;
-# commits, staging, and discarding work ask; docker compose down with volumes asks.
+# no write under src/ or test/; commits, staging, and discarding work ask; docker compose down with volumes asks.
 set -euo pipefail
 
 decide() {
@@ -75,6 +75,30 @@ if printf '%s' "$cmd" | grep -qE 'rules/discipline\.md'; then
     discipline_git="${at_command_start}git([[:space:]]+-[Cc][[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*[[:space:]]+(checkout|restore|apply|stash)${word_end}"
     if printf '%s' "$cmd" | grep -qE "${discipline_redirect}|${discipline_tool}|${discipline_sed}|${discipline_git}"; then
         decide deny ".claude/rules/discipline.md changes only on the owner's word: edit it with the Edit tool, which asks the owner. A Bash command that writes, moves, deletes, restores, or runs an interpreter on it is denied; cat, grep, wc, git diff, and git log read it."
+    fi
+fi
+
+# src/ and test/ change through Edit and Write. A src/ or test/ path (relative, ./, or under the project root) written by
+# a redirect (a > after - or = is an arrow), tee, truncate, dd of=, cp as destination, sed -i or perl -i (on a path in its
+# own segment, or after xargs or find -exec), or an inline python3, node, perl, or ruby script (-, -c, -e, or stdin)
+# beside a write call is denied. rm, mv, git mv, git rm, the formatters, and reads pass.
+root_re=$(printf '%s' "${CLAUDE_PROJECT_DIR:-$PWD}" | sed 's/[][\.*^$+?(){}|]/\\&/g')
+source_path="['\"]?(\./|${root_re}/)?(src|test)/"
+source_find="${at_command_start}find([[:space:]]+[^-[:space:];&|][^[:space:];&|]*)*[[:space:]]+['\"]?(\./|${root_re}/)?(src|test)['\"]?${word_end}"
+if printf '%s' "$cmd" | grep -qE "(^|[[:space:]'\"=>])(\./|${root_re}/)?(src|test)/|${source_find}"; then
+    source_arg='[[:space:]]+[^[:space:];&|]+'
+    source_redirect="(^|[^=-])>>?[[:space:]]*${source_path}"
+    source_tool="${at_command_start}((tee|truncate)(${source_arg})*[[:space:]]+|dd(${source_arg})*[[:space:]]+of=)${source_path}"
+    source_cp="${at_command_start}cp(${source_arg})*[[:space:]]+${source_path}[^[:space:];&|)]*[[:space:]]*([;&|)]|$)"
+    source_inplace_flag="(sed|perl)(${source_arg})*[[:space:]]+(-[A-Za-z]*i|--in-place)"
+    source_inplace="${at_command_start}${source_inplace_flag}([^;&|'\"]|'[^']*'|\"[^\"]*\")*[[:space:]]${source_path}"
+    source_bulk="(${at_command_start}xargs(${source_arg})*|[[:space:]]-exec(dir)?)[[:space:]]+${source_inplace_flag}"
+    source_interpreter="${at_command_start}(python3?|node|perl|ruby)"
+    source_inline="${source_interpreter}(${source_arg})*[[:space:]]+-([A-Za-z]*[ce])?${word_end}|${source_interpreter}([[:space:]]+-[^[:space:];&|]*)*[[:space:]]*(<<|[;&|)]|$)"
+    source_write_call="open\([^)]*,[[:space:]]*(mode[[:space:]]*=[[:space:]]*)?['\"][^'\"]*[wax]|write_text|writeFile|appendFile|fs\.write"
+    if printf '%s' "$cmd" | grep -qE "${source_redirect}|${source_tool}|${source_cp}|${source_inplace}|${source_bulk}" ||
+        { printf '%s' "$cmd" | grep -qE "$source_inline" && printf '%s' "$cmd" | grep -qE "$source_write_call"; }; then
+        decide deny "Write src/ and test/ through Edit or Write: a Bash write skips the rules gate, the write guard, the formatter, and the Stop check. rm, mv, and git mv stay in Bash."
     fi
 fi
 
