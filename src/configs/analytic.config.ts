@@ -43,9 +43,7 @@ export interface IConfigAnalytic {
         passwordResetEnumerationWindowInMs: number;
         passwordResetEnumerationMinRequestsPerIp: number;
         sharedFingerprintMinUsersPerFingerprint: number;
-        sessionAfterAdmin: {
-            sessionAfterAdminRevokeInMs: number;
-        };
+        sessionAfterAdminRevokeInMs: number;
         forgotPasswordTokenAbuseWindowInMs: number;
         forgotPasswordTokenAbuseMinUnusedTokens: number;
         weights: {
@@ -122,9 +120,7 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
         passwordResetEnumerationWindowInMs: ms('10m'),
         passwordResetEnumerationMinRequestsPerIp: 10,
         sharedFingerprintMinUsersPerFingerprint: 2,
-        sessionAfterAdmin: {
-            sessionAfterAdminRevokeInMs: ms('5m'),
-        },
+        sessionAfterAdminRevokeInMs: ms('5m'),
         forgotPasswordTokenAbuseWindowInMs: ms('24h'),
         forgotPasswordTokenAbuseMinUnusedTokens: 5,
         weights: {

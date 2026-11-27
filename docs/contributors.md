@@ -30,7 +30,7 @@ This page lists the people who contributed to the project, for a reader who want
 [ref-contributor-ak2g]: https://github.com/ak2g
 [ref-doc-readme]: readme.md
 [ref-doc-contributing]: ../CONTRIBUTING.md
-[ref-doc-workspace]: workspace.md
-[ref-doc-project]: project.md
+[ref-doc-workspace]: concepts/workspace.md
+[ref-doc-project]: concepts/project.md
 [ref-doc-concept-mfa]: concepts/mfa.md
-[ref-doc-notification]: notification.md
+[ref-doc-notification]: concepts/notification.md

@@ -316,7 +316,6 @@ describe('SessionRevokeUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userSessionRevoked }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);

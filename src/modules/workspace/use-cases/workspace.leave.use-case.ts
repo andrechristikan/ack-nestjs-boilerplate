@@ -58,7 +58,6 @@ export class WorkspaceLeaveUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberLeft,
                     userId: left.userId,

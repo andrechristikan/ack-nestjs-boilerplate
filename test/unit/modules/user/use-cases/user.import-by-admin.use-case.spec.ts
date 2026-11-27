@@ -64,7 +64,6 @@ describe('UserImportByAdminUseCase', () => {
             activityLog: {
                 apiKeyId: apiKeyContext.apiKey.id,
                 actorUserId: authContext.userId,
-                workspaceId: null,
                 requestLog: requestContext.requestLog,
             },
             created: null,
@@ -159,8 +158,7 @@ describe('UserImportByAdminUseCase', () => {
             expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                authContext,
-                null
+                authContext
             );
             expect(userQueue.importByAdminEffect).toHaveBeenCalledWith(
                 imported,

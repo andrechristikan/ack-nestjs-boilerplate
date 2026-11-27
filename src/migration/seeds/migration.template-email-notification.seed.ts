@@ -363,6 +363,15 @@ export class MigrationTemplateEmailNotificationSeed
     async remove(): Promise<void> {
         this.logger.log('Removing back Emails...');
 
+        const isSesInitialized = this.awsSesService.isInitialized();
+        if (!isSesInitialized) {
+            this.logger.warn(
+                'AWS SES is not configured. Skipping email template removal.'
+            );
+
+            return;
+        }
+
         try {
             await Promise.all([
                 this.notificationTemplateService.emailDelete(

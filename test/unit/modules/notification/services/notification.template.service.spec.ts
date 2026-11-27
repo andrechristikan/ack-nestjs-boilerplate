@@ -50,7 +50,7 @@ describe('NotificationTemplateService', () => {
         {
             name: EnumNotificationKind.verifiedMobileNumber,
             file: 'notification.verified-mobile-number.template.hbs',
-            subject: 'MobileNumber Verified',
+            subject: 'Mobile Number Verified',
         },
         {
             name: EnumNotificationKind.changePassword,

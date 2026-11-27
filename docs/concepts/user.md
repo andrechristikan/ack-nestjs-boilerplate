@@ -170,8 +170,8 @@ Both are jobs. Each route validates, adds an outbox row, and answers an `outboxI
 [ref-doc-concept-file-upload]: file-upload.md
 [ref-doc-concept-file-upload-presign]: file-upload.md#presigned-upload
 [ref-doc-concept-file-upload-csv]: file-upload.md#csv-pipe-chain
-[ref-doc-workspace]: ../workspace.md
-[ref-doc-notification]: ../notification.md
-[ref-doc-activity-log]: ../activity-log.md
+[ref-doc-workspace]: workspace.md
+[ref-doc-notification]: notification.md
+[ref-doc-activity-log]: ../reference/activity-log.md
 [ref-doc-reference-configuration-user]: ../reference/configuration.md#user
 [ref-doc-reference-status-codes-user]: ../reference/status-codes.md#user

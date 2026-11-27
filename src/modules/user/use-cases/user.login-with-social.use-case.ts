@@ -246,7 +246,6 @@ export class UserLoginWithSocialUseCase implements IAppUseCase<
                                 requestContext,
                                 apiKeyContext,
                                 null,
-                                null,
                                 stage
                             )
                         );

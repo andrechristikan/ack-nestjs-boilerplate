@@ -179,7 +179,6 @@ describe('ApiKeyResetByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyReset,
                     metadata,

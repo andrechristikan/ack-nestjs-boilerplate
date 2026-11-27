@@ -36,9 +36,6 @@ import {
     buildRequestContext,
     buildApiKeyContext,
     buildAuthJwtAccessContext,
-    buildWorkspace,
-    buildWorkspaceContext,
-    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ActivityLogQueue', () => {
@@ -106,45 +103,33 @@ describe('ActivityLogQueue', () => {
     });
 
     describe('toPayload', () => {
-        it('carries the ids and the request log of the four contexts', () => {
+        it('carries the ids and the request log of the three contexts', () => {
             const requestContext = buildRequestContext();
             const apiKeyContext = buildApiKeyContext();
             const authContext = buildAuthJwtAccessContext('actor-1');
-            const workspaceContext = buildWorkspaceContext(
-                buildWorkspace(),
-                buildWorkspaceMember('actor-1')
-            );
 
             const result = queue.toPayload(
                 requestContext,
                 apiKeyContext,
-                authContext,
-                workspaceContext
+                authContext
             );
 
-            expect(result).toEqual({
+            expect(result).toStrictEqual({
                 apiKeyId: apiKeyContext.apiKey.id,
                 actorUserId: 'actor-1',
-                workspaceId: workspaceContext.workspaceId,
                 requestLog: requestContext.requestLog,
             });
         });
 
-        it('carries a null actor and workspace when the route has none', () => {
+        it('carries a null actor when the route has none', () => {
             const requestContext = buildRequestContext();
             const apiKeyContext = buildApiKeyContext();
 
-            const result = queue.toPayload(
-                requestContext,
-                apiKeyContext,
-                null,
-                null
-            );
+            const result = queue.toPayload(requestContext, apiKeyContext, null);
 
-            expect(result).toEqual({
+            expect(result).toStrictEqual({
                 apiKeyId: apiKeyContext.apiKey.id,
                 actorUserId: null,
-                workspaceId: null,
                 requestLog: requestContext.requestLog,
             });
         });
@@ -155,15 +140,10 @@ describe('ActivityLogQueue', () => {
             const requestContext = buildRequestContext();
             const apiKeyContext = buildApiKeyContext();
             const authContext = buildAuthJwtAccessContext('actor-1');
-            const workspaceContext = buildWorkspaceContext(
-                buildWorkspace(),
-                buildWorkspaceMember('actor-1')
-            );
             const result = queue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 { action: EnumActivityLogAction.userProfileUpdated }
             );
 
@@ -194,7 +174,6 @@ describe('ActivityLogQueue', () => {
     describe('recordEffectFromPayload', () => {
         const payload: IActivityLogContextPayload = {
             actorUserId: 'actor-1',
-            workspaceId: 'workspace-1',
             apiKeyId: 'api-key-1',
             requestLog,
         };
@@ -242,7 +221,7 @@ describe('ActivityLogQueue', () => {
 
         it('records userMfaVerificationFailed on a public route with the user id and createdBy the contract requires', () => {
             const result = queue.recordEffectFromPayload(
-                { ...payload, actorUserId: null, workspaceId: null },
+                { ...payload, actorUserId: null },
                 {
                     action: EnumActivityLogAction.userMfaVerificationFailed,
                     userId: 'user-1',
@@ -266,7 +245,7 @@ describe('ActivityLogQueue', () => {
             let thrown: unknown;
             try {
                 queue.recordEffectFromPayload(
-                    { ...payload, actorUserId: null, workspaceId: null },
+                    { ...payload, actorUserId: null },
                     { action: EnumActivityLogAction.userMfaVerificationFailed }
                 );
             } catch (error) {
@@ -542,24 +521,6 @@ describe('ActivityLogQueue', () => {
                 )
             ).toBe(false);
         });
-
-        it('accepts a payload resolution with a null workspaceId', () => {
-            expect(
-                queue['isWorkspaceFieldValid'](
-                    EnumActivityLogWorkspace.payload,
-                    null
-                )
-            ).toBe(true);
-        });
-
-        it('rejects a payload resolution carrying a workspaceId', () => {
-            expect(
-                queue['isWorkspaceFieldValid'](
-                    EnumActivityLogWorkspace.payload,
-                    'workspace-1'
-                )
-            ).toBe(false);
-        });
     });
 
     describe('resolveUserId', () => {
@@ -666,8 +627,7 @@ describe('ActivityLogQueue', () => {
         it('returns null for a none resolution', () => {
             const result = queue['resolveWorkspaceId'](
                 EnumActivityLogWorkspace.none,
-                'workspace-1',
-                null
+                'workspace-1'
             );
 
             expect(result).toBeNull();
@@ -676,8 +636,7 @@ describe('ActivityLogQueue', () => {
         it('returns the staged workspaceId for a target resolution', () => {
             const result = queue['resolveWorkspaceId'](
                 EnumActivityLogWorkspace.target,
-                'workspace-1',
-                null
+                'workspace-1'
             );
 
             expect(result).toBe('workspace-1');
@@ -688,7 +647,6 @@ describe('ActivityLogQueue', () => {
             try {
                 queue['resolveWorkspaceId'](
                     EnumActivityLogWorkspace.target,
-                    null,
                     null
                 );
             } catch (error) {
@@ -703,47 +661,6 @@ describe('ActivityLogQueue', () => {
             try {
                 queue['resolveWorkspaceId'](
                     EnumActivityLogWorkspace.target,
-                    '',
-                    null
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject(contractInvalid);
-        });
-
-        it('returns the payload workspaceId for a payload resolution', () => {
-            const result = queue['resolveWorkspaceId'](
-                EnumActivityLogWorkspace.payload,
-                null,
-                'workspace-1'
-            );
-
-            expect(result).toBe('workspace-1');
-        });
-
-        it('throws for a payload resolution with no payload workspaceId', () => {
-            let thrown: unknown;
-            try {
-                queue['resolveWorkspaceId'](
-                    EnumActivityLogWorkspace.payload,
-                    null,
-                    null
-                );
-            } catch (error) {
-                thrown = error;
-            }
-
-            expect(thrown).toMatchObject(contractInvalid);
-        });
-
-        it('throws for a payload resolution with an empty payload workspaceId', () => {
-            let thrown: unknown;
-            try {
-                queue['resolveWorkspaceId'](
-                    EnumActivityLogWorkspace.payload,
-                    null,
                     ''
                 );
             } catch (error) {
@@ -768,7 +685,6 @@ describe('ActivityLogQueue', () => {
 
             const result = queue['buildCreate'](
                 activityLog,
-                null,
                 null,
                 requestLog,
                 createdAt

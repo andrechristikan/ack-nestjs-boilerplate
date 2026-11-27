@@ -260,7 +260,6 @@ describe('UserVerificationService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 {
                     action: EnumActivityLogAction.userEmailVerified,
                     userId: 'user-consumed',

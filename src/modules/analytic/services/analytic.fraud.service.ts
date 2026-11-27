@@ -108,7 +108,7 @@ export class AnalyticFraudService {
                 'analytic.fraud.sharedFingerprintMinUsersPerFingerprint'
             )!;
         this.sessionAfterAdminRevokeInMs = this.configService.get<number>(
-            'analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs'
+            'analytic.fraud.sessionAfterAdminRevokeInMs'
         )!;
         this.forgotPasswordTokenAbuseWindowInMs =
             this.configService.get<number>(

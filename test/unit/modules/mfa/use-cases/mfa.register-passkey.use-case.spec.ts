@@ -470,7 +470,6 @@ describe('MfaRegisterPasskeyUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userMfaPasskeyRegistered }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);

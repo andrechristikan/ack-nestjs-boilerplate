@@ -32,7 +32,7 @@ export interface IWorkspaceRepository {
     findActivePublicBySlug(slug: string): Promise<Workspace | null>;
     findByIdByAdmin(workspaceId: string): Promise<Workspace | null>;
     findWithPaginationCursorByMember(
-        workspaceIds: string[],
+        userId: string,
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<Workspace>>;
     findWithPaginationOffsetByAdmin(

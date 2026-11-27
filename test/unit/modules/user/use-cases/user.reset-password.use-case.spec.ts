@@ -195,13 +195,7 @@ describe('UserResetPasswordUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockImplementation(
-            (
-                _requestContext,
-                _apiKeyContext,
-                _authContext,
-                _workspaceContext,
-                input
-            ) =>
+            (_requestContext, _apiKeyContext, _authContext, input) =>
                 input.action === EnumActivityLogAction.userMfaVerified
                     ? verifyEntry
                     : resetEntry
@@ -363,7 +357,6 @@ describe('UserResetPasswordUseCase', () => {
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 {
                     action: EnumActivityLogAction.userPasswordReset,
@@ -539,7 +532,6 @@ describe('UserResetPasswordUseCase', () => {
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 {
                     action: EnumActivityLogAction.userMfaVerified,
@@ -885,7 +877,6 @@ describe('UserResetPasswordUseCase', () => {
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 {
                     action: EnumActivityLogAction.userPasswordReset,

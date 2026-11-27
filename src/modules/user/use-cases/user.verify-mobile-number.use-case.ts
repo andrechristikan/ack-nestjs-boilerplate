@@ -71,7 +71,6 @@ export class UserVerifyMobileNumberUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userMobileNumberVerified,
                 }

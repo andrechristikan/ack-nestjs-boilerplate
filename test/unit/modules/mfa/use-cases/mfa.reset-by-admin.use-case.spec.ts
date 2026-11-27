@@ -109,13 +109,7 @@ describe('MfaResetByAdminUseCase', () => {
 
     beforeEach(async () => {
         activityLogQueue.recordEffect.mockImplementation(
-            (
-                _requestContext,
-                _apiKeyContext,
-                _authContext,
-                _workspaceContext,
-                input
-            ) =>
+            (_requestContext, _apiKeyContext, _authContext, input) =>
                 input.action === EnumActivityLogAction.adminUserMfaReset
                     ? adminEntry
                     : targetEntry
@@ -259,7 +253,6 @@ describe('MfaResetByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminUserMfaReset,
                     metadata: {
@@ -274,7 +267,6 @@ describe('MfaResetByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userMfaResetByAdmin,
                     userId: 'user-marten',

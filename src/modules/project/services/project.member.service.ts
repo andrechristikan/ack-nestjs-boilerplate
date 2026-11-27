@@ -227,7 +227,6 @@ export class ProjectMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectMemberAssigned,
                 userId: authContext.userId,
@@ -242,7 +241,6 @@ export class ProjectMemberService {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                     userId: targetMember.userId,
@@ -278,7 +276,6 @@ export class ProjectMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectMemberRoleUpdated,
                 userId: authContext.userId,
@@ -293,7 +290,6 @@ export class ProjectMemberService {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                     userId: updated.userId,
@@ -325,7 +321,6 @@ export class ProjectMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectMemberRemoved,
                 userId: authContext.userId,
@@ -338,7 +333,6 @@ export class ProjectMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                 userId: removed.userId,
@@ -367,7 +361,6 @@ export class ProjectMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectMemberLeft,
                 userId: removed.userId,

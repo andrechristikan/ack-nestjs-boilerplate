@@ -171,7 +171,6 @@ describe('WorkspaceLeaveUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberLeft,
                     userId: 'written-user',

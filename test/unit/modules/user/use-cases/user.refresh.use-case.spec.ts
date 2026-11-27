@@ -210,7 +210,6 @@ describe('UserRefreshUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userTokenRefreshed }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);
@@ -332,7 +331,6 @@ describe('UserRefreshUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userSessionRevoked }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);

@@ -92,7 +92,6 @@ export class UserLoginVerifyMfaUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     null,
-                    null,
                     {
                         action: EnumActivityLogAction.userMfaVerified,
                         userId: user.id,

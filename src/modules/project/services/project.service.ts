@@ -113,7 +113,6 @@ export class ProjectService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectCreated,
                 userId: actorId,
@@ -143,7 +142,6 @@ export class ProjectService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectUpdated,
                 userId: authContext.userId,
@@ -180,7 +178,6 @@ export class ProjectService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.projectUpdated,
                 userId: authContext.userId,

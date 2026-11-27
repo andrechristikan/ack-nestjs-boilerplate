@@ -357,7 +357,6 @@ describe('UserCreateByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 stageInput
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [

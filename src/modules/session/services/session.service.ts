@@ -457,7 +457,6 @@ export class SessionService {
                     requestContext,
                     apiKeyContext,
                     null,
-                    null,
                     {
                         action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
                         userId,
@@ -502,7 +501,6 @@ export class SessionService {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminSessionRevoked,
                     metadata: actorMetadata,
@@ -519,7 +517,6 @@ export class SessionService {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userSessionRevokedByAdmin,
                     userId,
@@ -563,7 +560,6 @@ export class SessionService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.adminAllSessionsRevoked,
                 metadata: actorMetadata,
@@ -578,7 +574,6 @@ export class SessionService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                 userId,

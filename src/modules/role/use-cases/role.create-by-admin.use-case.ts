@@ -71,7 +71,6 @@ export class RoleCreateByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminRoleCreated,
                     metadata,

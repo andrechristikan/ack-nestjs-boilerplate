@@ -152,7 +152,6 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyDeleted,
                     metadata,

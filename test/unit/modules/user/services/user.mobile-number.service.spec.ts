@@ -242,7 +242,6 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userMobileNumberAdded }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -316,7 +315,6 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userMobileNumberUpdated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -454,7 +452,6 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userMobileNumberDeleted }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);

@@ -272,7 +272,6 @@ export class WorkspaceMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipTransferred,
                 userId: authContext.userId,
@@ -285,7 +284,6 @@ export class WorkspaceMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                 userId: promoted.userId,
@@ -317,7 +315,6 @@ export class WorkspaceMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.adminWorkspaceOwnershipTransferred,
                 userId: authContext.userId,
@@ -334,7 +331,6 @@ export class WorkspaceMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
                 userId: demoted.userId,
@@ -350,7 +346,6 @@ export class WorkspaceMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceOwnershipTransferredByAdmin,
                 userId: promoted.userId,
@@ -422,7 +417,6 @@ export class WorkspaceMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                 userId: authContext.userId,
@@ -435,7 +429,6 @@ export class WorkspaceMemberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                 userId: updated.userId,

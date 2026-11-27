@@ -106,7 +106,6 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    null,
                     {
                         action: EnumActivityLogAction.adminAllSessionsRevoked,
                         metadata: revokeAllActorMetadata,
@@ -116,7 +115,6 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    null,
                     {
                         action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                         userId,
@@ -137,7 +135,6 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminUserStatusUpdated,
                     metadata: actorMetadata,
@@ -147,7 +144,6 @@ export class UserUpdateStatusByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action,
                     userId,

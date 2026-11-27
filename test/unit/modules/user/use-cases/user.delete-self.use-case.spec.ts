@@ -108,7 +108,6 @@ describe('UserDeleteSelfUseCase', () => {
         const activityLog: IActivityLogActorPayload = {
             apiKeyId: 'api-key-one',
             actorUserId: 'user-cinder',
-            workspaceId: null,
             requestLog: requestContext.requestLog,
         };
 
@@ -196,8 +195,7 @@ describe('UserDeleteSelfUseCase', () => {
             expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                authContext,
-                null
+                authContext
             );
             expect(userQueue.deleteSelfEffect).toHaveBeenCalledWith(
                 'user-cinder',

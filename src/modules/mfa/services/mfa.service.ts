@@ -388,7 +388,6 @@ export class MfaService {
             requestContext,
             apiKeyContext,
             null,
-            null,
             {
                 action: EnumActivityLogAction.userMfaVerificationFailed,
                 userId,
@@ -404,7 +403,6 @@ export class MfaService {
         const reachMaxEntry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
-            null,
             null,
             {
                 action: EnumActivityLogAction.userMaxMfaAttemptReached,
@@ -581,7 +579,6 @@ export class MfaService {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userMfaVerified,
                     userId: authContext.userId,

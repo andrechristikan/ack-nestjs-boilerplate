@@ -175,7 +175,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     null,
-                    null,
                     {
                         action: EnumActivityLogAction.userPasswordReset,
                         userId: consumed.userId,
@@ -187,7 +186,6 @@ export class UserResetPasswordUseCase implements IAppUseCase<
                 const verifyEntry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
-                    null,
                     null,
                     {
                         action: EnumActivityLogAction.userMfaVerified,

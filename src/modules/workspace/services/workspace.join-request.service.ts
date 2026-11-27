@@ -94,7 +94,6 @@ export class WorkspaceJoinRequestService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action,
                 userId: reviewerId,
@@ -111,7 +110,6 @@ export class WorkspaceJoinRequestService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: byAdminAction,
                 userId: joinRequest.userId,
@@ -221,7 +219,6 @@ export class WorkspaceJoinRequestService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceJoinRequested,
                 userId,

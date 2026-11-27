@@ -256,6 +256,6 @@ Each guard checks, at request time, the entry a guard running earlier wrote. An 
 [ref-doc-guide-route-protection]: ../guides/route-protection.md
 [ref-doc-reference-status-codes]: status-codes.md
 [ref-doc-reference-http-contract]: http-contract.md
-[ref-doc-workspace]: ../workspace.md
-[ref-doc-project]: ../project.md
-[ref-doc-feature-flag]: ../feature-flag.md
+[ref-doc-workspace]: ../concepts/workspace.md
+[ref-doc-project]: ../concepts/project.md
+[ref-doc-feature-flag]: ../concepts/feature-flag.md

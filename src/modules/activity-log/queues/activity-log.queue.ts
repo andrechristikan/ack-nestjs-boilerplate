@@ -28,7 +28,6 @@ import type {
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
-import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import { Queue } from 'bullmq';
@@ -134,17 +133,8 @@ export class ActivityLogQueue extends QueueBase {
 
     private resolveWorkspaceId(
         resolution: EnumActivityLogWorkspace,
-        stagedWorkspaceId: string | null,
-        payloadWorkspaceId: string | null
+        stagedWorkspaceId: string | null
     ): string | null {
-        if (resolution === EnumActivityLogWorkspace.payload) {
-            if (payloadWorkspaceId === null || payloadWorkspaceId === '') {
-                throw new ActivityLogContractInvalidException();
-            }
-
-            return payloadWorkspaceId;
-        }
-
         const workspaceId =
             resolution !== EnumActivityLogWorkspace.target ||
             stagedWorkspaceId === ''
@@ -164,7 +154,6 @@ export class ActivityLogQueue extends QueueBase {
     private buildCreate(
         input: IActivityLogInput<EnumActivityLogAction>,
         payloadUserId: string | null,
-        payloadWorkspaceId: string | null,
         requestLog: IRequestLog,
         createdAt: Date
     ): IActivityLogCreate {
@@ -180,8 +169,7 @@ export class ActivityLogQueue extends QueueBase {
         );
         const workspaceId = this.resolveWorkspaceId(
             contract.workspace,
-            input.workspaceId ?? null,
-            payloadWorkspaceId
+            input.workspaceId ?? null
         );
         const createdBy = this.resolveCreatedBy(
             contract.user,
@@ -213,14 +201,12 @@ export class ActivityLogQueue extends QueueBase {
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext | null,
-        workspaceContext: IWorkspaceContext | null,
         input: IActivityLogInput<EnumActivityLogAction>
     ): IActivityLogCreateManyEffect {
         const payload = this.toPayload(
             requestContext,
             apiKeyContext,
-            authContext,
-            workspaceContext
+            authContext
         );
 
         return this.recordEffectFromPayload(payload, input);
@@ -251,7 +237,6 @@ export class ActivityLogQueue extends QueueBase {
         const row = this.buildCreate(
             input,
             payload.actorUserId,
-            payload.workspaceId,
             payload.requestLog,
             createdAt
         );
@@ -270,25 +255,21 @@ export class ActivityLogQueue extends QueueBase {
     toPayload(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext,
-        workspaceContext: IWorkspaceContext | null
+        authContext: IAuthJwtAccessContext
     ): IActivityLogActorPayload;
     toPayload(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext | null,
-        workspaceContext: IWorkspaceContext | null
+        authContext: IAuthJwtAccessContext | null
     ): IActivityLogContextPayload;
     toPayload(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext | null,
-        workspaceContext: IWorkspaceContext | null
+        authContext: IAuthJwtAccessContext | null
     ): IActivityLogContextPayload {
         return {
             apiKeyId: apiKeyContext.apiKey.id,
             actorUserId: authContext?.userId ?? null,
-            workspaceId: workspaceContext?.workspaceId ?? null,
             requestLog: requestContext.requestLog,
         };
     }

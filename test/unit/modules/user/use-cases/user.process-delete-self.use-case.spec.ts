@@ -94,7 +94,6 @@ describe('UserProcessDeleteSelfUseCase', () => {
     const activityLog: IActivityLogActorPayload = {
         apiKeyId: 'api-key-1',
         actorUserId: 'user-cinder',
-        workspaceId: null,
         requestLog: buildRequestLog(),
     };
     const payload: IUserDeleteSelfPayload = {

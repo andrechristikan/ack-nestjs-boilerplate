@@ -63,7 +63,6 @@ export class RoleDeleteByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminRoleDeleted,
                     metadata,

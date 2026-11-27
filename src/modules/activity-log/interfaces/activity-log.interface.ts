@@ -47,7 +47,6 @@ export type IActivityLogInput<A extends EnumActivityLogAction> = {
 export interface IActivityLogContextPayload {
     apiKeyId: string;
     actorUserId: string | null;
-    workspaceId: string | null;
     requestLog: IRequestLog;
 }
 

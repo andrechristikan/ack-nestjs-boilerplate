@@ -402,7 +402,6 @@ describe('UserPasswordService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 {
                     action: EnumActivityLogAction.userMaxPasswordAttemptReached,
                     userId: 'user-hollow',
@@ -599,7 +598,6 @@ describe('UserPasswordService', () => {
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 {
                     action: EnumActivityLogAction.userPasswordResetRequested,

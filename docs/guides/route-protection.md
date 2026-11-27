@@ -146,7 +146,7 @@ A social login route puts its guard above the flag (`src/modules/user/controller
 [ref-doc-reference-database-apikey]: ../reference/database.md#apikey
 [ref-doc-reference-database-user]: ../reference/database.md#user
 [ref-doc-reference-decorators-missing]: ../reference/decorators-and-guards.md#missing-entries
-[ref-doc-feature-flag]: ../feature-flag.md
+[ref-doc-feature-flag]: feature-flag.md
 [ref-doc-guide-role]: role.md
 [ref-doc-guide-module]: module.md
 [ref-doc-guide-schema]: schema.md

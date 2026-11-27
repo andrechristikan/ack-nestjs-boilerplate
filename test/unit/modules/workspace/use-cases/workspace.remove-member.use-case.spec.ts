@@ -264,7 +264,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemoved,
                     userId: 'actor-1',
@@ -278,7 +277,6 @@ describe('WorkspaceRemoveMemberUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                     userId: 'written-user-2',

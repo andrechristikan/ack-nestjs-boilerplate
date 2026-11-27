@@ -197,7 +197,6 @@ export class UserChangePasswordUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userPasswordChanged,
                 }

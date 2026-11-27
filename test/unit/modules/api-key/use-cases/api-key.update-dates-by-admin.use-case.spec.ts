@@ -208,7 +208,6 @@ describe('ApiKeyUpdateDatesByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyDatesUpdated,
                     metadata,

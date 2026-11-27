@@ -52,7 +52,6 @@ export class ApiKeyResetByAdminUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    null,
                     {
                         action: EnumActivityLogAction.adminApiKeyReset,
                         metadata,

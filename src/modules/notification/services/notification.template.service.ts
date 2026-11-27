@@ -94,7 +94,7 @@ export class NotificationTemplateService {
                 };
             case EnumNotificationKind.verifiedMobileNumber:
                 return {
-                    subject: 'MobileNumber Verified',
+                    subject: 'Mobile Number Verified',
                     htmlBody: readFileSync(
                         join(
                             templateDir,

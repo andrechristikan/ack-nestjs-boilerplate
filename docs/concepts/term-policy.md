@@ -125,9 +125,9 @@ Every signed-in route carries the acceptance guard except four, so a user with p
 [ref-doc-concept-queue]: queue.md
 [ref-doc-concept-queue-dedupe]: queue.md#job-ids-and-dedupe
 [ref-doc-concept-dependencies]: dependencies.md#optional-adapters
-[ref-doc-notification]: ../notification.md
-[ref-doc-notification-publication]: ../notification.md#term-policy-publication-email
-[ref-doc-analytic]: ../analytic.md
+[ref-doc-notification]: notification.md
+[ref-doc-notification-publication]: notification.md#term-policy-publication
+[ref-doc-analytic]: analytic.md
 [ref-doc-reference-database-termpolicy]: ../reference/database.md#termpolicy
 [ref-doc-guide-route-protection]: ../guides/route-protection.md
 [ref-doc-reference-configuration-term-policy]: ../reference/configuration.md#termpolicy

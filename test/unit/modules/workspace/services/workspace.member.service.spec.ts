@@ -612,7 +612,6 @@ describe('WorkspaceMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 actorContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferred,
                     userId: 'actor-1',
@@ -626,7 +625,6 @@ describe('WorkspaceMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 actorContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
                     userId: 'written-user-2',
@@ -729,7 +727,6 @@ describe('WorkspaceMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 adminContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminWorkspaceOwnershipTransferred,
                     userId: 'admin-1',
@@ -747,7 +744,6 @@ describe('WorkspaceMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 adminContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
                     userId: 'written-user-1',
@@ -764,7 +760,6 @@ describe('WorkspaceMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 adminContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceOwnershipTransferredByAdmin,
                     userId: 'written-user-2',
@@ -1083,7 +1078,6 @@ describe('WorkspaceMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 actorContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdated,
                     userId: 'actor-1',
@@ -1097,7 +1091,6 @@ describe('WorkspaceMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 actorContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
                     userId: 'written-user-2',

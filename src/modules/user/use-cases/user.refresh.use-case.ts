@@ -58,7 +58,6 @@ export class UserRefreshUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    null,
                     { action: EnumActivityLogAction.userSessionRevoked }
                 );
                 await this.outboxService.addInTx(tx, revokeEntry);
@@ -115,7 +114,6 @@ export class UserRefreshUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userTokenRefreshed }
             );
             await this.outboxService.addInTx(tx, entry);

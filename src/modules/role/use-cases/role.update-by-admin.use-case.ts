@@ -70,7 +70,6 @@ export class RoleUpdateByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminRoleUpdated,
                     metadata,

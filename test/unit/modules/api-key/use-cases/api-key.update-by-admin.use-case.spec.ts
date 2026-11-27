@@ -180,7 +180,6 @@ describe('ApiKeyUpdateByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyUpdated,
                     metadata: { ...metadata, apiKeyName: 'Renamed' },

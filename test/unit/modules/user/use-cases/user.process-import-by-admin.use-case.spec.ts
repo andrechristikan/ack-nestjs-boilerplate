@@ -107,7 +107,6 @@ describe('UserProcessImportByAdminUseCase', () => {
     const activityLog: IActivityLogActorPayload = {
         apiKeyId: 'api-key-1',
         actorUserId: 'admin-bramble',
-        workspaceId: null,
         requestLog: buildRequestLog(),
     };
     const rows: IUserImport[] = [

@@ -113,16 +113,6 @@ export class WorkspaceMemberRepository
         });
     }
 
-    async findWorkspaceIdsByUser(userId: string): Promise<string[]> {
-        const members =
-            await this.databaseService.client.workspaceMember.findMany({
-                where: { userId },
-                select: WorkspaceMemberRefSelect,
-            });
-
-        return members.map(member => member.workspaceId);
-    }
-
     async findLiveOwnedWorkspaceIdsByUser(userId: string): Promise<string[]> {
         const members =
             await this.databaseService.client.workspaceMember.findMany({

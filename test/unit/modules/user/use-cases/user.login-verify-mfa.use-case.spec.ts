@@ -289,7 +289,6 @@ describe('UserLoginVerifyMfaUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 {
                     action: EnumActivityLogAction.userMfaVerified,
                     userId: 'user-bramble',
@@ -390,7 +389,6 @@ describe('UserLoginVerifyMfaUseCase', () => {
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 {
                     action: EnumActivityLogAction.userMfaVerified,

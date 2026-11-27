@@ -198,7 +198,6 @@ describe('TermPolicyResendEmailByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyEmailResent,
                     metadata,

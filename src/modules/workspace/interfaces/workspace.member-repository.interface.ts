@@ -32,7 +32,6 @@ export interface IWorkspaceMemberRepository {
         workspaceMemberId: string,
         workspaceId: string
     ): Promise<IWorkspaceMemberWithEmail | null>;
-    findWorkspaceIdsByUser(userId: string): Promise<string[]>;
     findLiveOwnedWorkspaceIdsByUser(userId: string): Promise<string[]>;
     countOwnedActiveByUser(userId: string): Promise<number>;
     findWithPaginationOffset(

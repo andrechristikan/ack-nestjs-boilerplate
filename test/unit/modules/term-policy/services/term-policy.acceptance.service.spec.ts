@@ -567,7 +567,6 @@ describe('TermPolicyAcceptanceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userTermPolicyAccepted }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [

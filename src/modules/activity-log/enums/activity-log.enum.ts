@@ -17,7 +17,6 @@ export enum EnumActivityLogUser {
 /** @public */
 export enum EnumActivityLogWorkspace {
     none = 'none',
-    payload = 'payload',
     target = 'target',
 }
 

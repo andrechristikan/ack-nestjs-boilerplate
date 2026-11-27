@@ -913,7 +913,6 @@ describe('SessionService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 {
                     action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
                     userId: 'user-2',
@@ -925,7 +924,6 @@ describe('SessionService', () => {
                 2,
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 {
                     action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
@@ -989,7 +987,6 @@ describe('SessionService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminSessionRevoked,
                     metadata: {
@@ -1005,7 +1002,6 @@ describe('SessionService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userSessionRevokedByAdmin,
                     userId: 'user-1',
@@ -1129,7 +1125,6 @@ describe('SessionService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminAllSessionsRevoked,
                     metadata: { targetUserId: 'user-1', sessionCount: 2 },
@@ -1140,7 +1135,6 @@ describe('SessionService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                     userId: 'user-1',

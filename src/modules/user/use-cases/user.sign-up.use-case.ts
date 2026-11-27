@@ -176,7 +176,6 @@ export class UserSignUpUseCase implements IAppUseCase<
                                 requestContext,
                                 apiKeyContext,
                                 null,
-                                null,
                                 stage
                             )
                         );

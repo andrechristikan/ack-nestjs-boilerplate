@@ -156,7 +156,6 @@ export class MfaDeletePasskeyUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userMfaPasskeyDeleted }
             );
             await this.outboxService.addInTx(tx, entry);

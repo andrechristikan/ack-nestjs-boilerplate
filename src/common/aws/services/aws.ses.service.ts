@@ -244,6 +244,7 @@ export class AwsSesService implements OnModuleInit {
         return create;
     }
 
+    /** @public */
     async updateTemplate({
         name,
         subject,

@@ -6,7 +6,10 @@ import {
 } from '@test/unit/helpers/test.unit.kit.helper';
 import { CacheService } from '@common/cache/services/cache.service';
 import { EnumPaginationType } from '@common/pagination/enums/pagination.enum';
-import { EnumAnalyticSnapshotSignal } from '@generated/prisma-client/client';
+import {
+    EnumActivityLogAction,
+    EnumAnalyticSnapshotSignal,
+} from '@generated/prisma-client/client';
 import { ActivityLogWorkspaceVolumeContract } from '@modules/activity-log/contracts/activity-log.workspace-volume.contract';
 import { AnalyticCache } from '@modules/analytic/caches/analytic.cache';
 import { EnumAnalyticDashboardMetric } from '@modules/analytic/enums/analytic.enum';
@@ -275,6 +278,16 @@ describe('AnalyticWorkspaceService', () => {
                 [...ActivityLogWorkspaceVolumeContract],
                 pagination
             );
+            expect(
+                analyticWorkspaceRepository.groupActivityVolume
+            ).toHaveBeenCalledWith(
+                startDate,
+                endDate,
+                expect.arrayContaining([
+                    EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
+                ]),
+                pagination
+            );
         });
 
         it('reads through with the page key, AnalyticWorkspaceCountPageCacheSchema, and the dashboard TTL', async () => {
@@ -338,6 +351,16 @@ describe('AnalyticWorkspaceService', () => {
             ).toHaveBeenCalledWith('workspace-1', null, null, [
                 ...ActivityLogWorkspaceVolumeContract,
             ]);
+            expect(
+                analyticWorkspaceRepository.findSummary
+            ).toHaveBeenCalledWith(
+                'workspace-1',
+                null,
+                null,
+                expect.arrayContaining([
+                    EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
+                ])
+            );
         });
     });
 

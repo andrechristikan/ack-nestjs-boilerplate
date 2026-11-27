@@ -103,7 +103,6 @@ export class UserMobileNumberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.userMobileNumberAdded,
             }
@@ -212,7 +211,6 @@ export class UserMobileNumberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.userMobileNumberUpdated,
             }
@@ -251,7 +249,6 @@ export class UserMobileNumberService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.userMobileNumberDeleted,
             }

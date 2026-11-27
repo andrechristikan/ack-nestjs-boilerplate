@@ -6,6 +6,7 @@ export const ActivityLogWorkspaceVolumeContract: readonly EnumActivityLogAction[
         EnumActivityLogAction.workspaceMemberRoleUpdatedByAdmin,
         EnumActivityLogAction.workspaceMemberRemovedByAdmin,
         EnumActivityLogAction.workspaceOwnershipTransferredByOwner,
+        EnumActivityLogAction.workspaceOwnershipRemovedByAdmin,
         EnumActivityLogAction.workspaceOwnershipTransferredByAdmin,
         EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
         EnumActivityLogAction.workspaceJoinRejectedByAdmin,

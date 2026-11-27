@@ -32,8 +32,7 @@ export class WorkspaceSoftDeleteUseCase implements IAppUseCase<
         const activityLog = this.activityLogQueue.toPayload(
             requestContext,
             apiKeyContext,
-            authContext,
-            workspaceContext
+            authContext
         );
         const effect = this.workspaceQueue.softDeleteEffect(
             workspaceContext.workspace.id,

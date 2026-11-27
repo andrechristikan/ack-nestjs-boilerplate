@@ -157,7 +157,7 @@ An admin resets the MFA of a user who lost the factors.
 [ref-doc-concept-user]: user.md
 [ref-doc-concept-user-lockout]: user.md#status-and-lockout
 [ref-doc-guide-passkeys]: ../guides/passkeys.md
-[ref-doc-feature-flag]: ../feature-flag.md
+[ref-doc-feature-flag]: feature-flag.md
 [ref-doc-reference-configuration-mfa]: ../reference/configuration.md#mfa
 [ref-doc-reference-configuration-triggers]: ../reference/configuration.md#integration-triggers
 [ref-doc-production-variables]: ../production.md#variables-set-by-hand

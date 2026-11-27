@@ -142,8 +142,7 @@ export class UserDeleteSelfUseCase implements IAppUseCase<
             const activityLog = this.activityLogQueue.toPayload(
                 requestContext,
                 apiKeyContext,
-                authContext,
-                null
+                authContext
             );
             const effect = this.userQueue.deleteSelfEffect(
                 userId,

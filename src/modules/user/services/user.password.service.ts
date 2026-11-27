@@ -232,7 +232,6 @@ export class UserPasswordService {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 {
                     action: EnumActivityLogAction.userMaxPasswordAttemptReached,
                     userId,
@@ -325,7 +324,6 @@ export class UserPasswordService {
         const entry = this.activityLogQueue.recordEffect(
             requestContext,
             apiKeyContext,
-            null,
             null,
             {
                 action: EnumActivityLogAction.userPasswordResetRequested,

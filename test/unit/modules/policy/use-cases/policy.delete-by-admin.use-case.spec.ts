@@ -239,7 +239,6 @@ describe('PolicyDeleteByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminPolicyDeleted,
                     metadata: policyMetadata,

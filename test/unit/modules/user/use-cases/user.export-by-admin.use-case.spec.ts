@@ -14,6 +14,7 @@ import { FileExceedMaxDataExportException } from '@common/file/exceptions/file.e
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { EnumPaginationStatusCodeError } from '@common/pagination/enums/pagination.status-code.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogQueue } from '@modules/activity-log/queues/activity-log.queue';
 import { UserDefaultStatus } from '@modules/user/constants/user.list.constant';
 import type { UserExportRequestDto } from '@modules/user/dtos/request/user.export.request.dto';
@@ -47,10 +48,9 @@ describe('UserExportByAdminUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext('admin-fable');
-    const activityLog = {
+    const activityLog: IActivityLogActorPayload = {
         apiKeyId: apiKeyContext.apiKey.id,
         actorUserId: authContext.userId,
-        workspaceId: null,
         requestLog: requestContext.requestLog,
     };
     const exportEffect: IUserExportByAdminEffect = {
@@ -130,8 +130,7 @@ describe('UserExportByAdminUseCase', () => {
             expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                authContext,
-                null
+                authContext
             );
             expect(userQueue.exportByAdminEffect).toHaveBeenCalledWith(
                 [EnumUserStatus.active],

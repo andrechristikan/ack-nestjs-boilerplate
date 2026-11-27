@@ -58,8 +58,7 @@ export class UserImportByAdminUseCase implements IAppUseCase<
         const activityLog = this.activityLogQueue.toPayload(
             requestContext,
             apiKeyContext,
-            authContext,
-            null
+            authContext
         );
         const effect = this.userQueue.importByAdminEffect(rows, activityLog);
         const outboxId = await this.databaseService.withTransaction(async tx =>

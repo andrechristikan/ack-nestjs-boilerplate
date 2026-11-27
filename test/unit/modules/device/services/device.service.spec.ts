@@ -653,7 +653,6 @@ describe('DeviceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.userDeviceRefreshed }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);

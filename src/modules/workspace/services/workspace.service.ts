@@ -100,11 +100,8 @@ export class WorkspaceService {
         userId: string,
         pagination: IPaginationQueryCursorParams
     ): Promise<IResponsePaginationReturn<Workspace>> {
-        const workspaceIds =
-            await this.workspaceMemberRepository.findWorkspaceIdsByUser(userId);
-
         return this.workspaceRepository.findWithPaginationCursorByMember(
-            workspaceIds,
+            userId,
             pagination
         );
     }
@@ -166,7 +163,6 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceCreated,
                 userId,
@@ -196,7 +192,6 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: authContext.userId,
@@ -226,7 +221,6 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 userId: authContext.userId,
@@ -256,7 +250,6 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
-            null,
             {
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: authContext.userId,

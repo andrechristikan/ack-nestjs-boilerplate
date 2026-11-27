@@ -710,7 +710,6 @@ describe('ProjectMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberAssigned,
                     userId: authContext.userId,
@@ -724,7 +723,6 @@ describe('ProjectMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberAssignedByAdmin,
                     userId: targetMember.userId,
@@ -826,7 +824,6 @@ describe('ProjectMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdated,
                     userId: authContext.userId,
@@ -840,7 +837,6 @@ describe('ProjectMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberRoleUpdatedByAdmin,
                     userId: written.userId,
@@ -939,7 +935,6 @@ describe('ProjectMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberRemoved,
                     userId: authContext.userId,
@@ -953,7 +948,6 @@ describe('ProjectMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberRemovedByAdmin,
                     userId: written.userId,
@@ -1015,7 +1009,6 @@ describe('ProjectMemberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.projectMemberLeft,
                     userId: written.userId,

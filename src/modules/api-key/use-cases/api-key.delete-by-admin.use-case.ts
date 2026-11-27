@@ -49,7 +49,6 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyDeleted,
                     metadata,

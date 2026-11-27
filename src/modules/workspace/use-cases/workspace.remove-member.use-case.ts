@@ -78,7 +78,6 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemoved,
                     userId: authContext.userId,
@@ -91,7 +90,6 @@ export class WorkspaceRemoveMemberUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 {
                     action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
                     userId: removed.userId,

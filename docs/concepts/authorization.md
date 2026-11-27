@@ -128,9 +128,9 @@ Policies belong to admin-type roles:
 [ref-doc-concept-term-policy-guard]: term-policy.md#acceptance-at-sign-up-and-per-request
 [ref-doc-concept-request-pipeline]: request-pipeline.md#guards
 [ref-doc-concept-security]: security.md#rate-limiting
-[ref-doc-workspace]: ../workspace.md
-[ref-doc-project]: ../project.md
-[ref-doc-feature-flag]: ../feature-flag.md
+[ref-doc-workspace]: workspace.md
+[ref-doc-project]: project.md
+[ref-doc-feature-flag]: feature-flag.md
 [ref-doc-guide-route-protection]: ../guides/route-protection.md
 [ref-doc-guide-role]: ../guides/role.md
 [ref-doc-reference-decorators-and-guards]: ../reference/decorators-and-guards.md

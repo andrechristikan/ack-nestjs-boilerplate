@@ -219,7 +219,6 @@ describe('RoleCreateByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.adminRoleCreated, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);

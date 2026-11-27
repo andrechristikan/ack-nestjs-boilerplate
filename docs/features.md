@@ -137,7 +137,7 @@ Feature flags:
 
 - A flag turns a route or a sub-feature on or off, targets user ids, rolls out to a percentage, and carries metadata the feature reads. Results are cached.
 - Needed when a feature needs a runtime switch or a gradual rollout.
-- Pages: [Feature Flag][ref-doc-feature-flag].
+- Pages: [Feature Flag][ref-doc-concept-feature-flag], [Feature Flag Guide][ref-doc-guide-feature-flag], [Feature Flag Reference][ref-doc-reference-feature-flag].
 
 ## Workspace and project
 
@@ -146,13 +146,13 @@ Workspaces:
 - Every user belongs to at least one workspace, personal by default. A request selects the active workspace with the `x-workspace-id` header.
 - Members hold roles, an invite adds an email address, and a join request asks to enter a public workspace. Ownership rules stop a workspace from ending with nobody in charge.
 - Needed when data belongs to a team or to a user's own space.
-- Pages: [Workspace][ref-doc-workspace].
+- Pages: [Workspace][ref-doc-concept-workspace].
 
 Projects:
 
 - A project belongs to one workspace and carries its own members with the roles `admin`, `member`, and `viewer`. A workspace owner or admin reaches every project of the workspace.
 - Needed when work inside a workspace needs its own members and roles.
-- Pages: [Project][ref-doc-project].
+- Pages: [Project][ref-doc-concept-project].
 
 ## Platform
 
@@ -161,7 +161,7 @@ Notifications and email:
 - A notification goes out over email, push, in-app, and silent channels, filtered by each user's settings per type and channel. The silent channel records the notification and delivers nothing to the user. Email uses SES templates and push uses Firebase.
 - A notification is an outbox row written with the action that causes it, and BullMQ jobs deliver it step by step so a retry skips finished steps.
 - Needed when a user must hear about an event by email, push, or inside the app.
-- Pages: [Notification][ref-doc-notification], [Email][ref-doc-email].
+- Pages: [Notification][ref-doc-concept-notification], [Notification Guide][ref-doc-guide-notification], [Email Template Guide][ref-doc-guide-email-template], [Notification Reference][ref-doc-reference-notification].
 
 File upload:
 
@@ -171,15 +171,15 @@ File upload:
 
 Activity log:
 
-- A use case stages an audited action, and the response interceptor flushes it to a queue job that writes it. An action one user takes on another writes a row for the actor and a row for the target.
+- An audited action adds its entry as an outbox row in the action's transaction, and a queue job writes the row after the commit. An action one user takes on another writes a row for the actor and a row for the target.
 - Needed when you audit what a user or an admin did.
-- Pages: [Activity Log][ref-doc-activity-log].
+- Pages: [Activity Log][ref-doc-concept-activity-log], [Activity Log Guide][ref-doc-guide-activity-log], [Activity Log Reference][ref-doc-reference-activity-log].
 
 Analytic:
 
 - Admins read dashboard metrics, anomaly summaries, and fraud reports, and workspace admins read the metrics of their workspace. The routes only report and change nothing.
 - Needed when admins need dashboards or anomaly and fraud signals.
-- Pages: [Analytic][ref-doc-analytic].
+- Pages: [Analytic][ref-doc-concept-analytic].
 
 i18n:
 
@@ -264,13 +264,19 @@ API docs:
 [ref-doc-concept-term-policy]: concepts/term-policy.md
 [ref-doc-guide-role]: guides/role.md
 [ref-doc-reference-decorators-and-guards]: reference/decorators-and-guards.md
-[ref-doc-feature-flag]: feature-flag.md
-[ref-doc-workspace]: workspace.md
-[ref-doc-project]: project.md
-[ref-doc-notification]: notification.md
-[ref-doc-email]: email.md
-[ref-doc-activity-log]: activity-log.md
-[ref-doc-analytic]: analytic.md
+[ref-doc-concept-feature-flag]: concepts/feature-flag.md
+[ref-doc-concept-workspace]: concepts/workspace.md
+[ref-doc-concept-project]: concepts/project.md
+[ref-doc-concept-notification]: concepts/notification.md
+[ref-doc-concept-activity-log]: concepts/activity-log.md
+[ref-doc-concept-analytic]: concepts/analytic.md
+[ref-doc-guide-feature-flag]: guides/feature-flag.md
+[ref-doc-guide-notification]: guides/notification.md
+[ref-doc-guide-email-template]: guides/email-template.md
+[ref-doc-guide-activity-log]: guides/activity-log.md
+[ref-doc-reference-feature-flag]: reference/feature-flag.md
+[ref-doc-reference-notification]: reference/notification.md
+[ref-doc-reference-activity-log]: reference/activity-log.md
 [ref-doc-dependencies-health]: concepts/dependencies.md#health-checks
 [ref-doc-concept-database]: concepts/database.md
 [ref-doc-guide-module]: guides/module.md

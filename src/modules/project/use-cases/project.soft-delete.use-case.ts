@@ -11,18 +11,11 @@ import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
-import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import type { IProjectContext } from '@modules/project/interfaces/project.interface';
 
 @Injectable()
 export class ProjectSoftDeleteUseCase implements IAppUseCase<
-    [
-        IRequestContext,
-        IApiKeyContext,
-        IAuthJwtAccessContext,
-        IWorkspaceContext,
-        IProjectContext,
-    ],
+    [IRequestContext, IApiKeyContext, IAuthJwtAccessContext, IProjectContext],
     IResponseReturn<void>
 > {
     constructor(
@@ -38,7 +31,6 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext,
-        workspaceContext: IWorkspaceContext,
         projectContext: IProjectContext
     ): Promise<IResponseReturn<void>> {
         const project = projectContext.project;
@@ -56,7 +48,6 @@ export class ProjectSoftDeleteUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                workspaceContext,
                 {
                     action: EnumActivityLogAction.projectDeleted,
                     userId: actorId,

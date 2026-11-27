@@ -47,7 +47,6 @@ export class UserSendVerificationEmailUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 {
                     action: EnumActivityLogAction.userVerificationEmailSent,
                     userId: user.id,

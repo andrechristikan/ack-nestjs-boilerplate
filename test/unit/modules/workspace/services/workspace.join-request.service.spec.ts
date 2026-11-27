@@ -508,7 +508,6 @@ describe('WorkspaceJoinRequestService', () => {
                 requestContext,
                 apiKeyContext,
                 authContextOfUser2,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceJoinRequested,
                     userId: 'user-2',
@@ -751,7 +750,6 @@ describe('WorkspaceJoinRequestService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceJoinAccepted,
                     userId: 'reviewer-1',
@@ -765,7 +763,6 @@ describe('WorkspaceJoinRequestService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceJoinAcceptedByAdmin,
                     userId: 'user-2',
@@ -940,7 +937,6 @@ describe('WorkspaceJoinRequestService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceJoinRejected,
                     userId: 'reviewer-1',
@@ -954,7 +950,6 @@ describe('WorkspaceJoinRequestService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceJoinRejectedByAdmin,
                     userId: 'user-2',

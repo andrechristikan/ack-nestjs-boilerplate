@@ -128,7 +128,6 @@ describe('WorkspaceSwitchUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceSwitched,
                     userId: 'user-1',

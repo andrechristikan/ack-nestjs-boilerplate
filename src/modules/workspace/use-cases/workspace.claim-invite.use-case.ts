@@ -101,7 +101,6 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteAccepted,
                     userId,
@@ -116,7 +115,6 @@ export class WorkspaceClaimInviteUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
-                    null,
                     {
                         action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                         userId: accepted.invitedByUserId,

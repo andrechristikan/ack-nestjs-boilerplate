@@ -53,7 +53,6 @@ export class UserLogoutUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userLoggedOut,
                 }

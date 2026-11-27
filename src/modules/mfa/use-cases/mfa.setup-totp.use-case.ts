@@ -146,7 +146,6 @@ export class MfaSetupTotpUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userMfaTotpSetUp,
                     userId: authContext.userId,

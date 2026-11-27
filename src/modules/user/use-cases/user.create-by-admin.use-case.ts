@@ -120,7 +120,6 @@ export class UserCreateByAdminUseCase implements IAppUseCase<
                                     requestContext,
                                     apiKeyContext,
                                     authContext,
-                                    null,
                                     stage
                                 )
                             );

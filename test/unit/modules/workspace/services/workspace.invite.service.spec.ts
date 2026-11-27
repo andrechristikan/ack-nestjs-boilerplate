@@ -1086,7 +1086,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteCreated,
                     userId: 'user-1',
@@ -1103,7 +1102,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteCreatedByAdmin,
                     userId: 'user-2',
@@ -1147,7 +1145,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteCreated,
                     userId: 'user-1',
@@ -1448,7 +1445,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteResent,
                     userId: 'user-1',
@@ -1465,7 +1461,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteResentByAdmin,
                     userId: 'user-2',
@@ -1566,7 +1561,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 expect.objectContaining({ workspaceId: 'workspace-9' })
             );
         });
@@ -1595,7 +1589,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteRevoked,
                     userId: 'user-1',
@@ -1612,7 +1605,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteRevokedByAdmin,
                     userId: 'user-2',
@@ -1648,7 +1640,6 @@ describe('WorkspaceInviteService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteRevoked,
                     userId: 'user-1',

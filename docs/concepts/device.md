@@ -22,7 +22,7 @@ This page explains devices and device ownership, for a developer who changes a l
 - [Session][ref-doc-concept-session]: the sessions that belong to an ownership and the purge that ends them
 - [User][ref-doc-concept-user]: the deletion job that revokes every ownership
 - [MFA][ref-doc-concept-mfa]: the re-authentication a device removal asks for
-- [Notification][ref-doc-notification]: how a producer reads the push tokens
+- [Notification][ref-doc-notification]: how the push job reads and sends to the tokens
 - [Activity Log][ref-doc-activity-log]: the entries a removal and a device login write
 - [Status Codes][ref-doc-reference-status-codes-device]: `DeviceNotFoundException`
 
@@ -69,7 +69,7 @@ A login on a revoked ownership reactivates the same row. A login that creates an
 The push token belongs to the ownership, so two users of one device hold separate tokens:
 
 - A login sets the token when the request carries one. A device refresh (the device route, not a token refresh, which writes no push token) writes `name`, `platform`, and `notificationToken` as given, and `null` clears a value. A device refresh or a login that carries a token clears that token from every other user's ownership in their transaction.
-- A producer reads the tokens of the user's non-revoked ownerships that hold a live session, seals them into the notification job, and the push channel opens them to send ([Notification][ref-doc-notification]).
+- The notification job reads the tokens of the user's non-revoked ownerships that hold a live session, seals them, and the push channel opens them to send ([Notification][ref-doc-notification]).
 - A token is cleared by logout, by a device refresh that sends `null`, by a device refresh or a login that carries the token (from every other user's ownership), by removing the ownership, by self-deletion, by the daily stale-token cleanup (`notification.push.cleanupStaleTokensCron`, for tokens idle past `notification.push.staleTokenThresholdInMs`), and by the cleanup that follows a push provider rejecting a token.
 
 ## One signed-in user per device
@@ -119,6 +119,6 @@ The account deletion job calls `DeviceService.revokeAllByUserInTx` in its transa
 [ref-doc-concept-user]: user.md
 [ref-doc-concept-user-delete]: user.md#self-deletion-and-purge
 [ref-doc-concept-mfa]: mfa.md#reauthentication
-[ref-doc-notification]: ../notification.md
-[ref-doc-activity-log]: ../activity-log.md
+[ref-doc-notification]: notification.md#push-channel-and-tokens
+[ref-doc-activity-log]: ../reference/activity-log.md
 [ref-doc-reference-status-codes-device]: ../reference/status-codes.md#device

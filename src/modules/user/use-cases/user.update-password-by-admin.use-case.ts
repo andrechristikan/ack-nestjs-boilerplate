@@ -127,7 +127,6 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminUserPasswordUpdated,
                     metadata: actorMetadata,
@@ -137,7 +136,6 @@ export class UserUpdatePasswordByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.userPasswordUpdatedByAdmin,
                     userId,

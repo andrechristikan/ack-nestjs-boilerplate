@@ -133,17 +133,13 @@ describe('WorkspaceService', () => {
             orderBy: [],
         };
 
-        it('reads the member workspace ids and lists the workspaces by them', async () => {
+        it('lists the workspaces of the user through one cursor read', async () => {
             const page: IResponsePaginationReturn<Workspace> = {
                 type: EnumPaginationType.cursor,
                 perPage: 20,
                 hasNext: false,
                 data: [workspace],
             };
-            workspaceMemberRepository.findWorkspaceIdsByUser.mockResolvedValue([
-                'workspace-1',
-                'workspace-2',
-            ]);
             workspaceRepository.findWithPaginationCursorByMember.mockResolvedValue(
                 page
             );
@@ -155,23 +151,8 @@ describe('WorkspaceService', () => {
 
             expect(result).toBe(page);
             expect(
-                workspaceMemberRepository.findWorkspaceIdsByUser
-            ).toHaveBeenCalledWith('user-1');
-            expect(
                 workspaceRepository.findWithPaginationCursorByMember
-            ).toHaveBeenCalledWith(['workspace-1', 'workspace-2'], pagination);
-        });
-
-        it('passes an empty id list to the repository unchanged', async () => {
-            workspaceMemberRepository.findWorkspaceIdsByUser.mockResolvedValue(
-                []
-            );
-
-            await service.getListCursorByMember('user-1', pagination);
-
-            expect(
-                workspaceRepository.findWithPaginationCursorByMember
-            ).toHaveBeenCalledWith([], pagination);
+            ).toHaveBeenCalledWith('user-1', pagination);
         });
     });
 
@@ -394,7 +375,6 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceCreated,
                     userId: 'user-1',
@@ -438,7 +418,6 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceUpdated,
                     userId: 'user-1',
@@ -475,7 +454,6 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceVisibilityUpdated,
                     userId: 'user-1',
@@ -512,7 +490,6 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.workspaceUpdated,
                     userId: 'user-1',

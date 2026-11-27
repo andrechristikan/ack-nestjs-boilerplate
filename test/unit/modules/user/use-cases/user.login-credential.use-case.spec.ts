@@ -377,7 +377,6 @@ describe('UserLoginCredentialUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 {
                     action: EnumActivityLogAction.userLoginFailed,
                     userId: 'user-bramble',
@@ -509,7 +508,6 @@ describe('UserLoginCredentialUseCase', () => {
             expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 {
                     action: EnumActivityLogAction.userVerificationEmailSent,

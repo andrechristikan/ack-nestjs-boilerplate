@@ -454,7 +454,6 @@ describe('UserSignUpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 stageInput
             );
             expect(notificationQueue.notify).toHaveBeenCalledTimes(2);

@@ -242,7 +242,6 @@ describe('PolicyUpdateByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 {
                     action: EnumActivityLogAction.adminPolicyUpdated,
                     metadata: policyMetadata,

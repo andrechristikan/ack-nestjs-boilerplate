@@ -107,7 +107,7 @@ Config file: `src/configs/analytic.config.ts`, interface `IConfigAnalytic`.
 | `analytic.fraud.passwordResetEnumerationWindowInMs` | `number` | `10m` |  |
 | `analytic.fraud.passwordResetEnumerationMinRequestsPerIp` | `number` | `10` |  |
 | `analytic.fraud.sharedFingerprintMinUsersPerFingerprint` | `number` | `2` |  |
-| `analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs` | `number` | `5m` |  |
+| `analytic.fraud.sessionAfterAdminRevokeInMs` | `number` | `5m` |  |
 | `analytic.fraud.forgotPasswordTokenAbuseWindowInMs` | `number` | `24h` |  |
 | `analytic.fraud.forgotPasswordTokenAbuseMinUnusedTokens` | `number` | `5` |  |
 | `analytic.fraud.weights.sessionAfterAdmin` | `number` | `50` |  |

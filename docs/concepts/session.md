@@ -126,7 +126,7 @@ Each admin session-revoke route refuses a target the admin does not outrank (`Ro
 [ref-doc-concept-device-one-user]: device.md#one-signed-in-user-per-device
 [ref-doc-concept-user]: user.md
 [ref-doc-concept-mfa]: mfa.md
-[ref-doc-activity-log]: ../activity-log.md
+[ref-doc-activity-log]: ../reference/activity-log.md
 [ref-doc-reference-configuration-session]: ../reference/configuration.md#session
 [ref-doc-reference-status-codes-session]: ../reference/status-codes.md#session
 [ref-doc-dependencies-required]: dependencies.md#required-mongodb-and-redis

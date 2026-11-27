@@ -182,7 +182,7 @@ export class WorkspaceRepository
     }
 
     async findWithPaginationCursorByMember(
-        workspaceIds: string[],
+        userId: string,
         { where, ...others }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<Workspace>> {
         return this.paginationService.cursor(
@@ -193,7 +193,7 @@ export class WorkspaceRepository
                     AND: [
                         where ?? {},
                         { deletedAt: null },
-                        { id: { in: workspaceIds } },
+                        { members: { some: { userId } } },
                     ],
                 },
             }

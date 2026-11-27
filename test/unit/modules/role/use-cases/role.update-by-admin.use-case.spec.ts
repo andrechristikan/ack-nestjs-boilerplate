@@ -218,7 +218,6 @@ describe('RoleUpdateByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                null,
                 { action: EnumActivityLogAction.adminRoleUpdated, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);

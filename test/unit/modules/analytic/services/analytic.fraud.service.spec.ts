@@ -98,7 +98,7 @@ describe('AnalyticFraudService', () => {
         'analytic.fraud.passwordResetEnumerationWindowInMs': 86400000,
         'analytic.fraud.passwordResetEnumerationMinRequestsPerIp': 2,
         'analytic.fraud.sharedFingerprintMinUsersPerFingerprint': 2,
-        'analytic.fraud.sessionAfterAdmin.sessionAfterAdminRevokeInMs': 3600000,
+        'analytic.fraud.sessionAfterAdminRevokeInMs': 3600000,
         'analytic.fraud.forgotPasswordTokenAbuseWindowInMs': 86400000,
         'analytic.fraud.forgotPasswordTokenAbuseMinUnusedTokens': 2,
         'analytic.fraud.bands.monitorMax': 10,

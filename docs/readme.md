@@ -5,7 +5,7 @@ description: The index of every page under docs, by folder and at the root.
 
 # Documentation
 
-This page indexes every documentation page, for a reader who looks for the page that covers a topic. Four folders group the pages by type, and the feature pages, the production page, and the contributors page sit at the root of `docs/`.
+This page indexes every documentation page, for a reader who looks for the page that covers a topic. Four folders group the pages by type, and the features page, the production page, and the contributors page sit at the root of `docs/`.
 
 ## Table of Contents
 
@@ -14,7 +14,6 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Concepts](#concepts)
 - [Guides](#guides)
 - [Reference](#reference)
-- [Feature pages](#feature-pages)
 - [Production](#production)
 - [Contributors](#contributors)
 
@@ -56,6 +55,12 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Authorization][ref-doc-concept-authorization]: the guard pipeline, roles, and policy abilities
 - [Device][ref-doc-concept-device]: device ownership, one signed-in user per device, and the push token
 - [Term Policy][ref-doc-concept-term-policy]: versioned legal documents, publication, and the acceptance gate
+- [Feature Flag][ref-doc-concept-feature-flag]: the enable switch, the allow-list, the rollout bucket, sub-keys, and the cache
+- [Workspace][ref-doc-concept-workspace]: the active workspace, roles and ownership, invites, join requests, slugs, and soft delete
+- [Project][ref-doc-concept-project]: the project guard, the workspace bypass, membership, slugs, and soft delete
+- [Notification][ref-doc-concept-notification]: the recipient, orchestration and steps, the email and push channels, and payload encryption
+- [Activity Log][ref-doc-concept-activity-log]: entries recorded in the action's transaction, actor and target rows, and masking
+- [Analytic][ref-doc-concept-analytic]: live metrics and snapshots, caching and thresholds, and the activity-log metrics
 - [AI Harness][ref-doc-concept-ai-harness]: how the Claude Code and Copilot configuration takes a feature from design to pull request
 
 ## Guides
@@ -75,6 +80,10 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Passkeys][ref-doc-guide-passkeys]: register a passkey and sign in with it
 - [Status Code][ref-doc-guide-status-code]: allocate a code, write the exception, and add its message
 - [I18n][ref-doc-guide-i18n]: add a message or a language
+- [Notification][ref-doc-guide-notification]: add a notification kind with its template
+- [Email Template][ref-doc-guide-email-template]: edit a Handlebars template and sync it to SES
+- [Activity Log][ref-doc-guide-activity-log]: record a new action with its actor and target rows
+- [Feature Flag][ref-doc-guide-feature-flag]: gate a route, read a sub-key, and add a flag
 - [AI Harness][ref-doc-guide-ai-harness]: adapt the harness after a fork and check it after a change
 
 ## Reference
@@ -86,22 +95,15 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [File Upload][ref-doc-reference-file-upload]: the upload decorators, pipes, extensions, limits, and presign options
 - [Logging][ref-doc-reference-logging]: the levels, record fields, and redacted keys
 - [Helper][ref-doc-reference-helper]: every public method of the helper services
+- [Notification][ref-doc-reference-notification]: the kinds, types, channels, email templates, and settings
+- [Activity Log][ref-doc-reference-activity-log]: every action with its rows and metadata, and the actor and target pairs
+- [Feature Flag][ref-doc-reference-feature-flag]: every seeded flag with its sub-keys, bounds, and gates
 - [HTTP Contract][ref-doc-reference-http-contract]: the success and error envelopes, the metadata fields, and the headers
 - [Middleware][ref-doc-reference-middleware]: each middleware and interceptor with its order, config keys, and behavior
 - [Pagination][ref-doc-reference-pagination]: the query parameters, limits, metadata fields, and service methods
 - [Status Codes][ref-doc-reference-status-codes]: the status code, HTTP status, and message of every exception, by module
 - [Decorators and Guards][ref-doc-reference-decorators-and-guards]: the decorator order, each guard with its store key and missing-entry exception, and the request store keys
 - [AI Harness][ref-doc-reference-ai-harness]: the commands, agents, hooks, and copied skills
-
-## Feature pages
-
-- [Activity Log][ref-doc-activity-log]: staged, flushed, and queued audit entries
-- [Analytic][ref-doc-analytic]: admin and workspace metrics, anomaly summaries, and fraud reports
-- [Email][ref-doc-email]: SES templates and the sync command
-- [Feature Flag][ref-doc-feature-flag]: targeting, rollout, and caching
-- [Notification][ref-doc-notification]: channels, queues, and delivery
-- [Project][ref-doc-project]: workspace-scoped projects and their members
-- [Workspace][ref-doc-workspace]: tenancy, membership, invites, and join requests
 
 ## Production
 
@@ -136,6 +138,12 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-concept-authorization]: concepts/authorization.md
 [ref-doc-concept-device]: concepts/device.md
 [ref-doc-concept-term-policy]: concepts/term-policy.md
+[ref-doc-concept-feature-flag]: concepts/feature-flag.md
+[ref-doc-concept-workspace]: concepts/workspace.md
+[ref-doc-concept-project]: concepts/project.md
+[ref-doc-concept-notification]: concepts/notification.md
+[ref-doc-concept-activity-log]: concepts/activity-log.md
+[ref-doc-concept-analytic]: concepts/analytic.md
 [ref-doc-guide-hosted-dependencies]: guides/hosted-dependencies.md
 [ref-doc-guide-vault]: guides/vault.md
 [ref-doc-guide-module]: guides/module.md
@@ -155,6 +163,9 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-reference-logging]: reference/logging.md
 [ref-doc-reference-helper]: reference/helper.md
 [ref-doc-reference-ai-harness]: reference/ai-harness.md
+[ref-doc-reference-notification]: reference/notification.md
+[ref-doc-reference-activity-log]: reference/activity-log.md
+[ref-doc-reference-feature-flag]: reference/feature-flag.md
 [ref-doc-reference-decorators-and-guards]: reference/decorators-and-guards.md
 [ref-doc-concept-request-pipeline]: concepts/request-pipeline.md
 [ref-doc-concept-security]: concepts/security.md
@@ -169,16 +180,13 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-guide-pagination]: guides/pagination.md
 [ref-doc-guide-status-code]: guides/status-code.md
 [ref-doc-guide-i18n]: guides/i18n.md
+[ref-doc-guide-notification]: guides/notification.md
+[ref-doc-guide-email-template]: guides/email-template.md
+[ref-doc-guide-activity-log]: guides/activity-log.md
+[ref-doc-guide-feature-flag]: guides/feature-flag.md
 [ref-doc-reference-http-contract]: reference/http-contract.md
 [ref-doc-reference-middleware]: reference/middleware.md
 [ref-doc-reference-pagination]: reference/pagination.md
 [ref-doc-reference-status-codes]: reference/status-codes.md
-[ref-doc-activity-log]: activity-log.md
-[ref-doc-analytic]: analytic.md
-[ref-doc-email]: email.md
-[ref-doc-feature-flag]: feature-flag.md
-[ref-doc-notification]: notification.md
-[ref-doc-project]: project.md
-[ref-doc-workspace]: workspace.md
 [ref-doc-production]: production.md
 [ref-doc-contributors]: contributors.md

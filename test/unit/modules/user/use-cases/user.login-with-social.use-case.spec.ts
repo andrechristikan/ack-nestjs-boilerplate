@@ -600,7 +600,6 @@ describe('UserLoginWithSocialUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 null,
-                null,
                 stageInput
             );
             expect(notificationQueue.notify).toHaveBeenCalledWith(
@@ -1500,7 +1499,6 @@ describe('UserLoginWithSocialUseCase', () => {
                 1,
                 requestContext,
                 apiKeyContext,
-                null,
                 null,
                 stageInput
             );
