@@ -119,5 +119,5 @@ A DTO is a zod schema plus the type inferred from it, and [zod-openapi][ref-zod-
 [ref-doc-response]: response.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-reference-status-codes]: ../reference/status-codes.md
-[ref-doc-authorization]: ../authorization.md
+[ref-doc-authorization]: ../reference/decorators-and-guards.md
 [ref-doc-reference-file-upload-decorators]: ../reference/file-upload.md#decorators

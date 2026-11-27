@@ -42,12 +42,10 @@ describe('AppEnvSchema', () => {
             AUTH_JWT_ACCESS_TOKEN_JWKS_URI: 'http://localhost:3011/.well-known',
             AUTH_JWT_ACCESS_TOKEN_KID: 'access-kid',
             AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: 'access-private-key',
-            AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: 'access-public-key',
             AUTH_JWT_REFRESH_TOKEN_JWKS_URI:
                 'http://localhost:3011/.well-known',
             AUTH_JWT_REFRESH_TOKEN_KID: 'refresh-kid',
             AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: 'refresh-private-key',
-            AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: 'refresh-public-key',
 
             MFA_TOTP_ISSUER: 'ack',
             MFA_TOTP_ENCRYPTION_SECRET: encryptionSecret,
@@ -94,12 +92,10 @@ describe('AppEnvSchema', () => {
                     'http://localhost:3011/.well-known',
                 AUTH_JWT_ACCESS_TOKEN_KID: 'access-kid',
                 AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: 'access-private-key',
-                AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: 'access-public-key',
                 AUTH_JWT_REFRESH_TOKEN_JWKS_URI:
                     'http://localhost:3011/.well-known',
                 AUTH_JWT_REFRESH_TOKEN_KID: 'refresh-kid',
                 AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: 'refresh-private-key',
-                AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: 'refresh-public-key',
 
                 MFA_TOTP_ISSUER: 'ack',
                 MFA_TOTP_ENCRYPTION_SECRET: encryptionSecret,

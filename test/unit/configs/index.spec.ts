@@ -134,11 +134,6 @@ const AuthRows: IEnvKeyRow[] = [
         derivedPaths: [],
     },
     {
-        key: 'AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY',
-        alternateValue: 'other-access-public-key',
-        derivedPaths: [],
-    },
-    {
         key: 'AUTH_JWT_REFRESH_TOKEN_JWKS_URI',
         alternateValue: 'http://localhost:3012/.well-known',
         derivedPaths: [],
@@ -151,11 +146,6 @@ const AuthRows: IEnvKeyRow[] = [
     {
         key: 'AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY',
         alternateValue: 'other-refresh-private-key',
-        derivedPaths: [],
-    },
-    {
-        key: 'AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY',
-        alternateValue: 'other-refresh-public-key',
         derivedPaths: [],
     },
     {
@@ -318,6 +308,13 @@ describe('config factories', () => {
 
             expect(config.jwt.accessToken.expiresInSeconds).toBe(3600);
             expect(config.jwt.refreshToken.expiresInSeconds).toBe(2592000);
+        });
+
+        it('holds no public key under either token', () => {
+            const config = AuthConfig();
+
+            expect(config.jwt.accessToken).not.toHaveProperty('publicKey');
+            expect(config.jwt.refreshToken).not.toHaveProperty('publicKey');
         });
     });
 

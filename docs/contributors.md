@@ -22,7 +22,7 @@ This page lists the people who contributed to the project, for a reader who want
 | Name | Link | Features |
 | --- | --- | --- |
 | Gzerox | [Gzerox][ref-contributor-gzerox] | [Workspace][ref-doc-workspace] (main contributor), [Project][ref-doc-project] (main contributor) |
-| ak2g | [ak2g][ref-contributor-ak2g] | [Two-Factor Authentication][ref-doc-two-factor], [Notification][ref-doc-notification] |
+| ak2g | [ak2g][ref-contributor-ak2g] | [MFA][ref-doc-concept-mfa], [Notification][ref-doc-notification] |
 
 <!-- REFERENCES -->
 
@@ -32,5 +32,5 @@ This page lists the people who contributed to the project, for a reader who want
 [ref-doc-contributing]: ../CONTRIBUTING.md
 [ref-doc-workspace]: workspace.md
 [ref-doc-project]: project.md
-[ref-doc-two-factor]: two-factor.md
+[ref-doc-concept-mfa]: concepts/mfa.md
 [ref-doc-notification]: notification.md

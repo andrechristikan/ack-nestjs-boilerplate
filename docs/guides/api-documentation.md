@@ -125,4 +125,4 @@ The port in the URLs is `APP_HTTP_PORT` ([Configuration Reference][ref-doc-refer
 [ref-doc-reference-status-codes]: ../reference/status-codes.md
 [ref-doc-reference-configuration]: ../reference/configuration.md
 [ref-doc-installation]: ../getting-started/installation.md
-[ref-doc-authorization]: ../authorization.md#decorator-order
+[ref-doc-authorization]: ../reference/decorators-and-guards.md#decorator-order

@@ -31,13 +31,11 @@ import type { IUser } from '@modules/user/interfaces/user.interface';
 export class AuthJwtService {
     private readonly accessTokenKid: string;
     private readonly accessTokenPrivateKey: string;
-    private readonly accessTokenPublicKey: string;
     private readonly accessTokenExpiresInSeconds: number;
     private readonly accessTokenAlgorithm: Algorithm;
 
     private readonly refreshTokenKid: string;
     private readonly refreshTokenPrivateKey: string;
-    private readonly refreshTokenPublicKey: string;
     readonly refreshTokenExpiresInSeconds: number;
     private readonly refreshTokenAlgorithm: Algorithm;
 
@@ -71,11 +69,6 @@ export class AuthJwtService {
             EnumHelperPemLabel.privateKey,
             'PKCS#8 DER private key'
         );
-        this.accessTokenPublicKey = this.parseRequiredBase64Der(
-            'auth.jwt.accessToken.publicKey',
-            EnumHelperPemLabel.publicKey,
-            'SPKI DER public key'
-        );
         this.accessTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.accessToken.algorithm'
         )!;
@@ -84,11 +77,6 @@ export class AuthJwtService {
             'auth.jwt.refreshToken.privateKey',
             EnumHelperPemLabel.privateKey,
             'PKCS#8 DER private key'
-        );
-        this.refreshTokenPublicKey = this.parseRequiredBase64Der(
-            'auth.jwt.refreshToken.publicKey',
-            EnumHelperPemLabel.publicKey,
-            'SPKI DER public key'
         );
         this.refreshTokenAlgorithm = this.configService.get<Algorithm>(
             'auth.jwt.refreshToken.algorithm'
@@ -235,40 +223,6 @@ export class AuthJwtService {
             keyid: this.refreshTokenKid,
             jwtid: jti,
         } as JwtSignOptions);
-    }
-
-    validateAccessToken(subject: string, jti: string, token: string): boolean {
-        try {
-            this.jwtService.verify(token, {
-                publicKey: this.accessTokenPublicKey,
-                algorithms: [this.accessTokenAlgorithm],
-                audience: this.audience,
-                issuer: this.issuer,
-                subject,
-                jwtid: jti,
-            });
-
-            return true;
-        } catch {
-            return false;
-        }
-    }
-
-    validateRefreshToken(subject: string, jti: string, token: string): boolean {
-        try {
-            this.jwtService.verify(token, {
-                publicKey: this.refreshTokenPublicKey,
-                algorithms: [this.refreshTokenAlgorithm],
-                audience: this.audience,
-                issuer: this.issuer,
-                subject,
-                jwtid: jti,
-            });
-
-            return true;
-        } catch {
-            return false;
-        }
     }
 
     /** Decodes a JWT payload without verifying its signature; call it only on an already verified token. */

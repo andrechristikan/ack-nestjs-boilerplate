@@ -82,6 +82,12 @@ Rule: `login.md`, and `cache.md` for the two stores.
 - Spending it inside the login transaction: a login refused before the transaction leaves the token usable again.
 - No nonce: a stolen ID token signs in again until it expires.
 
+### The social login body requires sign-up's required fields
+
+Rule: `login.md`.
+
+- Sign-up fields optional, with a typed 400 when a first sign-in lacks them: the social body derives from the normal sign-up API, the one with a password, and takes its fields as that API does; and the body's validity would turn on database state, so a request that passes validation could still fail.
+
 ### Apple sign-in takes one client id list
 
 Rule: `config.md`, Names.
@@ -208,7 +214,7 @@ Rule: `mfa.md`.
 
 - Each `MfaService` method reading its own rows: a flow that gates MFA, lists the methods, and checks a proof reads the same factor rows two or three times.
 
-### Backup codes follow the first and last factor
+### Backup codes are written when none remain and emptied with the last factor
 
 Rule: `mfa.md`.
 

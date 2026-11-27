@@ -172,8 +172,8 @@ Every use of `node:crypto` goes through the `Helper*` services in `src/common/he
 [ref-doc-dependencies]: dependencies.md
 [ref-doc-dependencies-required]: dependencies.md#required-mongodb-and-redis
 [ref-doc-error-handling]: error-handling.md
-[ref-doc-authentication]: ../authentication.md
-[ref-doc-authorization]: ../authorization.md
+[ref-doc-authentication]: authentication.md
+[ref-doc-authorization]: authorization.md
 [ref-doc-concept-logging]: logging.md
 [ref-doc-concept-logging-redaction]: logging.md#redaction
 [ref-doc-concept-sentry]: sentry.md

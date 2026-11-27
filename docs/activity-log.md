@@ -22,7 +22,7 @@ Both paths answer an error and still write their rows, because the error path fl
     - `user = target`
     - `workspace = none`
     - metadata `ActivityLogEmptyMetadataSchema`
-- Login path: [Authentication](authentication.md).
+- Login path: [Authentication](concepts/authentication.md#login-methods).
 - Analytic failed-login and lockout metrics count these rows: [Analytic](analytic.md).
 
 Password mismatch:
@@ -425,8 +425,8 @@ The response returns `metadata` through `ActivityLogMetadataResponseSchema` (`dt
 
 <!-- REFERENCES -->
 
-[ref-doc-authentication]: authentication.md
-[ref-doc-authorization]: authorization.md
+[ref-doc-authentication]: concepts/authentication.md#tokens-and-jwks
+[ref-doc-authorization]: concepts/authorization.md#guard-pipeline
 [ref-doc-response]: concepts/response.md
 [ref-doc-message]: concepts/i18n.md
 [ref-doc-pagination]: concepts/pagination.md

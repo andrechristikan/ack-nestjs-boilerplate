@@ -712,7 +712,7 @@ Full catalog: [Status Codes][ref-doc-status-codes].
 <!-- REFERENCES -->
 
 [ref-doc-project]: project.md
-[ref-doc-authorization]: authorization.md
+[ref-doc-authorization]: concepts/authorization.md#workspace-and-project-gates
 [ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-queue]: concepts/queue.md
@@ -720,5 +720,5 @@ Full catalog: [Status Codes][ref-doc-status-codes].
 [ref-doc-database-generated-unique-values]: concepts/database.md#generated-unique-values
 [ref-doc-notification]: notification.md
 [ref-doc-activity-log]: activity-log.md
-[ref-doc-term-policy]: term-policy.md
+[ref-doc-term-policy]: concepts/term-policy.md#acceptance-at-sign-up-and-per-request
 [ref-doc-analytic]: analytic.md

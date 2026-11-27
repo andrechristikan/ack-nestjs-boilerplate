@@ -37,15 +37,9 @@ const accessKeyPair = generateKeyPairSync('ec', { namedCurve: 'P-256' });
 const accessPrivateKeyBase64 = accessKeyPair.privateKey
     .export({ type: 'pkcs8', format: 'der' })
     .toString('base64');
-const accessPublicKeyBase64 = accessKeyPair.publicKey
-    .export({ type: 'spki', format: 'der' })
-    .toString('base64');
 const refreshKeyPair = generateKeyPairSync('ec', { namedCurve: 'P-521' });
 const refreshPrivateKeyBase64 = refreshKeyPair.privateKey
     .export({ type: 'pkcs8', format: 'der' })
-    .toString('base64');
-const refreshPublicKeyBase64 = refreshKeyPair.publicKey
-    .export({ type: 'spki', format: 'der' })
     .toString('base64');
 
 describe('AuthJwtService', () => {
@@ -74,10 +68,8 @@ describe('AuthJwtService', () => {
         'auth.jwt.refreshToken.kid': 'refresh-kid',
         'auth.jwt.refreshToken.expiresInSeconds': 604800,
         'auth.jwt.accessToken.privateKey': accessPrivateKeyBase64,
-        'auth.jwt.accessToken.publicKey': accessPublicKeyBase64,
         'auth.jwt.accessToken.algorithm': 'ES256',
         'auth.jwt.refreshToken.privateKey': refreshPrivateKeyBase64,
-        'auth.jwt.refreshToken.publicKey': refreshPublicKeyBase64,
         'auth.jwt.refreshToken.algorithm': 'ES512',
         'auth.jwt.audience': 'aud',
         'auth.jwt.issuer': 'iss',
@@ -186,70 +178,6 @@ describe('AuthJwtService', () => {
                 payload,
                 expect.objectContaining({ expiresIn: 1234 })
             );
-        });
-    });
-
-    describe('validateAccessToken', () => {
-        it('returns true when verification succeeds', () => {
-            jwtService.verify.mockReturnValue({});
-
-            const result = service.validateAccessToken(
-                'user-1',
-                'jti-value',
-                'token'
-            );
-
-            expect(result).toBe(true);
-            expect(jwtService.verify).toHaveBeenCalledWith('token', {
-                publicKey: expect.any(String) as string,
-                algorithms: ['ES256'],
-                audience: 'aud',
-                issuer: 'iss',
-                subject: 'user-1',
-                jwtid: 'jti-value',
-            });
-        });
-
-        it('returns false when verification throws', () => {
-            jwtService.verify.mockImplementation(() => {
-                throw new Error('invalid signature');
-            });
-
-            const result = service.validateAccessToken(
-                'user-1',
-                'jti-value',
-                'token'
-            );
-
-            expect(result).toBe(false);
-        });
-    });
-
-    describe('validateRefreshToken', () => {
-        it('returns true when verification succeeds', () => {
-            jwtService.verify.mockReturnValue({});
-
-            const result = service.validateRefreshToken(
-                'user-1',
-                'jti-value',
-                'token'
-            );
-
-            expect(result).toBe(true);
-        });
-
-        it('returns false when verification throws', () => {
-            jwtService.verify.mockImplementation(() => {
-                throw new Error('invalid signature');
-            });
-
-            const result = service.validateRefreshToken(
-                'user-1',
-                'jti-value',
-                'token'
-            );
-
-            expect(result).toBe(false);
         });
     });
 
@@ -503,32 +431,18 @@ describe('AuthJwtService', () => {
             );
         });
 
-        it('throws when the kit helper rejects the public key bytes', () => {
-            stubConfigValues(configService, {
-                ...configValues,
-                'auth.jwt.accessToken.publicKey': 'AAAA',
-            });
-
-            expect(() =>
-                service['parseRequiredBase64Der'](
-                    'auth.jwt.accessToken.publicKey',
-                    EnumHelperPemLabel.publicKey,
-                    'SPKI DER public key'
-                )
-            ).toThrow(
-                'Invalid JWT configuration: auth.jwt.accessToken.publicKey must be a valid base64-encoded SPKI DER public key.'
-            );
-        });
-
         it('frames the configured key through the kit helper under the label', () => {
             const result = service['parseRequiredBase64Der'](
-                'auth.jwt.accessToken.publicKey',
-                EnumHelperPemLabel.publicKey,
-                'SPKI DER public key'
+                'auth.jwt.accessToken.privateKey',
+                EnumHelperPemLabel.privateKey,
+                'PKCS#8 DER private key'
             );
 
             expect(result).toBe(
-                accessKeyPair.publicKey.export({ type: 'spki', format: 'pem' })
+                accessKeyPair.privateKey.export({
+                    type: 'pkcs8',
+                    format: 'pem',
+                })
             );
         });
     });

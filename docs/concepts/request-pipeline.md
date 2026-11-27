@@ -150,6 +150,6 @@ Four exception filters are registered as `APP_FILTER` providers in `src/app/app.
 [ref-doc-response]: response.md
 [ref-doc-error-handling]: error-handling.md
 [ref-doc-http-contract]: ../reference/http-contract.md
-[ref-doc-authorization]: ../authorization.md
+[ref-doc-authorization]: authorization.md#guard-pipeline
 [ref-doc-architecture]: architecture.md
 [ref-doc-pagination]: pagination.md

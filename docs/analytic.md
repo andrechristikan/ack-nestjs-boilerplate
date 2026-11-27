@@ -353,7 +353,7 @@ Date range validation lives in `AnalyticDateDomain` (`requireRange`, `optionalRa
 - Admin analytic routes require `EnumPolicySubject.analytic` with `EnumPolicyAction.read`, plus `EnumRoleType.admin`.
 - The subject is seeded with the other policy subjects for roles that receive every subject.
 - User workspace analytic routes authorize through workspace membership, not CASL.
-- Details: [Authorization](authorization.md).
+- Details: [Authorization](concepts/authorization.md#policies-and-casl-abilities).
 
 ## Status codes
 
@@ -368,7 +368,7 @@ Exception class: `AnalyticInvalidDateRangeException`.
 Several dashboard, anomaly, and fraud metrics count or list `ActivityLog` rows by `EnumActivityLogAction`.
 
 - Contract and description: [Activity Log](activity-log.md).
-- Login path: [Authentication](authentication.md).
+- Login path: [Authentication](concepts/authentication.md#login-methods).
 
 Credential-failure rows:
 
@@ -415,7 +415,7 @@ Workspace activity volume:
 
 <!-- REFERENCES -->
 
-[ref-doc-authorization]: authorization.md
+[ref-doc-authorization]: concepts/authorization.md#policies-and-casl-abilities
 [ref-doc-cache]: concepts/cache.md
 [ref-doc-configuration]: reference/configuration.md
 [ref-doc-activity-log]: activity-log.md

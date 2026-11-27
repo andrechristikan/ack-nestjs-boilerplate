@@ -96,8 +96,8 @@ class SecretGenerator {
 
     pemToBase64(pem: string): string {
         return pem
-            .replace(/-----BEGIN (?:PRIVATE|PUBLIC) KEY-----/g, '')
-            .replace(/-----END (?:PRIVATE|PUBLIC) KEY-----/g, '')
+            .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+            .replace(/-----END PRIVATE KEY-----/g, '')
             .replace(/\s/g, '');
     }
 
@@ -308,16 +308,8 @@ class SecretGenerator {
                         value: this.pemToBase64(accessKeys.privateKey),
                     },
                     {
-                        key: 'AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY',
-                        value: this.pemToBase64(accessKeys.publicKey),
-                    },
-                    {
                         key: 'AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY',
                         value: this.pemToBase64(refreshKeys.privateKey),
-                    },
-                    {
-                        key: 'AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY',
-                        value: this.pemToBase64(refreshKeys.publicKey),
                     },
                 ]);
             }

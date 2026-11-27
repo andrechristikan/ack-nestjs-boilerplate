@@ -376,7 +376,7 @@ Full catalog: [Status Codes][ref-doc-status-codes].
 <!-- REFERENCES -->
 
 [ref-doc-workspace]: workspace.md
-[ref-doc-authorization]: authorization.md
+[ref-doc-authorization]: concepts/authorization.md#workspace-and-project-gates
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-status-codes]: reference/status-codes.md
 [ref-doc-pagination]: concepts/pagination.md

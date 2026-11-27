@@ -158,13 +158,11 @@ Config file: `src/configs/auth.config.ts`, interface `IConfigAuth`.
 | `auth.jwt.accessToken.kid` | `string` |  | `AUTH_JWT_ACCESS_TOKEN_KID` |
 | `auth.jwt.accessToken.algorithm` | `Algorithm` | `ES256` |  |
 | `auth.jwt.accessToken.privateKey` | `string` |  | `AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY` |
-| `auth.jwt.accessToken.publicKey` | `string` |  | `AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY` |
 | `auth.jwt.accessToken.expiresInSeconds` | `number` | `1h` |  |
 | `auth.jwt.refreshToken.jwksUri` | `string` |  | `AUTH_JWT_REFRESH_TOKEN_JWKS_URI` |
 | `auth.jwt.refreshToken.kid` | `string` |  | `AUTH_JWT_REFRESH_TOKEN_KID` |
 | `auth.jwt.refreshToken.algorithm` | `Algorithm` | `ES512` |  |
 | `auth.jwt.refreshToken.privateKey` | `string` |  | `AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY` |
-| `auth.jwt.refreshToken.publicKey` | `string` |  | `AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY` |
 | `auth.jwt.refreshToken.expiresInSeconds` | `number` | `30d` |  |
 | `auth.jwt.audience` | `string` |  | `AUTH_JWT_AUDIENCE` |
 | `auth.jwt.issuer` | `string` |  | `AUTH_JWT_ISSUER` |
@@ -625,11 +623,12 @@ Each optional integration turns on from the variables in the second column, and 
 - `AWS_S3_IAM_PRINCIPAL_ARN` is read by the `awsS3Config` seed only: [Cloud setup][ref-doc-production-cloud-setup].
 - `SENTRY_TRACES_SAMPLE_RATE` and `SENTRY_PROFILES_SAMPLE_RATE` are required numbers from 0 to 1 whether or not `SENTRY_DSN` is set.
 
-`MFA_PASSKEY_ORIGINS` is a comma-separated list and each entry takes one of three shapes:
+`MFA_PASSKEY_ORIGINS` is a comma-separated list and each entry takes one of four shapes:
 
 - An exact origin: `https://host` or `http://host[:port]`, no path, no trailing slash.
 - `https://*.<domain>`, with `<domain>` the `MFA_PASSKEY_RP_ID` value or a name under it.
 - `android:apk-key-hash:<hash>`.
+- `*`, accepted outside production only, which admits any origin.
 
 The values a deployed environment sets: [Variables set by hand][ref-doc-production-variables].
 

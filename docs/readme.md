@@ -48,6 +48,14 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [I18n][ref-doc-concept-i18n]: language resolution and message paths
 - [API Documentation][ref-doc-concept-api-documentation]: how the OpenAPI document is built from the route decorators and schemas
 - [Pagination][ref-doc-concept-pagination]: offset and cursor lists, cursor sealing, and ordering presets
+- [Authentication][ref-doc-concept-authentication]: login methods, password checks, tokens and JWKS, refresh rotation, logout, and the social nonce
+- [Session][ref-doc-concept-session]: the session row, the login entry, revocation, and the per-request check
+- [API Key][ref-doc-concept-api-key]: default and system keys and the cached lookup
+- [MFA][ref-doc-concept-mfa]: TOTP, passkeys, backup codes, the login challenge, re-authentication, and the attempt lock
+- [User][ref-doc-concept-user]: sign-up, verification, profile, password flows, status and lockout, deletion, and import and export
+- [Authorization][ref-doc-concept-authorization]: the guard pipeline, roles, and policy abilities
+- [Device][ref-doc-concept-device]: device ownership, one signed-in user per device, and the push token
+- [Term Policy][ref-doc-concept-term-policy]: versioned legal documents, publication, and the acceptance gate
 - [AI Harness][ref-doc-concept-ai-harness]: how the Claude Code and Copilot configuration takes a feature from design to pull request
 
 ## Guides
@@ -61,6 +69,10 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Schema][ref-doc-guide-schema]: write the request and response schemas of a route and bind them
 - [API Documentation][ref-doc-guide-api-documentation]: add `@Doc` and the error kits, and get `swagger.json`
 - [Pagination][ref-doc-guide-pagination]: build an offset or cursor list route
+- [Route Protection][ref-doc-guide-route-protection]: stack the key, JWT, role, policy, term-policy, workspace, and flag decorators
+- [Role][ref-doc-guide-role]: create a role and its policies and assign it
+- [Social Sign-In][ref-doc-guide-social-sign-in]: configure Google and Apple and call the login routes
+- [Passkeys][ref-doc-guide-passkeys]: register a passkey and sign in with it
 - [Status Code][ref-doc-guide-status-code]: allocate a code, write the exception, and add its message
 - [I18n][ref-doc-guide-i18n]: add a message or a language
 - [AI Harness][ref-doc-guide-ai-harness]: adapt the harness after a fork and check it after a change
@@ -78,21 +90,17 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Middleware][ref-doc-reference-middleware]: each middleware and interceptor with its order, config keys, and behavior
 - [Pagination][ref-doc-reference-pagination]: the query parameters, limits, metadata fields, and service methods
 - [Status Codes][ref-doc-reference-status-codes]: the status code, HTTP status, and message of every exception, by module
+- [Decorators and Guards][ref-doc-reference-decorators-and-guards]: the decorator order, each guard with its store key and missing-entry exception, and the request store keys
 - [AI Harness][ref-doc-reference-ai-harness]: the commands, agents, hooks, and copied skills
 
 ## Feature pages
 
 - [Activity Log][ref-doc-activity-log]: staged, flushed, and queued audit entries
 - [Analytic][ref-doc-analytic]: admin and workspace metrics, anomaly summaries, and fraud reports
-- [Authentication][ref-doc-authentication]: password login, JWT, sessions, social sign-in, and API keys
-- [Authorization][ref-doc-authorization]: guards, roles, policies, and term-policy acceptance
-- [Device][ref-doc-device]: device ownership and one signed-in user per device
 - [Email][ref-doc-email]: SES templates and the sync command
 - [Feature Flag][ref-doc-feature-flag]: targeting, rollout, and caching
 - [Notification][ref-doc-notification]: channels, queues, and delivery
 - [Project][ref-doc-project]: workspace-scoped projects and their members
-- [Term Policy][ref-doc-term-policy]: versioned legal documents and acceptance
-- [Two-Factor Authentication][ref-doc-two-factor]: TOTP and backup codes
 - [Workspace][ref-doc-workspace]: tenancy, membership, invites, and join requests
 
 ## Production
@@ -120,6 +128,14 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-concept-sentry]: concepts/sentry.md
 [ref-doc-concept-file-upload]: concepts/file-upload.md
 [ref-doc-concept-ai-harness]: concepts/ai-harness.md
+[ref-doc-concept-authentication]: concepts/authentication.md
+[ref-doc-concept-session]: concepts/session.md
+[ref-doc-concept-api-key]: concepts/api-key.md
+[ref-doc-concept-mfa]: concepts/mfa.md
+[ref-doc-concept-user]: concepts/user.md
+[ref-doc-concept-authorization]: concepts/authorization.md
+[ref-doc-concept-device]: concepts/device.md
+[ref-doc-concept-term-policy]: concepts/term-policy.md
 [ref-doc-guide-hosted-dependencies]: guides/hosted-dependencies.md
 [ref-doc-guide-vault]: guides/vault.md
 [ref-doc-guide-module]: guides/module.md
@@ -127,6 +143,10 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-guide-queue]: guides/queue.md
 [ref-doc-guide-file-upload]: guides/file-upload.md
 [ref-doc-guide-ai-harness]: guides/ai-harness.md
+[ref-doc-guide-route-protection]: guides/route-protection.md
+[ref-doc-guide-role]: guides/role.md
+[ref-doc-guide-social-sign-in]: guides/social-sign-in.md
+[ref-doc-guide-passkeys]: guides/passkeys.md
 [ref-doc-reference-configuration]: reference/configuration.md
 [ref-doc-reference-commands]: reference/commands.md
 [ref-doc-reference-database]: reference/database.md
@@ -135,6 +155,7 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-reference-logging]: reference/logging.md
 [ref-doc-reference-helper]: reference/helper.md
 [ref-doc-reference-ai-harness]: reference/ai-harness.md
+[ref-doc-reference-decorators-and-guards]: reference/decorators-and-guards.md
 [ref-doc-concept-request-pipeline]: concepts/request-pipeline.md
 [ref-doc-concept-security]: concepts/security.md
 [ref-doc-concept-request-validation]: concepts/request-validation.md
@@ -154,15 +175,10 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-reference-status-codes]: reference/status-codes.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-analytic]: analytic.md
-[ref-doc-authentication]: authentication.md
-[ref-doc-authorization]: authorization.md
-[ref-doc-device]: device.md
 [ref-doc-email]: email.md
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-notification]: notification.md
 [ref-doc-project]: project.md
-[ref-doc-term-policy]: term-policy.md
-[ref-doc-two-factor]: two-factor.md
 [ref-doc-workspace]: workspace.md
 [ref-doc-production]: production.md
 [ref-doc-contributors]: contributors.md

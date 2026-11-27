@@ -110,4 +110,4 @@ Queue names, rate limits, job ids, and payload encryption: [Notification Documen
 [ref-doc-environment]: reference/configuration.md
 [ref-doc-configuration]: reference/configuration.md
 [ref-doc-logger]: concepts/logging.md#boot-and-seed-failures
-[ref-doc-term-policy]: term-policy.md#migration--seeding
+[ref-doc-term-policy]: reference/database.md#termpolicy

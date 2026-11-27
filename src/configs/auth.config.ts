@@ -9,7 +9,6 @@ export interface IConfigAuth {
             kid: string;
             algorithm: Algorithm;
             privateKey: string;
-            publicKey: string;
             expiresInSeconds: number;
         };
         refreshToken: {
@@ -17,7 +16,6 @@ export interface IConfigAuth {
             kid: string;
             algorithm: Algorithm;
             privateKey: string;
-            publicKey: string;
             expiresInSeconds: number;
         };
         audience: string;
@@ -64,7 +62,6 @@ export default registerAs('auth', (): IConfigAuth => {
                 kid: process.env.AUTH_JWT_ACCESS_TOKEN_KID!,
                 algorithm: 'ES256',
                 privateKey: process.env.AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY!,
-                publicKey: process.env.AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY!,
                 expiresInSeconds: ms('1h') / 1000,
             },
 
@@ -73,7 +70,6 @@ export default registerAs('auth', (): IConfigAuth => {
                 kid: process.env.AUTH_JWT_REFRESH_TOKEN_KID!,
                 algorithm: 'ES512',
                 privateKey: process.env.AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY!,
-                publicKey: process.env.AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY!,
                 expiresInSeconds: ms('30d') / 1000,
             },
 

@@ -78,46 +78,46 @@ flowchart TB
 Password and JWT:
 
 - A user signs in with email and password. The API issues an ES256 access token and an ES512 refresh token, verified against JWKS files, and rotates the refresh token on every refresh.
-- Passwords expire, keep a history, and lock the account after a budget of failed attempts.
+- A password keeps a history, an admin-issued temporary password expires, and a budget of failed attempts locks password sign-in for a while.
 - Needed when clients sign in with credentials and call the API with bearer tokens.
-- Pages: [Authentication][ref-doc-authentication].
+- Pages: [Authentication][ref-doc-concept-authentication], [Route Protection Guide][ref-doc-guide-route-protection].
 
 Social sign-in:
 
 - Google and Apple ID tokens sign a user in. The token carries a nonce the API issued, and an unset provider answers 501.
 - Needed when users sign in with a Google or Apple account.
-- Pages: [Authentication][ref-doc-authentication].
+- Pages: [Authentication][ref-doc-concept-authentication], [Social Sign-In Guide][ref-doc-guide-social-sign-in].
 
 Sessions:
 
 - Each login creates a session row in MongoDB and a login entry in Redis that the guard checks on every request. A password change, logout, device removal, status change, or refresh-token reuse revokes sessions.
 - Needed when you list or revoke signed-in clients, or decide what ends a login.
-- Pages: [Authentication][ref-doc-authentication].
+- Pages: [Session][ref-doc-concept-session].
 
 API keys:
 
 - A route checks the `x-api-key` header. A default key serves public routes and a system key serves operator routes such as health.
 - Needed when a route must identify the calling application, or an operator calls a system route.
-- Pages: [Authentication][ref-doc-authentication].
+- Pages: [API Key][ref-doc-concept-api-key].
 
 MFA:
 
 - A user enrolls TOTP, passkeys, or both, and holds backup codes. A login challenge, a password reset, and a re-authentication each ask for one proof, and failed attempts lock the factor for a while.
 - A passkey alone can sign a user in when the `loginWithPasskey` flag allows it.
 - Needed when an account needs a second proof at login, at a password reset, or before a sensitive action.
-- Pages: [Two-Factor Authentication][ref-doc-two-factor].
+- Pages: [MFA][ref-doc-concept-mfa], [Passkeys Guide][ref-doc-guide-passkeys].
 
 Devices:
 
 - A device is a client identified by a fingerprint. Users own it through a device ownership, which carries the push token, and a device holds one signed-in user at a time.
 - Needed when a push token or the one-user-per-device rule matters.
-- Pages: [Device][ref-doc-device].
+- Pages: [Device][ref-doc-concept-device].
 
 Users:
 
 - Sign-up, email and mobile verification, forgot password, profile, and self-deletion are user flows. An admin creates, imports, and exports users, and an import reports every invalid row at once.
 - Needed when you manage accounts, import or export users, or change a user flow.
-- Pages: [Authentication][ref-doc-authentication], [File Upload][ref-doc-concept-file-upload].
+- Pages: [User][ref-doc-concept-user], [File Upload][ref-doc-concept-file-upload].
 
 ## Access control
 
@@ -125,13 +125,13 @@ Roles and policies:
 
 - Roles rank `superAdmin`, `admin`, then `user`. An admin role holds policies, and CASL turns them into abilities that a route checks with its subject and action.
 - Needed when a route needs a permission check beyond signing in.
-- Pages: [Authorization][ref-doc-authorization].
+- Pages: [Authorization][ref-doc-concept-authorization], [Role Guide][ref-doc-guide-role], [Decorators and Guards Reference][ref-doc-reference-decorators-and-guards].
 
 Term policy:
 
 - Legal documents are versioned, their content lives in S3, and publishing a version emails the users. A guard asks a user to accept the latest published version of each required type.
 - Needed when users must accept a legal document before they continue.
-- Pages: [Term Policy][ref-doc-term-policy].
+- Pages: [Term Policy][ref-doc-concept-term-policy].
 
 Feature flags:
 
@@ -248,14 +248,22 @@ API docs:
 [ref-doc-readme]: readme.md
 [ref-doc-architecture]: concepts/architecture.md
 [ref-doc-installation]: getting-started/installation.md
-[ref-doc-authentication]: authentication.md
-[ref-doc-two-factor]: two-factor.md
-[ref-doc-device]: device.md
+[ref-doc-concept-authentication]: concepts/authentication.md
+[ref-doc-concept-session]: concepts/session.md
+[ref-doc-concept-api-key]: concepts/api-key.md
+[ref-doc-concept-mfa]: concepts/mfa.md
+[ref-doc-concept-user]: concepts/user.md
+[ref-doc-concept-device]: concepts/device.md
+[ref-doc-guide-route-protection]: guides/route-protection.md
+[ref-doc-guide-social-sign-in]: guides/social-sign-in.md
+[ref-doc-guide-passkeys]: guides/passkeys.md
 [ref-doc-concept-file-upload]: concepts/file-upload.md
 [ref-doc-guide-file-upload]: guides/file-upload.md
 [ref-doc-reference-file-upload]: reference/file-upload.md
-[ref-doc-authorization]: authorization.md
-[ref-doc-term-policy]: term-policy.md
+[ref-doc-concept-authorization]: concepts/authorization.md
+[ref-doc-concept-term-policy]: concepts/term-policy.md
+[ref-doc-guide-role]: guides/role.md
+[ref-doc-reference-decorators-and-guards]: reference/decorators-and-guards.md
 [ref-doc-feature-flag]: feature-flag.md
 [ref-doc-workspace]: workspace.md
 [ref-doc-project]: project.md

@@ -2,7 +2,7 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 
 # Example: a writer report
 
-`writer` hands this back to step 2 of `SKILL.md` after a run over `docs/reference/status-codes.md`, `docs/reference/database.md`, and `docs/authentication.md`, with `Context: Country gained isActive; CountryInactiveException throws 50901`. The six classes are the ones `.claude/agents/writer.md`, Docs, defines. Commit hashes in the CONFLICT evidence depend on the history, so they stay in angle brackets.
+`writer` hands this back to step 2 of `SKILL.md` after a run over `docs/reference/status-codes.md`, `docs/reference/database.md`, and `docs/concepts/api-key.md`, with `Context: Country gained isActive; CountryInactiveException throws 50901`. The six classes are the ones `.claude/agents/writer.md`, Docs, defines. Commit hashes in the CONFLICT evidence depend on the history, so they stay in angle brackets.
 
 ```markdown
 ## Findings by class
@@ -12,7 +12,7 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 - MISSING: `docs/reference/database.md`: no page said which requests reject a country whose `isActive` is `false`; added the `Country availability` section after the model table.
 - PHANTOM: `docs/reference/database.md:<line>`: named a `pnpm migration:country` script that `package.json` `scripts` lacks; removed, and the line now points at `pnpm migration {module} --type seed`.
 - CONTRADICTS: `docs/reference/database.md:<line>`: the example shape declared `isActive?: boolean | null`, which `.claude/rules/null-safety.md` (rule 2) forbids; repaired to `isActive: boolean`.
-- CONFLICT: `docs/authentication.md:<line>` says the public country list answers without an API key; `src/modules/country/controllers/country.public.controller.ts:<line>` carries `@ApiKeyProtected()`. Left unresolved.
+- CONFLICT: `docs/concepts/api-key.md:<line>` says the public country list answers without an API key; `src/modules/country/controllers/country.public.controller.ts:<line>` carries `@ApiKeyProtected()`. Left unresolved.
 
 ## Files changed
 
@@ -34,7 +34,7 @@ Exit 0. No output.
 ## CONFLICT evidence
 
 - Code side: `git log -S'ApiKeyProtected' --oneline -- src/modules/country/controllers/country.public.controller.ts` prints `<sha> <subject>`, the commit that put the guard on the route.
-- Doc side: `git log -S'without an API key' --oneline -- docs/authentication.md` prints `<sha> <subject>`, older than the code commit.
+- Doc side: `git log -S'without an API key' --oneline -- docs/concepts/api-key.md` prints `<sha> <subject>`, older than the code commit.
 - A disagreement about authorization: the owner decides which side is wrong.
 
 ## Humanizer spans touched

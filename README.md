@@ -220,7 +220,7 @@ Or via PayPal
 [ref-doc-database]: docs/concepts/database.md
 [ref-doc-dependencies]: docs/concepts/dependencies.md
 [ref-doc-integration-triggers]: docs/reference/configuration.md#integration-triggers
-[ref-doc-authorization]: docs/authorization.md#decorator-order
+[ref-doc-authorization]: docs/reference/decorators-and-guards.md#decorator-order
 [ref-doc-production]: docs/production.md
 [ref-doc-contributors]: docs/contributors.md
 [ref-doc-contributing]: CONTRIBUTING.md

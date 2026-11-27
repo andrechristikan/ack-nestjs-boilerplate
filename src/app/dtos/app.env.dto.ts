@@ -46,11 +46,9 @@ export const AppEnvSchema = z
         AUTH_JWT_ACCESS_TOKEN_JWKS_URI: z.url(),
         AUTH_JWT_ACCESS_TOKEN_KID: z.string().min(1),
         AUTH_JWT_ACCESS_TOKEN_PRIVATE_KEY: z.string().min(1),
-        AUTH_JWT_ACCESS_TOKEN_PUBLIC_KEY: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_JWKS_URI: z.url(),
         AUTH_JWT_REFRESH_TOKEN_KID: z.string().min(1),
         AUTH_JWT_REFRESH_TOKEN_PRIVATE_KEY: z.string().min(1),
-        AUTH_JWT_REFRESH_TOKEN_PUBLIC_KEY: z.string().min(1),
 
         MFA_TOTP_ISSUER: z.string().min(1),
         MFA_TOTP_ENCRYPTION_SECRET: RequestEncryptionSecretSchema,

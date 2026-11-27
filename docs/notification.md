@@ -910,8 +910,8 @@ The notification list is cursor-paginated:
 
 <!-- REFERENCES -->
 
-[ref-doc-authentication]: authentication.md
-[ref-doc-device]: device.md
+[ref-doc-authentication]: concepts/session.md#two-stores
+[ref-doc-device]: concepts/device.md#device-and-ownership
 [ref-doc-third-party]: concepts/dependencies.md
 [ref-doc-email]: email.md
 [ref-doc-queue]: concepts/queue.md
