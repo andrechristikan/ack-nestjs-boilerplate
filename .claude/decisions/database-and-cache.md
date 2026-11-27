@@ -73,6 +73,18 @@ Rule: `repository.md`, Schema.
 - A bare id column: nothing ties the value to a row, and no read can `include` or filter through it.
 - A relation on the audit fields too: every model would relate to `User` three times over, for values a read never joins.
 
+### Every relation declares its referential actions from its parent's delete style
+
+Rule: `repository.md`, Writes and Schema.
+
+- Prisma's implicit defaults: an optional relation silently `SetNull`s on a hard delete, whatever the parent's delete style.
+- `NoAction`: its emulated behavior on MongoDB is disputed between the Prisma docs and its maintainers.
+- An API key hard-deleted, `SetNull` on its activity entries: a deleted key's trace is lost, and every one of its entries is rewritten.
+- An API key hard-deleted under `Restrict`, deactivation the only way out: a used key could never be deleted.
+- Dropping `apiKeyContext` everywhere: no entry records the key that made the request, so a leaked key's actions cannot be traced.
+- A mobile number hard-deleted, `SetNull` on its verifications: the expire that runs after the delete finds no row.
+- The number kept plain on the soft-deleted row: a deleted number stays readable and blocks adding it again.
+
 ### A generated value that references no row is a plain `String` (`claimNonce`, `batchId`)
 
 Rule: `repository.md`, Schema.

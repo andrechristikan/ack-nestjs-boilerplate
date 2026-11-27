@@ -15,6 +15,7 @@ export interface IConfigMfa {
     };
     challengeExpiresInMs: number;
     challengeRetentionInMs: number;
+    purgeExpiredCron: string;
     backupCodes: {
         count: number;
         length: number;
@@ -23,6 +24,13 @@ export interface IConfigMfa {
         rpId: string;
         rpName: string;
         origins: string[];
+    };
+    queue: {
+        maxAttempts: number;
+        keepLogs: number;
+        removeOnCompleteAgeInSeconds: number;
+        removeOnFailAgeInSeconds: number;
+        backoffDelayInMs: number;
     };
 }
 
@@ -40,6 +48,7 @@ export default registerAs('mfa', (): IConfigMfa => {
         },
         challengeExpiresInMs: ms('5m'),
         challengeRetentionInMs: ms('7d'),
+        purgeExpiredCron: '0 3 * * *',
         backupCodes: {
             count: 8,
             length: 10,
@@ -51,6 +60,13 @@ export default registerAs('mfa', (): IConfigMfa => {
                 .MFA_PASSKEY_ORIGINS!.split(',')
                 .map(origin => origin.trim())
                 .filter(origin => origin !== ''),
+        },
+        queue: {
+            maxAttempts: 3,
+            keepLogs: 20,
+            removeOnCompleteAgeInSeconds: ms('7d') / 1000,
+            removeOnFailAgeInSeconds: ms('14d') / 1000,
+            backoffDelayInMs: ms('3s'),
         },
     };
 });

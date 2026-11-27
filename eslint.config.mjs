@@ -830,6 +830,52 @@ const codeStyleRules = {
     'prefer-template': 'error',
 };
 
+/** Inline plugin: the project rules ESLint has no built-in for. */
+
+/** The class member node types whose leading comment the public-tag rule reads. */
+const classMemberTypes = [
+    'MethodDefinition',
+    'PropertyDefinition',
+    'TSAbstractMethodDefinition',
+    'AccessorProperty',
+];
+
+/** The plugin `local`: a class member carries no `@public` tag, an export does. */
+const localPlugin = {
+    rules: {
+        'no-public-tag-on-class-member': {
+            meta: {
+                type: 'problem',
+                schema: [],
+                messages: {
+                    publicTag:
+                        'A class member carries no @public tag: remove it, the tag applies to an export only.',
+                },
+            },
+            create: context => {
+                const { sourceCode } = context;
+                const check = node => {
+                    const tagged = sourceCode
+                        .getCommentsBefore(node)
+                        .some(
+                            comment =>
+                                comment.type === 'Block' &&
+                                comment.value.startsWith('*') &&
+                                comment.value.includes('@public')
+                        );
+                    if (tagged) {
+                        context.report({ node, messageId: 'publicTag' });
+                    }
+                };
+
+                return Object.fromEntries(
+                    classMemberTypes.map(type => [type, check])
+                );
+            },
+        },
+    },
+};
+
 /** The rules src/ files and test/ files both apply. */
 const sharedRules = {
     '@typescript-eslint/promise-function-async': [
@@ -852,6 +898,7 @@ const sharedRules = {
     'no-restricted-globals': ['error', ...numberGlobalRestrictions],
     ...commentRules,
     ...namingConventionRules,
+    'local/no-public-tag-on-class-member': 'error',
 };
 
 /** The language options of a typed-lint block. */
@@ -902,6 +949,7 @@ export default [
         linterOptions: strictLinterOptions,
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
+            local: localPlugin,
             security,
         },
         rules: {
@@ -991,6 +1039,7 @@ export default [
         linterOptions: strictLinterOptions,
         plugins: {
             '@typescript-eslint': tsEsLintPlugin,
+            local: localPlugin,
         },
         rules: {
             ...recommendedRules,

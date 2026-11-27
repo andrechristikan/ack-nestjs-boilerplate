@@ -3,6 +3,7 @@ import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { MigrationSeedBase } from '@migration/bases/migration.seed.base';
 import type { IMigrationSeed } from '@migration/interfaces/migration.seed.interface';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
+import type { INotificationTemplateName } from '@modules/notification/interfaces/notification.interface';
 import { NotificationTemplateService } from '@modules/notification/services/notification.template.service';
 import { Logger } from '@nestjs/common';
 import { Command } from 'nest-commander';
@@ -41,318 +42,102 @@ export class MigrationTemplateEmailNotificationSeed
             return;
         }
 
-        const [
-            changePasswordEmail,
-            welcomeSocialEmail,
-            welcomeByAdminEmail,
-            emailVerifiedEmail,
-            forgotPasswordEmail,
-            mobileNumberVerifiedEmail,
-            tempPasswordEmail,
-            verificationEmail,
-            welcomeEmail,
-            resetMfaByAdminEmail,
-            newDeviceLoginEmail,
-            loginLockedEmail,
-            publishTermPolicyEmail,
-            processResultEmail,
-            resetPasswordEmail,
-            workspaceInviteEmail,
-            workspaceJoinRequestEmail,
-            workspaceJoinAcceptedEmail,
-            workspaceJoinRejectedEmail,
-            reauthenticationOtpEmail,
-        ] = await Promise.all([
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.changePassword
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.welcomeSocial
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.welcomeByAdmin
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.verifiedEmail
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.forgotPassword
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.verifiedMobileNumber
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.temporaryPasswordByAdmin
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.verificationEmail
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.welcome
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.resetMfaByAdmin
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.newDeviceLogin
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.loginLocked
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.publishTermPolicy
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.processResult
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.resetPassword
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.workspaceInvite
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.workspaceJoinRequest
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.workspaceJoinAccepted
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.workspaceJoinRejected
-            ),
-            this.notificationTemplateService.getEmail(
-                EnumNotificationKind.reauthenticationOtp
-            ),
-        ]);
+        const templates: { kind: INotificationTemplateName; label: string }[] =
+            [
+                {
+                    kind: EnumNotificationKind.changePassword,
+                    label: 'Change Password',
+                },
+                {
+                    kind: EnumNotificationKind.welcomeSocial,
+                    label: 'Welcome Social',
+                },
+                {
+                    kind: EnumNotificationKind.welcomeByAdmin,
+                    label: 'Welcome By Admin',
+                },
+                {
+                    kind: EnumNotificationKind.verifiedEmail,
+                    label: 'Email Verified',
+                },
+                {
+                    kind: EnumNotificationKind.forgotPassword,
+                    label: 'Forgot Password',
+                },
+                {
+                    kind: EnumNotificationKind.verifiedMobileNumber,
+                    label: 'Mobile Number Verified',
+                },
+                {
+                    kind: EnumNotificationKind.temporaryPasswordByAdmin,
+                    label: 'Temporary Password',
+                },
+                {
+                    kind: EnumNotificationKind.verificationEmail,
+                    label: 'Verification',
+                },
+                { kind: EnumNotificationKind.welcome, label: 'Welcome' },
+                {
+                    kind: EnumNotificationKind.resetMfaByAdmin,
+                    label: 'Reset Two Factor By Admin',
+                },
+                {
+                    kind: EnumNotificationKind.newDeviceLogin,
+                    label: 'New Device Login',
+                },
+                {
+                    kind: EnumNotificationKind.loginLocked,
+                    label: 'Login Locked',
+                },
+                {
+                    kind: EnumNotificationKind.publishTermPolicy,
+                    label: 'Publish Term Policy',
+                },
+                {
+                    kind: EnumNotificationKind.processResult,
+                    label: 'Process Result',
+                },
+                {
+                    kind: EnumNotificationKind.resetPassword,
+                    label: 'Reset Password',
+                },
+                {
+                    kind: EnumNotificationKind.workspaceInvite,
+                    label: 'Workspace Invite',
+                },
+                {
+                    kind: EnumNotificationKind.workspaceJoinRequest,
+                    label: 'Workspace Join Request',
+                },
+                {
+                    kind: EnumNotificationKind.workspaceJoinAccepted,
+                    label: 'Workspace Join Accepted',
+                },
+                {
+                    kind: EnumNotificationKind.workspaceJoinRejected,
+                    label: 'Workspace Join Rejected',
+                },
+                {
+                    kind: EnumNotificationKind.reauthenticationOtp,
+                    label: 'Reauthentication Otp',
+                },
+            ];
 
-        const promises: Promise<void>[] = [];
-        if (!changePasswordEmail) {
-            this.logger.log(
-                'Change Password Email template missing, importing...'
+        for (const { label } of templates) {
+            this.logger.log(`${label} Email template, upserting...`);
+        }
+
+        try {
+            await Promise.all(
+                templates.map(({ kind }) =>
+                    this.notificationTemplateService.emailUpsert(kind)
+                )
             );
-            const changePasswordEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.changePassword
-                );
-            promises.push(changePasswordEmailImport);
-        }
-
-        if (!welcomeSocialEmail) {
-            this.logger.log(
-                'Welcome Social Email template missing, importing...'
+        } catch (error: unknown) {
+            throw new AppUnknownException(
+                error,
+                'Seeding email templates failed'
             );
-            const welcomeSocialEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.welcomeSocial
-                );
-            promises.push(welcomeSocialEmailImport);
-        }
-
-        if (!welcomeByAdminEmail) {
-            this.logger.log(
-                'Welcome By Admin Email template missing, importing...'
-            );
-            const welcomeByAdminEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.welcomeByAdmin
-                );
-            promises.push(welcomeByAdminEmailImport);
-        }
-
-        if (!emailVerifiedEmail) {
-            this.logger.log(
-                'Email Verified Email template missing, importing...'
-            );
-            const emailVerifiedEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.verifiedEmail
-                );
-            promises.push(emailVerifiedEmailImport);
-        }
-
-        if (!forgotPasswordEmail) {
-            this.logger.log(
-                'Forgot Password Email template missing, importing...'
-            );
-            const forgotPasswordEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.forgotPassword
-                );
-            promises.push(forgotPasswordEmailImport);
-        }
-
-        if (!mobileNumberVerifiedEmail) {
-            this.logger.log(
-                'Mobile Number Verified Email template missing, importing...'
-            );
-            const mobileNumberVerifiedEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.verifiedMobileNumber
-                );
-            promises.push(mobileNumberVerifiedEmailImport);
-        }
-
-        if (!tempPasswordEmail) {
-            this.logger.log(
-                'Temporary Password Email template missing, importing...'
-            );
-            const tempPasswordEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.temporaryPasswordByAdmin
-                );
-            promises.push(tempPasswordEmailImport);
-        }
-
-        if (!verificationEmail) {
-            this.logger.log(
-                'Verification Email template missing, importing...'
-            );
-            const verificationEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.verificationEmail
-                );
-            promises.push(verificationEmailImport);
-        }
-
-        if (!welcomeEmail) {
-            this.logger.log('Welcome Email template missing, importing...');
-            const welcomeEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.welcome
-                );
-            promises.push(welcomeEmailImport);
-        }
-
-        if (!resetMfaByAdminEmail) {
-            this.logger.log(
-                'Reset Two Factor By Admin Email template missing, importing...'
-            );
-            const resetMfaByAdminEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.resetMfaByAdmin
-                );
-            promises.push(resetMfaByAdminEmailImport);
-        }
-
-        if (!loginLockedEmail) {
-            this.logger.log(
-                'Login Locked Email template missing, importing...'
-            );
-            const loginLockedEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.loginLocked
-                );
-            promises.push(loginLockedEmailImport);
-        }
-
-        if (!newDeviceLoginEmail) {
-            this.logger.log(
-                'New Device Login Email template missing, importing...'
-            );
-            const newDeviceLoginEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.newDeviceLogin
-                );
-            promises.push(newDeviceLoginEmailImport);
-        }
-
-        if (!publishTermPolicyEmail) {
-            this.logger.log(
-                'Publish Term Policy Email template missing, importing...'
-            );
-            const publishTermPolicyEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.publishTermPolicy
-                );
-            promises.push(publishTermPolicyEmailImport);
-        }
-
-        if (!processResultEmail) {
-            this.logger.log(
-                'Process Result Email template missing, importing...'
-            );
-            const processResultEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.processResult
-                );
-            promises.push(processResultEmailImport);
-        }
-
-        if (!resetPasswordEmail) {
-            this.logger.log(
-                'Reset Password Email template missing, importing...'
-            );
-            const resetPasswordEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.resetPassword
-                );
-            promises.push(resetPasswordEmailImport);
-        }
-
-        if (!workspaceInviteEmail) {
-            this.logger.log(
-                'Workspace Invite Email template missing, importing...'
-            );
-            const workspaceInviteEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.workspaceInvite
-                );
-            promises.push(workspaceInviteEmailImport);
-        }
-
-        if (!workspaceJoinRequestEmail) {
-            this.logger.log(
-                'Workspace Join Request Email template missing, importing...'
-            );
-            const workspaceJoinRequestEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.workspaceJoinRequest
-                );
-            promises.push(workspaceJoinRequestEmailImport);
-        }
-
-        if (!workspaceJoinAcceptedEmail) {
-            this.logger.log(
-                'Workspace Join Accepted Email template missing, importing...'
-            );
-            const workspaceJoinAcceptedEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.workspaceJoinAccepted
-                );
-            promises.push(workspaceJoinAcceptedEmailImport);
-        }
-
-        if (!workspaceJoinRejectedEmail) {
-            this.logger.log(
-                'Workspace Join Rejected Email template missing, importing...'
-            );
-            const workspaceJoinRejectedEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.workspaceJoinRejected
-                );
-            promises.push(workspaceJoinRejectedEmailImport);
-        }
-
-        if (!reauthenticationOtpEmail) {
-            this.logger.log(
-                'Reauthentication Otp Email template missing, importing...'
-            );
-            const reauthenticationOtpEmailImport =
-                this.notificationTemplateService.emailImport(
-                    EnumNotificationKind.reauthenticationOtp
-                );
-            promises.push(reauthenticationOtpEmailImport);
-        }
-
-        if (promises.length > 0) {
-            try {
-                await Promise.all(promises);
-            } catch (error: unknown) {
-                throw new AppUnknownException(
-                    error,
-                    'Seeding email templates failed'
-                );
-            }
         }
 
         this.logger.log('Emails seeded successfully.');

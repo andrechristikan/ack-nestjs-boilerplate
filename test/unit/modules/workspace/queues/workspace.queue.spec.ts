@@ -93,6 +93,7 @@ describe('WorkspaceQueue', () => {
             const activityLog: IActivityLogActorPayload = {
                 apiKeyId: 'api-key-1',
                 actorUserId: 'user-1',
+                workspaceId: 'workspace-1',
                 requestLog: buildRequestContext().requestLog,
             };
 

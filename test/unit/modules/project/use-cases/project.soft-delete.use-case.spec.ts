@@ -17,10 +17,13 @@ import { WorkspaceInviteService } from '@modules/workspace/services/workspace.in
 import { ProjectSoftDeleteUseCase } from '@modules/project/use-cases/project.soft-delete.use-case';
 import {
     buildUser,
+    buildWorkspace,
+    buildWorkspaceMember,
     buildRequestContext,
     buildApiKeyContext,
     buildUserContext,
     buildAuthJwtAccessContext,
+    buildWorkspaceContext,
     buildProjectContext,
 } from '@test/unit/helpers/test.unit.request.helper';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
@@ -74,6 +77,10 @@ describe('ProjectSoftDeleteUseCase', () => {
         buildUser('507f1f77bcf86cd799439015', 'jane@example.com')
     );
     const authContext = buildAuthJwtAccessContext(userContext.user.id);
+    const workspaceContext = buildWorkspaceContext(
+        { ...buildWorkspace(), id: project.workspaceId },
+        buildWorkspaceMember('507f1f77bcf86cd799439015')
+    );
     const projectContext = buildProjectContext(project, null);
 
     beforeAll(() => {
@@ -134,6 +141,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                workspaceContext,
                 projectContext
             );
 
@@ -156,6 +164,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                workspaceContext,
                 projectContext
             );
 
@@ -163,6 +172,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                workspaceContext,
                 {
                     action: EnumActivityLogAction.projectDeleted,
                     userId: '507f1f77bcf86cd799439015',
@@ -185,6 +195,7 @@ describe('ProjectSoftDeleteUseCase', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    workspaceContext,
                     projectContext
                 )
             ).rejects.toBe(failure);

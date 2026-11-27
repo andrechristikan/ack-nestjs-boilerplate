@@ -202,6 +202,7 @@ describe('RoleDeleteByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.adminRoleDeleted, metadata }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, effect);

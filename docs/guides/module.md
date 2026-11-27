@@ -43,7 +43,7 @@ This guide shows how to add a feature module under `src/modules/`, for a develop
     pnpm db:migrate
     ```
 
-    A model has an `id`, the audit columns, a plural `@@map`, and a `@relation` for every `@db.ObjectId` field but `id` and the audit fields. This is the `Device` model (`prisma/schema.prisma`):
+    A model has an `id`, the audit columns, a plural `@@map`, and a `@relation` for every `@db.ObjectId` field but `id` and the audit fields. Each relation is named on both sides and declares `onDelete` and `onUpdate` ([Relations and referential actions][ref-doc-reference-database-relations]). This is the `Device` model (`prisma/schema.prisma`):
 
     ```prisma
     model Device {
@@ -155,3 +155,4 @@ This guide shows how to add a feature module under `src/modules/`, for a develop
 [ref-doc-guide-seed]: seed.md
 [ref-doc-guide-api-documentation]: api-documentation.md
 [ref-doc-installation]: ../getting-started/installation.md
+[ref-doc-reference-database-relations]: ../reference/database.md#relations-and-referential-actions

@@ -93,6 +93,7 @@ Social sign-up writes the same rows without a password, a password history row, 
 - A user claims a new username through its own route. The same checks as sign-up apply.
 - The profile photo uses the presigned upload: the client asks for a presign, puts the bytes in S3, and confirms the key. The service reads the object's size and first bytes from S3, deletes an object it refuses, and queues the delete of a replaced photo ([Presigned upload][ref-doc-concept-file-upload-presign]). A multipart route also exists.
 - Adding, changing, and deleting a mobile number are re-authenticated actions ([Reauthentication][ref-doc-concept-mfa-reauthentication]).
+- Deleting a mobile number soft-deletes the row: `deletedAt` and `deletedBy` are set, `number` is rewritten to `user.deletedMobileNumberPattern` (`deleted-{id}`), and the number's unused verification codes are marked used. The unique key frees the old number, so the user can add it again. Every read of a number filters `deletedAt: null`. The route answers no data.
 - The email is not editable. The profile read returns the censored email and the account's own mobile numbers, censored too.
 
 ## Password, reset, and history
@@ -140,11 +141,11 @@ Failed attempts lock a credential for a while without changing the status:
 A user deletes their own account through a re-authenticated action. An `admin` or `superAdmin` account answers `UserDeleteSelfForbiddenException` (403, `51026`), and a user who owns a workspace with other members answers `WorkspaceOwnerTransferRequiredException` (400, `51624`) until ownership is transferred.
 
 1. The use case validates, then consumes the re-authentication proof and adds the `deleteSelf` outbox row in one transaction. It answers with no data, and the account and its sessions stay live until the job commits.
-2. The job runs one transaction. It soft-deletes the workspaces the user owns alone, cancels the user's join requests, revokes the invites addressed to the email, and removes the user's workspace and project memberships, mobile numbers, social links, MFA rows, and password history.
+2. The job runs one transaction. It soft-deletes the workspaces the user owns alone, cancels the user's join requests, revokes the invites addressed to the email, and removes the user's workspace and project memberships, social links, MFA rows, and password history, and soft-deletes the user's mobile numbers the same way as the delete route.
 3. The same transaction revokes every session, revokes every device ownership and clears its push token, and rewrites `email` and `username` to `deleted.<id>`, a value no sign-up accepts. That frees both for a new registration. It clears the credential and personal columns, sets the status `inactive`, and soft-deletes the row.
 4. It adds the photo delete row, the `userAllSessionsRevoked`, `userSelfDeleted`, and `workspaceDeleted` entries. After the commit it soft-deletes the projects of the deleted workspaces in chunks, which is why self-deletion is a job.
 
-A daily job, `purgeExpired` on the `userAuth` queue, deletes the expired rows the module leaves behind: sessions, MFA challenges, password history rows past their reuse period, verification rows, and reset rows ([Lifecycle and revocation][ref-doc-concept-session-lifecycle]). Its cron is `user.purgeExpiredCron`.
+A daily job, `purgeExpired` on the `userAuth` queue, deletes the verification rows and the forgot-password rows that have expired (`UserPasswordService.purgeExpiredForgotPasswords`). Its cron is `user.purgeExpiredCron`. The session, MFA challenge, and password history rows are purged by the `session`, `mfa`, and `passwordHistory` queues ([Lifecycle and revocation][ref-doc-concept-session-lifecycle]).
 
 ## Import and export by admin
 

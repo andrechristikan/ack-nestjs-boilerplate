@@ -402,6 +402,7 @@ describe('UserPasswordService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userMaxPasswordAttemptReached,
                     userId: 'user-hollow',
@@ -599,6 +600,7 @@ describe('UserPasswordService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userPasswordResetRequested,
                     userId: 'user-hollow',
@@ -786,14 +788,16 @@ describe('UserPasswordService', () => {
         });
     });
 
-    describe('purgeExpired', () => {
+    describe('purgeExpiredForgotPasswords', () => {
         it('deletes the reset rows expired before now minus the retention and returns the count', async () => {
             const threshold = new Date('2025-12-01T00:00:00.000Z');
             userForgotPasswordRepository.deleteExpiredBefore.mockResolvedValue(
                 2
             );
 
-            await expect(service.purgeExpired()).resolves.toBe(2);
+            await expect(service.purgeExpiredForgotPasswords()).resolves.toBe(
+                2
+            );
 
             expect(
                 userForgotPasswordRepository.deleteExpiredBefore

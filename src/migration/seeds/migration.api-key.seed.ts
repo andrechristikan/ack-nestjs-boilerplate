@@ -80,6 +80,7 @@ export class MigrationApiKeySeed
                                 isActive: true,
                                 startAt: null,
                                 endAt: null,
+                                deletedAt: null,
                                 createdBy: MigrationUserSuperAdminId,
                                 updatedBy: MigrationUserSuperAdminId,
                             },

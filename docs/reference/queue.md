@@ -29,22 +29,25 @@ This page lists the facts of the queues, for a developer who looks up a job, its
 
 ## Queues
 
-Every queue name is the value of an `Enum<Module>Queue` member and is also the Redis queue name under the prefix `Queue` (`redis.queue.namespace`). The `Backoff key` column names the `queue.job.*` key that sets the exponential backoff delay of the queue.
+Every queue name is the value of an `Enum<Module>Queue` member and is also the Redis queue name under the prefix `Queue` (`redis.queue.namespace`). The `Backoff key` column names the key that sets the exponential backoff delay of the queue, under the `queue` object of the owner's config namespace (`notification.queue.emailBackoffDelayInMs`).
 
 | Queue | Owner | Queue class | Processor | Backoff key |
 | --- | --- | --- | --- | --- |
-| `activityLog` | `activity-log` | `ActivityLogQueue` | `ActivityLogProcessor` | `activityLogBackoffDelayInMs` |
-| `analytic` | `analytic` | `AnalyticQueue` | `AnalyticProcessor` | `analyticBackoffDelayInMs` |
-| `cache` | kit | `CacheQueue` | `CacheProcessor` | `cacheBackoffDelayInMs` |
-| `outbox` | kit | `OutboxQueue` | `OutboxProcessor` | `outboxBackoffDelayInMs` |
-| `notification` | `notification` | `NotificationQueue` | `NotificationProcessor` | `notificationBackoffDelayInMs` |
-| `notificationEmail` | `notification` | `NotificationEmailQueue` | `NotificationEmailProcessor` | `emailBackoffDelayInMs` |
-| `notificationPush` | `notification` | `NotificationPushQueue` | `NotificationPushProcessor` | `pushBackoffDelayInMs` |
-| `notificationSms` | `notification` | `NotificationSmsQueue` | `NotificationSmsProcessor` | `smsBackoffDelayInMs` |
-| `termPolicy` | `term-policy` | `TermPolicyQueue` | `TermPolicyProcessor` | `termPolicyBackoffDelayInMs` |
-| `user` | `user` | `UserQueue` | `UserProcessor` | `userBackoffDelayInMs` |
-| `userAuth` | `user` | `UserAuthQueue` | `UserAuthProcessor` | `userAuthBackoffDelayInMs` |
-| `workspace` | `workspace` | `WorkspaceQueue` | `WorkspaceProcessor` | `workspaceBackoffDelayInMs` |
+| `activityLog` | `activity-log` | `ActivityLogQueue` | `ActivityLogProcessor` | `activityLog.queue.backoffDelayInMs` |
+| `analytic` | `analytic` | `AnalyticQueue` | `AnalyticProcessor` | `analytic.queue.backoffDelayInMs` |
+| `cache` | kit | `CacheQueue` | `CacheProcessor` | `cache.queue.backoffDelayInMs` |
+| `mfa` | `mfa` | `MfaQueue` | `MfaProcessor` | `mfa.queue.backoffDelayInMs` |
+| `outbox` | kit | `OutboxQueue` | `OutboxProcessor` | `outbox.queue.backoffDelayInMs` |
+| `passwordHistory` | `password-history` | `PasswordHistoryQueue` | `PasswordHistoryProcessor` | `passwordHistory.queue.backoffDelayInMs` |
+| `notification` | `notification` | `NotificationQueue` | `NotificationProcessor` | `notification.queue.backoffDelayInMs` |
+| `notificationEmail` | `notification` | `NotificationEmailQueue` | `NotificationEmailProcessor` | `notification.queue.emailBackoffDelayInMs` |
+| `notificationPush` | `notification` | `NotificationPushQueue` | `NotificationPushProcessor` | `notification.queue.pushBackoffDelayInMs` |
+| `notificationSms` | `notification` | `NotificationSmsQueue` | `NotificationSmsProcessor` | `notification.queue.smsBackoffDelayInMs` |
+| `session` | `session` | `SessionQueue` | `SessionProcessor` | `session.queue.backoffDelayInMs` |
+| `termPolicy` | `term-policy` | `TermPolicyQueue` | `TermPolicyProcessor` | `termPolicy.queue.backoffDelayInMs` |
+| `user` | `user` | `UserQueue` | `UserProcessor` | `user.queue.backoffDelayInMs` |
+| `userAuth` | `user` | `UserAuthQueue` | `UserAuthProcessor` | `user.queue.authBackoffDelayInMs` |
+| `workspace` | `workspace` | `WorkspaceQueue` | `WorkspaceProcessor` | `workspace.queue.backoffDelayInMs` |
 | `health` | `health` | none | none | none |
 
 No job enters the `health` queue. `HealthQueueIndicator` uses it to check that a queue client is ready, and its factory returns no job options.
@@ -56,9 +59,13 @@ The `Kind` column says how a job is added: `effect` is an outbox row built by an
 | Queue | Job | Kind | Priority | Producer or schedule |
 | --- | --- | --- | --- | --- |
 | `activityLog` | `createMany` | effect | low | `ActivityLogQueue.recordEffect` |
+| `activityLog` | `purgeExpired` | scheduler | low | `activityLog.purgeExpiredCron`, in `app.timezone` |
 | `analytic` | `refreshSnapshot` | scheduler | low | one scheduler per snapshot signal (`impossibleTravel`, `deviceProliferation`, `sharedFingerprint`, `riskScore`, `concurrentSessions`, `devicePerUser`, `workspaceMembership`, `mfaAdoption`), every `analytic.snapshot.refreshIntervalInMs`, also at once on boot |
 | `cache` | `invalidate` | effect | high | `CacheQueue.invalidateEffect` |
+| `mfa` | `purgeExpired` | scheduler | low | `mfa.purgeExpiredCron`, in `app.timezone` |
 | `outbox` | `sweep` | scheduler | none | every `outbox.sweepIntervalInMs` |
+| `outbox` | `scrubExpired` | scheduler | none | `outbox.scrubExpiredCron`, in `app.timezone` |
+| `passwordHistory` | `purgeExpired` | scheduler | low | `passwordHistory.purgeExpiredCron`, in `app.timezone` |
 | `notification` | `notify` | effect | by kind | `NotificationQueue.notify` |
 | `notificationEmail` | `send` | effect | by kind | `NotificationEmailQueue.sendEffect` |
 | `notificationEmail` | `sendUnregistered` | effect | by kind | `NotificationEmailQueue.notifyUnregisteredInvite` |
@@ -66,13 +73,14 @@ The `Kind` column says how a job is added: `effect` is an outbox row built by an
 | `notificationPush` | `send` | effect | by kind | `NotificationPushQueue.sendEffect` |
 | `notificationPush` | `cleanupStaleTokens` | scheduler | low | `notification.push.cleanupStaleTokensCron`, in `app.timezone` |
 | `notificationSms` | `send` | effect | by kind | `NotificationSmsQueue.sendEffect` |
+| `session` | `purgeLogins` | effect | high | `SessionQueue.purgeLoginsEffect` |
+| `session` | `purgeExpired` | scheduler | low | `session.purgeExpiredCron`, in `app.timezone` |
 | `termPolicy` | `publish` | effect | medium | `TermPolicyQueue.publishEffect`, `resendPublishEffect` |
 | `termPolicy` | `deleteContent` | effect | low | `TermPolicyQueue.deleteContentEffect` |
 | `user` | `deletePhoto` | effect | low | `UserQueue.deletePhotoEffect` |
 | `user` | `importByAdmin` | effect | medium | `UserQueue.importByAdminEffect` |
 | `user` | `exportByAdmin` | effect | medium | `UserQueue.exportByAdminEffect` |
 | `user` | `deleteSelf` | effect | high | `UserQueue.deleteSelfEffect` |
-| `userAuth` | `purgeLogins` | effect | high | `UserAuthQueue.purgeLoginsEffect` |
 | `userAuth` | `purgeExpired` | scheduler | low | `user.purgeExpiredCron`, in `app.timezone` |
 | `workspace` | `expireStaleInvites` | scheduler | low | `workspace.invite.expirySweepCron`, in `app.timezone`, also at once on boot |
 | `workspace` | `expireStaleJoinRequests` | scheduler | low | `workspace.invite.expirySweepCron`, in `app.timezone`, also at once on boot |
@@ -134,22 +142,22 @@ The placeholders:
 | `termPolicy` / `publish`, a resend | `termPolicy.idempotencyKey.resendPublishPattern` | `{process}-{termPolicyId}-{resendNonce}` |
 
 - A kind marked none in the kinds table passes `null`.
-- Every other effect passes `null`: `activityLog` `createMany`, `cache` `invalidate`, `termPolicy` `deleteContent`, every `user` job, `userAuth` `purgeLogins`, and `workspace` `softDelete`.
+- Every other effect passes `null`: `activityLog` `createMany`, `cache` `invalidate`, `termPolicy` `deleteContent`, every `user` job, `session` `purgeLogins`, and `workspace` `softDelete`.
 - `(queue, name, idempotencyKey)` is unique on the `Outbox` model.
 
 ## Job options
 
-The `QueueModule` supplies shared defaults, and each queue factory returns the `defaultJobOptions` of its queue from the same keys with its own backoff.
+Each queue factory returns the `defaultJobOptions` of its queue from the `queue` object of its module's config namespace, written `<namespace>.queue.<key>` below.
 
 | Option | Value | Config key |
 | --- | --- | --- |
-| `attempts` | `3` | `queue.job.maxAttempts` |
+| `attempts` | `3` | `<namespace>.queue.maxAttempts` |
 | `backoff` | exponential, with the queue's delay | the queue's `Backoff key` above |
-| `keepLogs` | `20` | `queue.job.keepLogs` |
-| `removeOnComplete.age` | `604800` seconds (7 days) | `queue.job.removeOnCompleteAgeInSeconds` |
-| `removeOnFail.age` | `1209600` seconds (14 days) | `queue.job.removeOnFailAgeInSeconds` |
+| `keepLogs` | `20` | `<namespace>.queue.keepLogs` |
+| `removeOnComplete.age` | `604800` seconds (7 days) | `<namespace>.queue.removeOnCompleteAgeInSeconds` |
+| `removeOnFail.age` | `1209600` seconds (14 days) | `<namespace>.queue.removeOnFailAgeInSeconds` |
 
-`queue.job.defaultBackoffDelayInMs` (3 seconds) is the backoff of the shared defaults. It applies to a queue whose factory returns no job options, which is the `health` queue.
+`QueueModule.forRoot()` supplies the shared defaults from `queue.job.maxAttempts`, `queue.job.removeOnCompleteAgeInSeconds`, `queue.job.removeOnFailAgeInSeconds`, and `queue.job.defaultBackoffDelayInMs` (3 seconds). They apply to a queue whose factory returns no job options, which is the `health` queue.
 
 A processor passes worker options in the second argument of `@QueueProcessor`. Only the two limiters are set, so every other worker runs BullMQ's default of one job at a time. A limiter counts in a Redis key of the queue, so it applies to the whole queue across every worker and instance, not per worker.
 
@@ -188,6 +196,13 @@ The sweep reads these config keys:
 | `outbox.enqueuedAfterInMs` | 1 hour | A row `enqueued` for longer has its job looked up and is stamped or re-dispatched |
 | `outbox.sweepBatch` | 100 | The most rows each of the two reads returns |
 | `outbox.sweepKeepCompleted` | 20 | The number of completed sweep jobs BullMQ keeps (`removeOnComplete.count`) |
+
+The `scrubExpired` job reads these keys:
+
+| Key | Value | What the job does with it |
+| --- | --- | --- |
+| `outbox.scrubExpiredCron` | `0 4 * * *` | The daily schedule of the job |
+| `outbox.retentionInMs` | 30 days | A row `completed` or `failed` and last updated longer ago has `data` set to `{}`, `lastError` to `null`, and `scrubbedAt` stamped |
 
 ## Job states
 

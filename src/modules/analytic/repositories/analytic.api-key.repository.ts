@@ -17,6 +17,7 @@ export class AnalyticApiKeyRepository implements IAnalyticApiKeyRepository {
         const nowDate = this.analyticPipelineUtil.toDate(now);
         const result = await this.databaseService.client.apiKey.aggregateRaw({
             pipeline: [
+                { $match: { deletedAt: null } },
                 {
                     $group: {
                         _id: null,

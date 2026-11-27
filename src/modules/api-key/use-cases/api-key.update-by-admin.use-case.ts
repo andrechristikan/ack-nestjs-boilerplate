@@ -62,6 +62,7 @@ export class ApiKeyUpdateByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyUpdated,
                     metadata,

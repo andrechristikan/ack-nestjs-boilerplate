@@ -6,4 +6,5 @@ export enum EnumOutboxQueue {
 /** @public */
 export enum EnumOutboxProcess {
     sweep = 'sweep',
+    scrubExpired = 'scrubExpired',
 }

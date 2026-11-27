@@ -17,7 +17,7 @@ paths:
 - `options.lease`, for a shared hot key (`ApiKeyCache`, `FeatureFlagCache`), holds no stale entry past a delete: the invalidate job removes the entry and its lease.
 - A write that changes or deletes a cached row invalidates through an effect: `effects.md`, Cache invalidation.
 - `CacheService.flush` runs `flushdb` on the cache client; `MigrationSeedBase` is its one caller.
-- `CacheModule.forRoot()` registers the `cache` queue with `CacheQueueFactory` (`queue.job.cacheBackoffDelayInMs`) and provides and exports its queue class, `CacheQueue` (`src/common/cache/queues/cache.queue.ts`), also under `EnumCacheQueue.cache`; `CacheProcessor` (`src/common/cache/processors/`), awaits `CacheService.invalidate(data.keys)`, and the processor base rethrows a `RedisUnavailableException` as an `AppBaseException` for BullMQ to retry (`queue.md`, Processors); its messages are `cache.queue.*` in `src/languages/<lang>/cache.json`.
+- `CacheModule.forRoot()` registers the `cache` queue with `CacheQueueFactory`, reading the `cache` config's `queue` object, and provides and exports its queue class, `CacheQueue` (`src/common/cache/queues/cache.queue.ts`), also under `EnumCacheQueue.cache`; `CacheProcessor` (`src/common/cache/processors/`), awaits `CacheService.invalidate(data.keys)`, and the processor base rethrows a `RedisUnavailableException` as an `AppBaseException` for BullMQ to retry (`queue.md`, Processors); its messages are `cache.queue.*` in `src/languages/<lang>/cache.json`.
 - The session login entry and its purge: `session.md`, Session invalidation.
 
 ## Class shape

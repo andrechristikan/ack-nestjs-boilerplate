@@ -141,6 +141,7 @@ export class MfaRegenerateBackupCodesUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.userMfaBackupCodesRegenerated,
                     }

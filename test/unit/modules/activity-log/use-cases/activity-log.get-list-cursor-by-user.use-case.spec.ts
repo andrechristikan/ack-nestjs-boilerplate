@@ -100,6 +100,7 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
             const other = buildActivityLog('log-2', 'admin-1');
             const hidden = {
                 ...other,
+                apiKeyId: null,
                 ipAddress: null,
                 userAgent: null,
                 geoLocation: null,
@@ -116,7 +117,7 @@ describe('ActivityLogGetListCursorByUserUseCase', () => {
             expect(result).toEqual({
                 ...cursorPage,
                 hasNext: true,
-                data: [own, hidden],
+                data: [{ ...own, apiKeyId: null }, hidden],
             });
         });
     });

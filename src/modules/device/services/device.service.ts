@@ -311,6 +311,7 @@ export class DeviceService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userDeviceRefreshed,
             }

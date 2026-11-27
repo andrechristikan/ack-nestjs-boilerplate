@@ -229,6 +229,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminDeviceRemoved,
                     metadata: {
@@ -246,6 +247,7 @@ describe('DeviceRemoveByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userDeviceRemovedByAdmin,
                     userId: 'user-1',

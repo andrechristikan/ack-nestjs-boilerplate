@@ -65,7 +65,7 @@ Open: <the coder's question, options, and recommendation>
 ```
 
 4. One check still failing after two coder dispatches: dispatch `debugger` with the symptom, then one `coder` with its pin. Stop with the evidence when the cause stays unknown.
-5. A schema delta in a hand-back: add the owner's `pnpm db:migrate` to the plan's `## Owner commands`.
+5. Every owner command a coder hand-back names (`pnpm db:migrate` for a schema delta, `pnpm migration:fresh` for a seed change) joins the plan's `## Owner commands`.
 
 Stop before the last ticket only when:
 

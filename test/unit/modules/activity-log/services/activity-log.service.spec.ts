@@ -1,4 +1,10 @@
+import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
+import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
+import {
+    TestUnitKitConfigValues,
+    TestUnitKitProviders,
+} from '@test/unit/helpers/test.unit.kit.helper';
 import type { TestingModule } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
@@ -14,6 +20,8 @@ describe('ActivityLogService', () => {
     const activityLogRepository: MockProxy<ActivityLogRepository> =
         mock<ActivityLogRepository>();
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    const retentionInMs = 31536000000;
+    const now = new Date('2027-01-01T00:00:00.000Z');
 
     const userAgent: UserAgent = {
         ua: null,
@@ -31,10 +39,27 @@ describe('ActivityLogService', () => {
 
     let service: ActivityLogService;
 
+    beforeAll(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(now);
+    });
+
+    afterAll(() => {
+        vi.useRealTimers();
+    });
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 ActivityLogService,
+                {
+                    provide: ConfigService,
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'activityLog.retentionInMs': retentionInMs,
+                    }),
+                },
+                ...TestUnitKitProviders,
                 {
                     provide: ActivityLogRepository,
                     useValue: activityLogRepository,
@@ -53,6 +78,7 @@ describe('ActivityLogService', () => {
                     userId: 'user-1',
                     createdBy: 'creator-1',
                     workspaceId: null,
+                    apiKeyId: 'api-key-1',
                     action: EnumActivityLogAction.userLoggedInWithCredential,
                     description: 'Description',
                     requestLog,
@@ -64,6 +90,19 @@ describe('ActivityLogService', () => {
             await service.createMany(rows);
 
             expect(activityLogRepository.createMany).toHaveBeenCalledWith(rows);
+        });
+    });
+
+    describe('purgeExpired', () => {
+        it('deletes the entries created before now minus the retention and returns the count', async () => {
+            const threshold = new Date('2026-01-01T00:00:00.000Z');
+            activityLogRepository.deleteExpiredBefore.mockResolvedValue(6);
+
+            await expect(service.purgeExpired()).resolves.toBe(6);
+
+            expect(
+                activityLogRepository.deleteExpiredBefore
+            ).toHaveBeenCalledWith(threshold);
         });
     });
 
@@ -93,6 +132,35 @@ describe('ActivityLogService', () => {
             expect(
                 activityLogRepository.findUserScopedWithPaginationOffset
             ).toHaveBeenCalledWith('user-1', pagination);
+        });
+    });
+
+    describe('getListOffsetByApiKey', () => {
+        it('delegates to the repository and returns its page', async () => {
+            const pagination = { skip: 0, limit: 20, orderBy: [] };
+            const page = {
+                type: EnumPaginationType.offset as const,
+                count: 0,
+                perPage: 20,
+                hasNext: false,
+                hasPrevious: false,
+                page: 1,
+                totalPage: 1,
+                data: [],
+            };
+            activityLogRepository.findByApiKeyWithPaginationOffset.mockResolvedValue(
+                page
+            );
+
+            const result = await service.getListOffsetByApiKey(
+                'api-key-1',
+                pagination
+            );
+
+            expect(result).toBe(page);
+            expect(
+                activityLogRepository.findByApiKeyWithPaginationOffset
+            ).toHaveBeenCalledWith('api-key-1', pagination);
         });
     });
 

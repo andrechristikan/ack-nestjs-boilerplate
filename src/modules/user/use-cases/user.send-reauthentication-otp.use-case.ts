@@ -70,6 +70,7 @@ export class UserSendReauthenticationOtpUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userReauthenticationOtpSent,
                 }

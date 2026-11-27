@@ -1,6 +1,5 @@
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
-    EnumUserAuthProcess,
     EnumUserProcess,
     EnumUserQueue,
 } from '@modules/user/enums/user.enum';
@@ -54,7 +53,6 @@ import type {
 import { EnumUserCreateWorkspaceContextType } from '@modules/user/enums/user.enum';
 import type { IActivityLogActorPayload } from '@modules/activity-log/interfaces/activity-log.interface';
 import type { IUserCreateVerification } from '@modules/user/interfaces/user.create.interface';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
 
 export interface IUserDeletedIdentity {
     email: string;
@@ -415,11 +413,6 @@ export interface IUserDeleteSelfPayload {
     activityLog: IActivityLogActorPayload;
 }
 
-export interface IUserPurgeLoginsPayload {
-    userId: string;
-    sessions: ISessionRef[];
-}
-
 export interface IUserExport {
     id: string;
     createdAt: Date;
@@ -476,12 +469,6 @@ export interface IUserDeleteSelfEffect extends IOutboxEffect {
     data: IUserDeleteSelfPayload;
 }
 
-export interface IUserPurgeLoginsEffect extends IOutboxEffect {
-    queue: EnumUserQueue.userAuth;
-    name: EnumUserAuthProcess.purgeLogins;
-    data: IUserPurgeLoginsPayload;
-}
-
 export interface IUserDeletePhotoQueueResponse extends IQueueResponse {
     key: string;
 }
@@ -495,13 +482,6 @@ export interface IUserExportByAdminQueueResponse extends IQueueResponse {
 }
 
 export interface IUserPurgeExpiredQueueResponse extends IQueueResponse {
-    sessions: number;
-    mfaChallenges: number;
-    passwordHistories: number;
     verifications: number;
     forgotPasswords: number;
-}
-
-export interface IUserPurgeLoginsQueueResponse extends IQueueResponse {
-    countSessions: number;
 }

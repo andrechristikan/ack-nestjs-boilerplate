@@ -104,7 +104,7 @@ This guide shows how to add a notification kind that a use case or service produ
 7. Add the email template when `email` is a pending channel:
     1. Create `src/modules/notification/templates/notification.<kind-in-kebab-case>.template.hbs`. Its placeholders are the `templateFields` plus `username`.
     2. Register the kind in `NotificationTemplateService` in `src/modules/notification/services/notification.template.service.ts`: a case in `getTemplateEmail` that returns a literal English subject and the `.hbs` file. `processResult` alone takes `{{title}}`.
-    3. Add the kind to the get, import, and delete lists of `src/migration/seeds/migration.template-email-notification.seed.ts`.
+    3. Add the kind to the upsert and delete lists of `src/migration/seeds/migration.template-email-notification.seed.ts`.
     4. Sync the template to SES ([Email Template Guide][ref-doc-guide-email-template]).
 
 8. Push and in-app need no code. `NotificationPushProcessSendUseCase` builds the title and body from the contract row, and `inApp` is a delivered channel, recorded when the notification is created.

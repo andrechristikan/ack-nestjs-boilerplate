@@ -164,6 +164,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userVerificationEmailSent,
                     userId: user.id,
@@ -206,6 +207,7 @@ export class UserLoginCredentialUseCase implements IAppUseCase<
                     const failedEntry = this.activityLogQueue.recordEffect(
                         requestContext,
                         apiKeyContext,
+                        null,
                         null,
                         {
                             action: EnumActivityLogAction.userLoginFailed,

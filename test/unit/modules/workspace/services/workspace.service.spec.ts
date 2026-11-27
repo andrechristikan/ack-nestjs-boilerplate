@@ -375,6 +375,7 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceCreated,
                     userId: 'user-1',
@@ -418,6 +419,7 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceUpdated,
                     userId: 'user-1',
@@ -454,6 +456,7 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceVisibilityUpdated,
                     userId: 'user-1',
@@ -490,6 +493,7 @@ describe('WorkspaceService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceUpdated,
                     userId: 'user-1',

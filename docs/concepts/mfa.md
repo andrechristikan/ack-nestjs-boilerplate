@@ -94,7 +94,7 @@ A login whose first factor passes and whose user has an effective factor answers
 
 - The challenge is an `MfaChallenge` row of purpose `login`, created in the login transaction. The token is 48 random characters, and the row holds only its SHA-256 hash.
 - The row seals what the session needs later: the device identity, the client kind, and the login method. The device push token is stored encrypted with `APP_ENCRYPTION_SECRET` and the user id as authenticated data.
-- It expires after `mfa.challengeExpiresInMs`. The daily purge deletes it `mfa.challengeRetentionInMs` after that.
+- It expires after `mfa.challengeExpiresInMs`. The daily `purgeExpired` job of the `mfa` queue (`mfa.purgeExpiredCron`) deletes it `mfa.challengeRetentionInMs` after that.
 - The response lists the `methods` the user can finish with: `totp` and `passkey` for each effective factor, and `backupCode` while codes remain. A passkey method comes with the WebAuthn request options.
 
 `UserLoginVerifyMfaUseCase` finishes the login:

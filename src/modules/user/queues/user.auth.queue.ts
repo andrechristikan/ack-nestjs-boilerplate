@@ -9,8 +9,6 @@ import {
     EnumUserQueue,
 } from '@modules/user/enums/user.enum';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
-import type { ISessionRef } from '@modules/session/interfaces/session.interface';
-import type { IUserPurgeLoginsEffect } from '@modules/user/interfaces/user.interface';
 
 @Injectable()
 export class UserAuthQueue extends QueueBase {
@@ -44,18 +42,5 @@ export class UserAuthQueue extends QueueBase {
                 },
             },
         ];
-    }
-
-    purgeLoginsEffect(
-        userId: string,
-        sessions: ISessionRef[]
-    ): IUserPurgeLoginsEffect {
-        return {
-            queue: EnumUserQueue.userAuth,
-            name: EnumUserAuthProcess.purgeLogins,
-            data: { userId, sessions },
-            priority: EnumQueuePriority.high,
-            idempotencyKey: null,
-        };
     }
 }

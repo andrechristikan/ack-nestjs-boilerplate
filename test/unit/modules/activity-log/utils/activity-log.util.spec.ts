@@ -104,6 +104,7 @@ describe('ActivityLogUtil', () => {
 
             expect(result).toEqual({
                 workspaceId: 'workspace-1',
+                apiKeyId: null,
                 action: EnumActivityLogAction.userLoggedInWithCredential,
                 description: 'User logged in',
                 ipAddress: '127.0.0.1',
@@ -140,6 +141,7 @@ describe('ActivityLogUtil', () => {
 
             expect(result).toEqual({
                 workspaceId: null,
+                apiKeyId: null,
                 action: EnumActivityLogAction.userLoggedOut,
                 description: 'User logged out',
                 ipAddress: null,
@@ -173,6 +175,7 @@ describe('ActivityLogUtil', () => {
 
             expect(result).toEqual({
                 ...row,
+                apiKeyId: null,
                 ipAddress: null,
                 userAgent: null,
                 geoLocation: null,
@@ -191,7 +194,9 @@ describe('ActivityLogUtil', () => {
                 metadata: { actorUserId: 'user-1' },
             };
 
-            expect(util.toMaskedList([row], 'user-1')).toEqual([row]);
+            expect(util.toMaskedList([row], 'user-1')).toEqual([
+                { ...row, apiKeyId: null },
+            ]);
         });
 
         it('keeps null metadata null on another actor entry', () => {
@@ -201,6 +206,7 @@ describe('ActivityLogUtil', () => {
 
             expect(result).toEqual({
                 ...row,
+                apiKeyId: null,
                 ipAddress: null,
                 userAgent: null,
                 geoLocation: null,

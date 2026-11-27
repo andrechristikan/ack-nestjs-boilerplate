@@ -4,6 +4,7 @@ import type { IDatabaseTransactionClient } from '@common/database/interfaces/dat
 import { DatabaseService } from '@common/database/services/database.service';
 import { DatabaseUtil } from '@common/database/utils/database.util';
 import {
+    UserMobileNumberRefSelect,
     UserMobileNumberSummarySelect,
     UserMobileNumberWithCountryInclude,
 } from '@modules/user/constants/user.constant';
@@ -14,19 +15,27 @@ import type {
 } from '@modules/user/interfaces/user.interface';
 import type { IUserMobileNumberRepository } from '@modules/user/interfaces/user.mobile-number-repository.interface';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UserMobileNumberRepository
     extends DatabaseRepositoryBase
     implements IUserMobileNumberRepository
 {
+    private readonly deletedMobileNumberPattern: string;
+
     protected override readonly errorContract = DatabaseEmptyErrorContract;
 
     constructor(
         private readonly databaseService: DatabaseService,
-        protected override readonly databaseUtil: DatabaseUtil
+        protected override readonly databaseUtil: DatabaseUtil,
+        private readonly configService: ConfigService
     ) {
         super();
+
+        this.deletedMobileNumberPattern = this.configService.get<string>(
+            'user.deletedMobileNumberPattern'
+        )!;
     }
 
     async findOneMobileNumber(
@@ -37,6 +46,7 @@ export class UserMobileNumberRepository
             where: {
                 id: mobileNumberId,
                 userId,
+                deletedAt: null,
             },
             select: UserMobileNumberSummarySelect,
         });
@@ -44,7 +54,7 @@ export class UserMobileNumberRepository
 
     async findManyByUser(userId: string): Promise<IUserMobileNumber[]> {
         return this.databaseService.client.userMobileNumber.findMany({
-            where: { userId },
+            where: { userId, deletedAt: null },
             include: UserMobileNumberWithCountryInclude,
         });
     }
@@ -60,6 +70,7 @@ export class UserMobileNumberRepository
                 countryId,
                 phoneCode,
                 userId,
+                deletedAt: null,
                 ...(excludeId !== null && { id: { not: excludeId } }),
             },
         });
@@ -78,6 +89,7 @@ export class UserMobileNumberRepository
                 countryId,
                 number,
                 phoneCode,
+                deletedAt: null,
             },
             include: UserMobileNumberWithCountryInclude,
         });
@@ -92,7 +104,7 @@ export class UserMobileNumberRepository
     ): Promise<IUserMobileNumber> {
         try {
             return await tx.userMobileNumber.update({
-                where: { id: mobileNumberId, userId },
+                where: { id: mobileNumberId, userId, deletedAt: null },
                 data: {
                     countryId,
                     number,
@@ -114,7 +126,12 @@ export class UserMobileNumberRepository
     ): Promise<boolean> {
         try {
             const { count } = await tx.userMobileNumber.updateMany({
-                where: { id: mobileNumberId, userId, isVerified: false },
+                where: {
+                    id: mobileNumberId,
+                    userId,
+                    isVerified: false,
+                    deletedAt: null,
+                },
                 data: { isVerified: true, verifiedAt },
             });
 
@@ -124,27 +141,57 @@ export class UserMobileNumberRepository
         }
     }
 
-    async deleteInTx(
+    async softDeleteInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        mobileNumberId: string
-    ): Promise<IUserMobileNumber> {
+        mobileNumberId: string,
+        deletedAt: Date
+    ): Promise<boolean> {
+        const deletedMobileNumberPattern = this.deletedMobileNumberPattern;
         try {
-            return await tx.userMobileNumber.delete({
-                where: { id: mobileNumberId, userId },
-                include: UserMobileNumberWithCountryInclude,
+            const { count } = await tx.userMobileNumber.updateMany({
+                where: { id: mobileNumberId, userId, deletedAt: null },
+                data: {
+                    number: deletedMobileNumberPattern.replace(
+                        '{id}',
+                        () => mobileNumberId
+                    ),
+                    deletedAt,
+                    deletedBy: userId,
+                },
             });
+
+            return count > 0;
         } catch (error: unknown) {
             throw this.toException(error);
         }
     }
 
-    async deleteByUserInTx(
+    async softDeleteByUserInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        deletedAt: Date
     ): Promise<void> {
-        await tx.userMobileNumber.deleteMany({
-            where: { userId },
+        const mobileNumbers = await tx.userMobileNumber.findMany({
+            where: { userId, deletedAt: null },
+            select: UserMobileNumberRefSelect,
         });
+
+        const deletedMobileNumberPattern = this.deletedMobileNumberPattern;
+        await Promise.all(
+            mobileNumbers.map(({ id }) =>
+                tx.userMobileNumber.updateMany({
+                    where: { id, deletedAt: null },
+                    data: {
+                        number: deletedMobileNumberPattern.replace(
+                            '{id}',
+                            () => id
+                        ),
+                        deletedAt,
+                        deletedBy: userId,
+                    },
+                })
+            )
+        );
     }
 }

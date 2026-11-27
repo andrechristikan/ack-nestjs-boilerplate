@@ -11,17 +11,19 @@ export class OutboxQueueFactory implements RegisterQueueOptionsFactory {
 
     createRegisterQueueOptions(): RegisterQueueOptions {
         const maxAttempts = this.configService.get<number>(
-            'queue.job.maxAttempts'
+            'outbox.queue.maxAttempts'
         )!;
-        const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
+        const keepLogs = this.configService.get<number>(
+            'outbox.queue.keepLogs'
+        )!;
         const backoffDelayInMs = this.configService.get<number>(
-            'queue.job.outboxBackoffDelayInMs'
+            'outbox.queue.backoffDelayInMs'
         )!;
         const removeOnCompleteAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnCompleteAgeInSeconds'
+            'outbox.queue.removeOnCompleteAgeInSeconds'
         )!;
         const removeOnFailAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnFailAgeInSeconds'
+            'outbox.queue.removeOnFailAgeInSeconds'
         )!;
 
         return {

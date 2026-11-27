@@ -94,6 +94,7 @@ describe('UserProcessDeleteSelfUseCase', () => {
     const activityLog: IActivityLogActorPayload = {
         apiKeyId: 'api-key-1',
         actorUserId: 'user-cinder',
+        workspaceId: null,
         requestLog: buildRequestLog(),
     };
     const payload: IUserDeleteSelfPayload = {
@@ -230,8 +231,8 @@ describe('UserProcessDeleteSelfUseCase', () => {
                 'user-cinder'
             );
             expect(
-                userMobileNumberService.removeByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-cinder');
+                userMobileNumberService.softDeleteByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-cinder', now);
             expect(userSocialService.removeByUserInTx).toHaveBeenCalledWith(
                 tx,
                 'user-cinder'

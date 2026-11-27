@@ -33,7 +33,7 @@ sequenceDiagram
     participant C as Client
     participant A as API
     participant DB as MongoDB
-    participant Q as userAuth queue
+    participant Q as session queue
     participant R as Cache Redis
 
     C->>A: Remove a device ownership, with a re-authentication

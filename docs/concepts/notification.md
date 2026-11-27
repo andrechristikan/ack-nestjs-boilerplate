@@ -106,7 +106,7 @@ The email processor's limiter matches the SES sending quota (`AwsSesRateLimitPer
 
 `NotificationEmailProcessSendUnregisteredUseCase` sends the invite of an address with no account. It opens the address and the link with the invite reference as authenticated data and sends the `workspaceInvite` template, with the address standing in for the username ([Workspace][ref-doc-concept-workspace-delivery]).
 
-Each kind has one SES Handlebars template of the kind's name, registered in `NotificationTemplateService`. The templates are imported to SES by a seed command ([Email Template Guide][ref-doc-guide-email-template]).
+Each kind has one SES Handlebars template of the kind's name, registered in `NotificationTemplateService`. A seed command upserts the templates in SES ([Email Template Guide][ref-doc-guide-email-template]).
 
 ## Push channel and tokens
 

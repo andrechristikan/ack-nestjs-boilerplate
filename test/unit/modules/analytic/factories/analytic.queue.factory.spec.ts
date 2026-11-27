@@ -27,11 +27,11 @@ describe('AnalyticQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
             stubConfigValues(configService, {
-                'queue.job.maxAttempts': 5,
-                'queue.job.keepLogs': 100,
-                'queue.job.analyticBackoffDelayInMs': 2500,
-                'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                'queue.job.removeOnFailAgeInSeconds': 86400,
+                'analytic.queue.maxAttempts': 5,
+                'analytic.queue.keepLogs': 100,
+                'analytic.queue.backoffDelayInMs': 2500,
+                'analytic.queue.removeOnCompleteAgeInSeconds': 3600,
+                'analytic.queue.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

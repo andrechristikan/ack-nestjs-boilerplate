@@ -94,13 +94,16 @@ The `audit-actor` extension registers a query hook on every model for `create`, 
 
 ## Soft delete and restore
 
-The extension adds `softDelete` and `restore` to every model at runtime. Their types exist only on a model with a `deletedAt` column, `User`, `Workspace`, and `Project`, so a call on another model does not compile. A live row is one whose `deletedAt` is `null`.
+The extension adds `softDelete` and `restore` to every model at runtime. Their types exist only on a model with a `deletedAt` column, `User`, `Workspace`, `Project`, `ApiKey`, and `UserMobileNumber`, so a call on another model does not compile. A live row is one whose `deletedAt` is `null`.
 
 - `softDelete({ where, data? })` sets `deletedAt` to now, and `deletedBy` and `updatedBy` to the actor, or to `null` when there is no actor. It merges `data` into the same update, and an explicit `deletedAt`, `deletedBy`, or `updatedBy` in `data` wins.
 - `restore({ where, data? })` clears `deletedAt` and `deletedBy`, sets `updatedBy` to the actor, or to `null` when there is no actor, unless `data` names one, and merges `data`.
 - A soft delete with a guard is a live-row `update()` or `updateMany` that carries `deletedAt` and `deletedBy` in `data`.
 - A hard `delete` or `deleteMany` writes no audit field.
 - The repository, not the extension, rewrites the slug when it soft-deletes a `Workspace` or a `Project`: the slug becomes `deleted-<id>` (`workspace.deletedSlugPattern`, `project.deletedSlugPattern`), one statement per row. The slug is unique on `Workspace` and unique per workspace on `Project`, so the original slug is free for a new row.
+- A soft delete of a `UserMobileNumber` rewrites its `number` to `user.deletedMobileNumberPattern` (`deleted-{id}`) the same way, so the unique `[userId, countryId, phoneCode, number]` frees the old number for a new row.
+- A soft-deleted `ApiKey` keeps its `key` and `hash`, which stay unique.
+- Every relation declares `onUpdate: Restrict` and an `onDelete`, and Prisma emulates both in the client on MongoDB. The action of each relation is in [Database Reference][ref-doc-reference-database-relations].
 - A read is never filtered. The extension writes audit fields and never rewrites a `where`, so every read of a soft-deletable model filters `deletedAt: null` itself, and `PaginationService` counts with the same `where` as the page.
 
 ## Generated unique values
@@ -135,6 +138,7 @@ A repository whose write catches extends `DatabaseRepositoryBase` and declares a
 <!-- REFERENCES -->
 
 [ref-doc-reference-database]: ../reference/database.md
+[ref-doc-reference-database-relations]: ../reference/database.md#relations-and-referential-actions
 [ref-doc-guide-seed]: ../guides/seed.md
 [ref-doc-guide-module]: ../guides/module.md
 [ref-doc-architecture]: architecture.md

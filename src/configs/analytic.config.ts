@@ -71,6 +71,13 @@ export interface IConfigAnalytic {
         writeBatchSize: number;
         refreshIntervalInMs: number;
     };
+    queue: {
+        maxAttempts: number;
+        keepLogs: number;
+        removeOnCompleteAgeInSeconds: number;
+        removeOnFailAgeInSeconds: number;
+        backoffDelayInMs: number;
+    };
 }
 
 export default registerAs('analytic', (): IConfigAnalytic => ({
@@ -147,5 +154,12 @@ export default registerAs('analytic', (): IConfigAnalytic => ({
     snapshot: {
         writeBatchSize: 1000,
         refreshIntervalInMs: ms('15m'),
+    },
+    queue: {
+        maxAttempts: 3,
+        keepLogs: 20,
+        removeOnCompleteAgeInSeconds: ms('7d') / 1000,
+        removeOnFailAgeInSeconds: ms('14d') / 1000,
+        backoffDelayInMs: ms('10s'),
     },
 }));

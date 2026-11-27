@@ -369,6 +369,7 @@ describe('MfaDisableTotpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMfaTotpDisabled }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);

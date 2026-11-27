@@ -94,7 +94,7 @@ Each task below is its own numbered list. Run the first task once on a fresh dat
 3. Write the rows in `seed()` through `DatabaseService.client`, or the `tx` of `withTransaction(fn, { timeout })` with `database.seedTransactionTimeoutInMs`. A seed never goes through a feature repository. Draw hashes and keys before the callback, so the transaction holds statements only.
 4. Set `createdBy` on every row and `updatedBy` where the model has it, including the `update` branch of an upsert, to `MigrationUserSuperAdminId` from `src/migration/data/migration.user.data.ts`.
 5. Wrap a failed write in `throw new AppUnknownException(error, 'Seeding <things> failed')`. Log a warning and return when a prerequisite row is missing.
-6. Make `remove()` delete the rows the seed owns.
+6. Make `remove()` delete the rows the seed owns, children before parents: a relation with `onDelete: Restrict` refuses to delete a parent while a child row holds it.
 7. Add the class to `providers` of `src/migration/migration.module.ts`, and a kit module it injects from, such as `AwsModule`, to `imports`.
 8. Add `node dist/migration.js <name> --type seed` to the `migration:seed` script in `package.json`, after the seeds it needs. Add the `--type remove` form to `migration:remove`, which runs dependents first: place it after every seed that depends on its rows and before the seeds whose rows it depends on. A seed that depends on an optional integration stays outside both scripts and runs by its command.
 9. Rebuild the seed commands, then run the new seed:

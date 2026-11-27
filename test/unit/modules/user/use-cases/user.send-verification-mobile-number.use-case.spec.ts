@@ -104,6 +104,7 @@ describe('UserSendVerificationMobileNumberUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userVerificationMobileNumberSent,
                 }

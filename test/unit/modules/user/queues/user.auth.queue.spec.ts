@@ -59,23 +59,4 @@ describe('UserAuthQueue', () => {
             await expect(queue.onModuleInit()).rejects.toBe(error);
         });
     });
-
-    describe('purgeLoginsEffect', () => {
-        it('returns the high-priority purge-logins effect carrying the user and session refs and no business key', () => {
-            const effect = queue.purgeLoginsEffect('user-1', [
-                { id: 'session-1', userId: 'user-1' },
-            ]);
-
-            expect(effect).toEqual({
-                queue: EnumUserQueue.userAuth,
-                name: EnumUserAuthProcess.purgeLogins,
-                data: {
-                    userId: 'user-1',
-                    sessions: [{ id: 'session-1', userId: 'user-1' }],
-                },
-                priority: EnumQueuePriority.high,
-                idempotencyKey: null,
-            });
-        });
-    });
 });

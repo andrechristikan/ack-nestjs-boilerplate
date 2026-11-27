@@ -65,6 +65,11 @@ export const UserMobileNumberSummarySelect = {
 } satisfies Prisma.UserMobileNumberSelect;
 
 /** @public */
+export const UserMobileNumberRefSelect = {
+    id: true,
+} satisfies Prisma.UserMobileNumberSelect;
+
+/** @public */
 export const UserWithRoleInclude = {
     role: { include: RoleWithPoliciesInclude },
 } satisfies Prisma.UserInclude;
@@ -78,7 +83,10 @@ export const UserMobileNumberWithCountryInclude = {
 export const UserProfileInclude = {
     ...UserWithRoleInclude,
     country: true,
-    mobileNumbers: { include: UserMobileNumberWithCountryInclude },
+    mobileNumbers: {
+        where: { deletedAt: null },
+        include: UserMobileNumberWithCountryInclude,
+    },
 } satisfies Prisma.UserInclude;
 
 /** @public */

@@ -14,6 +14,8 @@ describe('ApiKeyCacheSchema', () => {
         createdBy: 'createdBy-1',
         updatedAt: '2026-01-02T03:04:05.000Z',
         updatedBy: 'updatedBy-1',
+        deletedAt: '2026-01-02T03:04:05.000Z',
+        deletedBy: 'deletedBy-1',
         undeclared: 'extra',
     };
     const expected = {
@@ -29,6 +31,8 @@ describe('ApiKeyCacheSchema', () => {
         createdBy: 'createdBy-1',
         updatedAt: new Date('2026-01-02T03:04:05.000Z'),
         updatedBy: 'updatedBy-1',
+        deletedAt: new Date('2026-01-02T03:04:05.000Z'),
+        deletedBy: 'deletedBy-1',
     };
     const invalid = {
         id: 123,
@@ -43,6 +47,8 @@ describe('ApiKeyCacheSchema', () => {
         createdBy: 'createdBy-1',
         updatedAt: '2026-01-02T03:04:05.000Z',
         updatedBy: 'updatedBy-1',
+        deletedAt: null,
+        deletedBy: null,
     };
 
     it('parses a payload into exactly the declared fields', () => {

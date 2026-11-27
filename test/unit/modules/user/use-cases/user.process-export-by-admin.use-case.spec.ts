@@ -75,6 +75,7 @@ describe('UserProcessExportByAdminUseCase', () => {
     const activityLog: IActivityLogActorPayload = {
         apiKeyId: 'api-key-1',
         actorUserId: 'admin-quill',
+        workspaceId: null,
         requestLog: buildRequestLog(),
     };
     const payload: IUserExportByAdminPayload = {

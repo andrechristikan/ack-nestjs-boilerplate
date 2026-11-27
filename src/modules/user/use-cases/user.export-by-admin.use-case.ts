@@ -62,7 +62,8 @@ export class UserExportByAdminUseCase implements IAppUseCase<
         const activityLog = this.activityLogQueue.toPayload(
             requestContext,
             apiKeyContext,
-            authContext
+            authContext,
+            null
         );
         const effect = this.userQueue.exportByAdminEffect(
             status,

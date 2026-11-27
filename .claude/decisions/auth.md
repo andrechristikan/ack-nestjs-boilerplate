@@ -350,12 +350,12 @@ Rule: `session.md`, Session invalidation.
 
 ## Retention
 
-### Expired identity rows are purged by one daily job
+### Each module purges its own expired rows with a daily job on its own queue
 
 Rule: `queue.md`, Enqueuing; the delete: `repository.md`, Schema.
 
+- One daily job in the `user` module calling every module's purge: a module's retention runs from another module's use case and queue.
 - A TTL index created outside Prisma: it lives outside the schema file the no-migration design depends on.
-- A purge job per module: five queues and schedules for one statement each.
 - Delete on issue or on consume: a row nobody issues after stays for good.
 - Soft delete with the unique values rewritten to `deleted.<id>`: the password hashes, IP addresses, user agents, and locations stay forever, which ASVS V14.1.2 and GDPR storage limitation refuse, and the unique values are random, so none is ever reused.
 - Scrubbing the sensitive columns and keeping the row: every live read filters `deletedAt`, the collections keep growing, and `ActivityLog` already records when each row was created, changed, or revoked.

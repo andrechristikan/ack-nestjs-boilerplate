@@ -54,6 +54,7 @@ export class WorkspaceSwitchUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceSwitched,
                     userId,

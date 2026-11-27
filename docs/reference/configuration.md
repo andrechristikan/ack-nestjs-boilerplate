@@ -5,17 +5,19 @@ description: Every config key under src/configs with its type, default, and envi
 
 # Configuration Reference
 
-This page lists every key of the 30 config namespaces in `src/configs/` with its environment variable, for a developer who looks up a value, and the variables only Docker Compose and the AI harness read.
+This page lists every key of the 33 config namespaces in `src/configs/` with its environment variable, for a developer who looks up a value, and the variables only Docker Compose and the AI harness read.
 
 ## Table of Contents
 
 - [Related Documents](#related-documents)
 - [Conventions](#conventions)
 - [Namespaces](#namespaces)
+    - [activityLog](#activitylog)
     - [analytic](#analytic)
     - [app](#app)
     - [auth](#auth)
     - [aws](#aws)
+    - [cache](#cache)
     - [database](#database)
     - [doc](#doc)
     - [email](#email)
@@ -31,6 +33,7 @@ This page lists every key of the 30 config namespaces in `src/configs/` with its
     - [mfa](#mfa)
     - [notification](#notification)
     - [outbox](#outbox)
+    - [passwordHistory](#passwordhistory)
     - [project](#project)
     - [queue](#queue)
     - [redis](#redis)
@@ -70,6 +73,20 @@ This page lists every key of the 30 config namespaces in `src/configs/` with its
     - A `string[]` variable is a comma-separated list. Each entry is trimmed and an empty entry is dropped, so an unset or empty optional list (`AUTH_SOCIAL_APPLE_CLIENT_IDS`) holds `[]`. `REQUEST_CORS_ALLOWED_ORIGINS` and `MFA_PASSKEY_ORIGINS` are required and need at least one entry.
 
 ## Namespaces
+
+### activityLog
+
+Config file: `src/configs/activity-log.config.ts`, interface `IConfigActivityLog`.
+
+| Key | Type | Default | Env var |
+| --- | --- | --- | --- |
+| `activityLog.retentionInMs` | `number` | `365d` |  |
+| `activityLog.purgeExpiredCron` | `string` | `0 3 * * *` |  |
+| `activityLog.queue.maxAttempts` | `number` | `3` |  |
+| `activityLog.queue.keepLogs` | `number` | `20` |  |
+| `activityLog.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `activityLog.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `activityLog.queue.backoffDelayInMs` | `number` | `10s` |  |
 
 ### analytic
 
@@ -126,6 +143,11 @@ Config file: `src/configs/analytic.config.ts`, interface `IConfigAnalytic`.
 | `analytic.project.perWorkspaceLimit` | `number` | `100` |  |
 | `analytic.snapshot.writeBatchSize` | `number` | `1000` |  |
 | `analytic.snapshot.refreshIntervalInMs` | `number` | `15m` |  |
+| `analytic.queue.maxAttempts` | `number` | `3` |  |
+| `analytic.queue.keepLogs` | `number` | `20` |  |
+| `analytic.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `analytic.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `analytic.queue.backoffDelayInMs` | `number` | `10s` |  |
 
 ### app
 
@@ -221,6 +243,18 @@ Config file: `src/configs/aws.config.ts`, interface `IConfigAws`.
 | `aws.ses.endpoint` | `string \| null` |  | `AWS_SES_ENDPOINT` |
 | `aws.ses.maxAttempts` | `number` | `1` |  |
 | `aws.ses.timeoutInMs` | `number` | `30s` |  |
+
+### cache
+
+Config file: `src/configs/cache.config.ts`, interface `IConfigCache`.
+
+| Key                                        | Type     | Default | Env var |
+| ------------------------------------------ | -------- | ------- | ------- |
+| `cache.queue.maxAttempts`                  | `number` | `3`     |         |
+| `cache.queue.keepLogs`                     | `number` | `20`    |         |
+| `cache.queue.removeOnCompleteAgeInSeconds` | `number` | `7d`    |         |
+| `cache.queue.removeOnFailAgeInSeconds`     | `number` | `14d`   |         |
+| `cache.queue.backoffDelayInMs`             | `number` | `3s`    |         |
 
 ### database
 
@@ -377,11 +411,17 @@ Config file: `src/configs/mfa.config.ts`, interface `IConfigMfa`.
 | `mfa.totp.encryptionSecret` | `string` |  | `MFA_TOTP_ENCRYPTION_SECRET` |
 | `mfa.challengeExpiresInMs` | `number` | `5m` |  |
 | `mfa.challengeRetentionInMs` | `number` | `7d` |  |
+| `mfa.purgeExpiredCron` | `string` | `0 3 * * *` |  |
 | `mfa.backupCodes.count` | `number` | `8` |  |
 | `mfa.backupCodes.length` | `number` | `10` |  |
 | `mfa.passkey.rpId` | `string` |  | `MFA_PASSKEY_RP_ID` |
 | `mfa.passkey.rpName` | `string` |  | `APP_NAME` |
 | `mfa.passkey.origins` | `string[]` |  | `MFA_PASSKEY_ORIGINS` |
+| `mfa.queue.maxAttempts` | `number` | `3` |  |
+| `mfa.queue.keepLogs` | `number` | `20` |  |
+| `mfa.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `mfa.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `mfa.queue.backoffDelayInMs` | `number` | `3s` |  |
 
 ### notification
 
@@ -398,18 +438,46 @@ Config file: `src/configs/notification.config.ts`, interface `IConfigNotificatio
 | `notification.idempotencyKey.termPolicyBatchResendPattern` | `string` | `{process}-{termPolicyId}-{batchId}-{resendNonce}` |  |
 | `notification.idempotencyKey.userTermPolicyPattern` | `string` | `{process}-{userId}-{termPolicyId}` |  |
 | `notification.idempotencyKey.stepPattern` | `string` | `{process}-{notificationId}` |  |
+| `notification.queue.maxAttempts` | `number` | `3` |  |
+| `notification.queue.keepLogs` | `number` | `20` |  |
+| `notification.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `notification.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `notification.queue.backoffDelayInMs` | `number` | `3s` |  |
+| `notification.queue.emailBackoffDelayInMs` | `number` | `10s` |  |
+| `notification.queue.pushBackoffDelayInMs` | `number` | `5s` |  |
+| `notification.queue.smsBackoffDelayInMs` | `number` | `5s` |  |
 
 ### outbox
 
 Config file: `src/configs/outbox.config.ts`, interface `IConfigOutbox`.
 
-| Key                         | Type     | Default | Env var |
-| --------------------------- | -------- | ------- | ------- |
-| `outbox.sweepIntervalInMs`  | `number` | `1m`    |         |
-| `outbox.pendingAfterInMs`   | `number` | `30s`   |         |
-| `outbox.enqueuedAfterInMs`  | `number` | `1h`    |         |
-| `outbox.sweepBatch`         | `number` | `100`   |         |
-| `outbox.sweepKeepCompleted` | `number` | `20`    |         |
+| Key | Type | Default | Env var |
+| --- | --- | --- | --- |
+| `outbox.sweepIntervalInMs` | `number` | `1m` |  |
+| `outbox.pendingAfterInMs` | `number` | `30s` |  |
+| `outbox.enqueuedAfterInMs` | `number` | `1h` |  |
+| `outbox.sweepBatch` | `number` | `100` |  |
+| `outbox.sweepKeepCompleted` | `number` | `20` |  |
+| `outbox.retentionInMs` | `number` | `30d` |  |
+| `outbox.scrubExpiredCron` | `string` | `0 4 * * *` |  |
+| `outbox.queue.maxAttempts` | `number` | `3` |  |
+| `outbox.queue.keepLogs` | `number` | `20` |  |
+| `outbox.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `outbox.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `outbox.queue.backoffDelayInMs` | `number` | `10s` |  |
+
+### passwordHistory
+
+Config file: `src/configs/password-history.config.ts`, interface `IConfigPasswordHistory`.
+
+| Key | Type | Default | Env var |
+| --- | --- | --- | --- |
+| `passwordHistory.purgeExpiredCron` | `string` | `0 3 * * *` |  |
+| `passwordHistory.queue.maxAttempts` | `number` | `3` |  |
+| `passwordHistory.queue.keepLogs` | `number` | `20` |  |
+| `passwordHistory.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `passwordHistory.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `passwordHistory.queue.backoffDelayInMs` | `number` | `3s` |  |
 
 ### project
 
@@ -425,27 +493,14 @@ Config file: `src/configs/project.config.ts`, interface `IConfigProject`.
 
 ### queue
 
-Config file: `src/configs/queue.config.ts`, interface `IConfigQueue`.
+Config file: `src/configs/queue.config.ts`, interface `IConfigQueue`. The keys are the shared defaults `QueueModule.forRoot()` sets for `BullModule.forRootAsync`. Each queue's own job options are the `queue` keys of its module's namespace.
 
 | Key                                      | Type     | Default | Env var |
 | ---------------------------------------- | -------- | ------- | ------- |
 | `queue.job.maxAttempts`                  | `number` | `3`     |         |
-| `queue.job.keepLogs`                     | `number` | `20`    |         |
 | `queue.job.removeOnCompleteAgeInSeconds` | `number` | `7d`    |         |
 | `queue.job.removeOnFailAgeInSeconds`     | `number` | `14d`   |         |
 | `queue.job.defaultBackoffDelayInMs`      | `number` | `3s`    |         |
-| `queue.job.emailBackoffDelayInMs`        | `number` | `10s`   |         |
-| `queue.job.pushBackoffDelayInMs`         | `number` | `5s`    |         |
-| `queue.job.smsBackoffDelayInMs`          | `number` | `5s`    |         |
-| `queue.job.notificationBackoffDelayInMs` | `number` | `3s`    |         |
-| `queue.job.workspaceBackoffDelayInMs`    | `number` | `10s`   |         |
-| `queue.job.analyticBackoffDelayInMs`     | `number` | `10s`   |         |
-| `queue.job.activityLogBackoffDelayInMs`  | `number` | `10s`   |         |
-| `queue.job.termPolicyBackoffDelayInMs`   | `number` | `10s`   |         |
-| `queue.job.userBackoffDelayInMs`         | `number` | `10s`   |         |
-| `queue.job.userAuthBackoffDelayInMs`     | `number` | `3s`    |         |
-| `queue.job.outboxBackoffDelayInMs`       | `number` | `10s`   |         |
-| `queue.job.cacheBackoffDelayInMs`        | `number` | `3s`    |         |
 
 ### redis
 
@@ -531,6 +586,12 @@ Config file: `src/configs/session.config.ts`, interface `IConfigSession`.
 | `session.loginCacheTtlInMs` | `number` | `15m` |  |
 | `session.idleTimeoutInMs` | `number` | `7d` |  |
 | `session.retentionInMs` | `number` | `90d` |  |
+| `session.purgeExpiredCron` | `string` | `0 3 * * *` |  |
+| `session.queue.maxAttempts` | `number` | `3` |  |
+| `session.queue.keepLogs` | `number` | `20` |  |
+| `session.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `session.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `session.queue.backoffDelayInMs` | `number` | `3s` |  |
 
 ### termPolicy
 
@@ -544,6 +605,11 @@ Config file: `src/configs/term-policy.config.ts`, interface `IConfigTermPolicy`.
 | `termPolicy.content.maxSizeInBytes` | `number` | `10mb` |  |
 | `termPolicy.idempotencyKey.publishPattern` | `string` | `{process}-{termPolicyId}` |  |
 | `termPolicy.idempotencyKey.resendPublishPattern` | `string` | `{process}-{termPolicyId}-{resendNonce}` |  |
+| `termPolicy.queue.maxAttempts` | `number` | `3` |  |
+| `termPolicy.queue.keepLogs` | `number` | `20` |  |
+| `termPolicy.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `termPolicy.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `termPolicy.queue.backoffDelayInMs` | `number` | `10s` |  |
 
 ### user
 
@@ -566,6 +632,13 @@ Config file: `src/configs/user.config.ts`, interface `IConfigUser`.
 | `user.deleteSelfTimeoutInMs` | `number` | `30s` |  |
 | `user.deleteSelfEmailPattern` | `string` | `deleted.{id}` |  |
 | `user.deleteSelfUsernamePattern` | `string` | `deleted.{id}` |  |
+| `user.deletedMobileNumberPattern` | `string` | `deleted-{id}` |  |
+| `user.queue.maxAttempts` | `number` | `3` |  |
+| `user.queue.keepLogs` | `number` | `20` |  |
+| `user.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `user.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `user.queue.backoffDelayInMs` | `number` | `10s` |  |
+| `user.queue.authBackoffDelayInMs` | `number` | `3s` |  |
 
 ### verification
 
@@ -604,6 +677,11 @@ Config file: `src/configs/workspace.config.ts`, interface `IConfigWorkspace`.
 | `workspace.invite.expirySweepCron` | `string` | `0 * * * *` |  |
 | `workspace.joinRequest.reviewLinkPattern` | `string` | `{frontendBaseUrl}/workspace/join-requests/{joinRequestId}` |  |
 | `workspace.joinRequest.expireChunkSize` | `number` | `100` |  |
+| `workspace.queue.maxAttempts` | `number` | `3` |  |
+| `workspace.queue.keepLogs` | `number` | `20` |  |
+| `workspace.queue.removeOnCompleteAgeInSeconds` | `number` | `7d` |  |
+| `workspace.queue.removeOnFailAgeInSeconds` | `number` | `14d` |  |
+| `workspace.queue.backoffDelayInMs` | `number` | `10s` |  |
 
 ## Integration triggers
 

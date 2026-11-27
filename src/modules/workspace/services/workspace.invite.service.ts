@@ -144,6 +144,7 @@ export class WorkspaceInviteService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action,
                 userId: actorId,
@@ -163,6 +164,7 @@ export class WorkspaceInviteService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: byAdminAction,
                 userId: inviteeUserId,

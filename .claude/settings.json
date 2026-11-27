@@ -18,7 +18,7 @@
             "WebFetch",
             "WebSearch",
             "Agent(general-purpose)",
-            "Agent(Explore)",
+            "Agent(explore)",
             "Agent(researcher)",
             "Agent(coder)",
             "Agent(reviewer)",

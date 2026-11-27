@@ -94,14 +94,17 @@ A passkey public key and a WebAuthn challenge are stored plain and sit in the In
     - `presignUrl` (`AwsS3PresignResponseSchema`) is returned when a client asks for a presign.
     - A notification list censors each secret of the kind before it answers.
 - Retention:
-    - The daily `purgeExpired` job on the `userAuth` queue (`user.purgeExpiredCron`, [user][ref-doc-reference-configuration-user]) deletes `Session` rows `session.retentionInMs` ([session][ref-doc-reference-configuration-session]) after `expiredAt`, revoked or not. `expiredAt` is the token's original expiry: a revoke sets `isRevoked` and `revokedAt` and leaves it.
-    - The same job deletes `MfaChallenge` rows `mfa.challengeRetentionInMs` ([mfa][ref-doc-reference-configuration-mfa]) after `expiredAt`, `Verification` rows `verification.retentionInMs` ([verification][ref-doc-reference-configuration-verification]) after `expiredAt`, and `ForgotPassword` rows `forgotPassword.retentionInMs` ([forgotPassword][ref-doc-reference-configuration-forgot-password]) after `expiredAt`.
-    - The same job deletes a `PasswordHistory` row at its `expiredAt`, the end of its reuse period: `auth.password.periodInDays` after the password was set ([auth][ref-doc-reference-configuration-auth]).
+    - Each module purges its own rows with a daily `purgeExpired` job on its own queue.
+    - The `session` queue (`session.purgeExpiredCron`, [session][ref-doc-reference-configuration-session]) deletes `Session` rows `session.retentionInMs` after `expiredAt`, revoked or not. `expiredAt` is the token's original expiry: a revoke sets `isRevoked` and `revokedAt` and leaves it.
+    - The `mfa` queue (`mfa.purgeExpiredCron`) deletes `MfaChallenge` rows `mfa.challengeRetentionInMs` ([mfa][ref-doc-reference-configuration-mfa]) after `expiredAt`.
+    - The `userAuth` queue (`user.purgeExpiredCron`, [user][ref-doc-reference-configuration-user]) deletes `Verification` rows `verification.retentionInMs` ([verification][ref-doc-reference-configuration-verification]) after `expiredAt`, and `ForgotPassword` rows `forgotPassword.retentionInMs` ([forgotPassword][ref-doc-reference-configuration-forgot-password]) after `expiredAt`.
+    - The `passwordHistory` queue (`passwordHistory.purgeExpiredCron`) deletes a `PasswordHistory` row at its `expiredAt`, the end of its reuse period: `auth.password.periodInDays` after the password was set ([auth][ref-doc-reference-configuration-auth]).
     - `AuthSocialNonce` rows are deleted when the nonce is consumed, and each issue deletes the expired rows. A nonce expires `auth.social.nonce.expiresInMs` after issue ([auth][ref-doc-reference-configuration-auth]).
     - `MfaTotp` is deleted when TOTP is disabled. An admin MFA reset or self-deletion removes every factor and the backup codes.
     - A `WorkspaceInvite` row keeps its token digest after it is accepted, revoked, or expired.
-    - An `ApiKey` row stays until an admin deletes it.
-    - The sealed values in `Notification.metadata` and `Outbox.data` have no purge.
+    - An `ApiKey` row stays after an admin deletes it: the delete is a soft delete, and the row keeps `key` and `hash`.
+    - The sealed values in `Notification.metadata` have no purge.
+    - The `outbox` queue's daily `scrubExpired` job (`outbox.scrubExpiredCron`) empties `Outbox.data` and `lastError` of a `completed` or `failed` row `outbox.retentionInMs` after its last update and sets `scrubbedAt`. The row stays.
 - Integrity:
     - A sealed value carries the AES-256-GCM authentication tag and binds its context. A value sealed for another id fails to open with `HelperDecryptFailedException`, and the job that reads it stops without a retry.
     - An undecryptable TOTP secret answers `MfaTotpSecretUnavailableException`.
@@ -152,12 +155,12 @@ Data:
     - The request log of an activity entry is whole for the entry's actor and for an admin. The shared activity-log scope answers `null` for another actor's entry ([Activity log entry][ref-doc-reference-field-access-activity-log]).
     - A push token is in no response: `DeviceOwnershipResponseSchema` carries `notificationProvider` and no token, and the device carries no fingerprint.
 - Retention:
-    - Self-deletion rewrites `email` and `username` to `deleted.<id>`. It clears `name`, `gender`, `photo`, `lastIpAddress`, and the last-login fields. It deletes the mobile numbers and social links and revokes every session and device ownership ([Self-deletion and purge][ref-doc-concept-user-deletion]).
-    - `ActivityLog` rows have no purge, so the request log stays with them.
+    - Self-deletion rewrites `email` and `username` to `deleted.<id>`. It clears `name`, `gender`, `photo`, `lastIpAddress`, and the last-login fields. It soft-deletes the mobile numbers, rewriting each `number` to `deleted-{id}`, deletes the social links, and revokes every session and device ownership ([Self-deletion and purge][ref-doc-concept-user-deletion]).
+    - The `activityLog` queue's daily `purgeExpired` job (`activityLog.purgeExpiredCron`) deletes `ActivityLog` rows `activityLog.retentionInMs` after `createdAt`, and the request log goes with them ([activityLog][ref-doc-reference-configuration-activity-log]).
     - A push token is cleared (`notificationToken` and `notificationProvider` set to `null`) when its ownership is revoked by a device removal or self-deletion, by a failed send's token cleanup, and by the daily `cleanupStaleTokens` job (`notification.push.cleanupStaleTokensCron`) on an ownership idle longer than `notification.push.staleTokenThresholdInMs` ([notification][ref-doc-reference-configuration-notification]). The `DeviceOwnership` row has no purge.
     - The export CSV is deleted by the bucket lifecycle rule that the `awsS3Config` seed sets through `AwsS3Service.settingBucketExpiredObjectLifecycle`: it deletes every object under `aws.s3.temporaryPath` after `aws.s3.temporaryExpiresInDays`, and the export lives there ([aws][ref-doc-reference-configuration-aws]).
     - `Session` rows follow the retention of the Credential level, and so do the `to` of `Verification` and `ForgotPassword`.
-    - `Device`, `Notification`, `NotificationDelivery`, `WorkspaceInvite`, and `Outbox` rows have no purge.
+    - `Device`, `Notification`, `NotificationDelivery`, and `WorkspaceInvite` rows have no purge, and an `Outbox` row is never deleted.
 - Integrity:
     - A sealed value has the same authentication and context binding as in the Credential level.
     - A plain field has no check beyond the database.
@@ -192,6 +195,7 @@ TLS between hosts is a deployment setting: [TLS between hosts][ref-doc-productio
 [ref-doc-concept-sentry-scrubbing]: ../concepts/sentry.md#scrubbing
 [ref-doc-reference-configuration]: configuration.md
 [ref-doc-reference-configuration-session]: configuration.md#session
+[ref-doc-reference-configuration-activity-log]: configuration.md#activitylog
 [ref-doc-reference-configuration-auth]: configuration.md#auth
 [ref-doc-reference-configuration-user]: configuration.md#user
 [ref-doc-reference-configuration-mfa]: configuration.md#mfa

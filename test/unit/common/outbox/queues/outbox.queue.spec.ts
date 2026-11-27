@@ -21,6 +21,8 @@ describe('OutboxQueue', () => {
         configService = buildConfigService({
             'outbox.sweepIntervalInMs': 60000,
             'outbox.sweepKeepCompleted': 20,
+            'outbox.scrubExpiredCron': '0 4 * * *',
+            'app.timezone': 'Asia/Jakarta',
         });
 
         const module: TestingModule = await Test.createTestingModule({
@@ -49,6 +51,20 @@ describe('OutboxQueue', () => {
                     name: EnumOutboxProcess.sweep,
                     data: {},
                     opts: { removeOnComplete: { count: 20 } },
+                }
+            );
+        });
+
+        it('schedules the scrub on the scrub cron pattern in the app timezone', async () => {
+            await queue.onModuleInit();
+
+            expect(outboxQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumOutboxProcess.scrubExpired,
+                { pattern: '0 4 * * *', tz: 'Asia/Jakarta' },
+                {
+                    name: EnumOutboxProcess.scrubExpired,
+                    data: {},
+                    opts: {},
                 }
             );
         });

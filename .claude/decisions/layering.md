@@ -35,7 +35,7 @@ Rule: `use-case.md`, Shape.
 
 ### Each module owns its request context, passed per parameter, its row used whole
 
-Rule: `security.md`, Request store; `guards.md`, Contexts.
+Rule: `security.md`, Request store; `guards.md`, Contexts; `activity-entry.md`.
 
 - Ids only from the context: every guarded request would read its row twice.
 - The database for a displayed resource: the guard read the row on this request, so it is fresh.
@@ -44,6 +44,7 @@ Rule: `security.md`, Request store; `guards.md`, Contexts.
 - An activity-log input shape each caller assembles: every caller repeats the same mapping.
 - Services read the CLS store: the store is empty in a job, and the failure surfaces only at runtime.
 - A job rebuilds the CLS store from its payload (`ClsService.run`): hidden state another job can forget to set.
+- A context dropped from a receiver that reads none of its fields today: the receiver picks what it reads, and with every receiver taking the same contexts a later reader needs no new parameter at every call site.
 - The full context in a job payload: a delayed or retried job decides on rows copied at request time.
 - Identity on `request.user`: the request object would mix transport with authentication and authorization, which belong to the context.
 

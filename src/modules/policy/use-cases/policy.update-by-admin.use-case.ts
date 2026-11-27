@@ -65,6 +65,7 @@ export class PolicyUpdateByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminPolicyUpdated,
                     metadata,

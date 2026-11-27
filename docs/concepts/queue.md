@@ -17,6 +17,7 @@ This page explains how the application runs background work through the outbox a
 - [Processor to use case](#processor-to-use-case)
 - [Job ids and dedupe](#job-ids-and-dedupe)
 - [Retries and unrecoverable failure](#retries-and-unrecoverable-failure)
+- [Scrubbing outbox rows](#scrubbing-outbox-rows)
 
 ## Related Documents
 
@@ -58,7 +59,7 @@ The caller builds an effect through the queue class of the module that owns the 
 - A rolled-back transaction discards the buffer and runs no dispatch, because the hooks run only after a commit.
 - A flow adds its effects side by side in one call, and no send queues another send.
 - A sensitive payload field, such as a password, a link, a one-time code, or a recipient address, is encrypted by whoever builds the payload, because `Outbox.data` is readable in the database.
-- The `Outbox` row keeps the payload, `status` (`pending`, `enqueued`, `completed`, or `failed`), `attempts`, `lastError`, and the stamps `enqueuedAt`, `sweptAt`, `completedAt`, and `failedAt`. A row is never deleted.
+- The `Outbox` row keeps the payload, `status` (`pending`, `enqueued`, `completed`, or `failed`), `attempts`, `lastError`, and the stamps `enqueuedAt`, `sweptAt`, `completedAt`, `failedAt`, and `scrubbedAt`. A row is never deleted ([Scrubbing outbox rows](#scrubbing-outbox-rows)).
 
 ## Enqueue after commit
 
@@ -81,10 +82,11 @@ The sweep recovers what dispatch missed. `OutboxQueue` declares it as a job sche
 The module that owns a job owns its queue and its queue class.
 
 - The feature names each queue in an `Enum<Module>Queue` whose value is the Redis queue name, and registers it in its module with `BullModule.registerQueueAsync` and its own queue factory. The `cache` and `outbox` queues belong to the kit.
-- A queue factory returns the `defaultJobOptions` of its queue from the `queue.job.*` keys: `maxAttempts`, `keepLogs`, the two removal ages, and its own `<name>BackoffDelayInMs` as an exponential backoff.
+- A queue factory returns the `defaultJobOptions` of its queue from its module's `<namespace>.queue.*` keys (`notification.queue.*`, `session.queue.*`, `outbox.queue.*`): `maxAttempts`, `keepLogs`, the two removal ages, and `backoffDelayInMs` as an exponential backoff. A module with several queues has one `<concern>BackoffDelayInMs` per further queue (`notification.queue.emailBackoffDelayInMs`). `queue.job.*` holds only the shared defaults `QueueModule.forRoot()` sets.
 - The queue class (`queues/<module>.queue.ts`) extends `QueueBase`. It is the module's side-effect entry: it builds the module's effects (`<action>Effect`), inherits `enqueue` and `getJobState`, and declares the module's recurring jobs.
 - A service or a use case of any module injects a queue class by its class, which is the one class a service injects from a module on its own level or above.
 - A recurring job is an entry in the queue class's `schedulers()`: an id, repeat options, and a job template. `QueueBase.onModuleInit` upserts the declared schedulers and removes every other scheduler of the queue. A scheduler is one BullMQ entry in Redis, so one instance runs each tick however many instances run. A recurring job is the one job with no outbox row, because a clock triggers it and not a write.
+- Each module purges its own expired rows with a daily `purgeExpired` job on its own queue (`<namespace>.purgeExpiredCron`): the `activityLog`, `session`, `mfa`, and `passwordHistory` queues, and the `userAuth` queue for verification and forgot-password rows. The `outbox` queue declares `scrubExpired` beside its sweep: it scrubs its rows and never purges them ([Scrubbing outbox rows](#scrubbing-outbox-rows)).
 - The BullMQ producer client is `RedisQueueClient` with `enableOfflineQueue: false`, so an enqueue against a down Redis rejects fast. Workers run on `RedisQueueWorkerClient`, which keeps the offline queue and sets `maxRetriesPerRequest: null`: during a queue Redis outage a worker command waits in memory and runs when the connection returns. The sweep is itself a scheduler on that Redis, so it resumes only after Redis returns, and a row left `pending` waits until then. BullBoard shows every queue ([Installation][ref-doc-installation]).
 
 ## Processor to use case
@@ -112,12 +114,20 @@ A job may run again after a retry, a BullBoard re-run, or an operator action, so
 
 ## Retries and unrecoverable failure
 
-- A job runs up to `queue.job.maxAttempts` times with an exponential backoff from its queue factory. A completed job is kept for `queue.job.removeOnCompleteAgeInSeconds` and a failed one for `queue.job.removeOnFailAgeInSeconds`.
+- A job runs up to `<namespace>.queue.maxAttempts` times with an exponential backoff from its queue factory. A completed job is kept for `<namespace>.queue.removeOnCompleteAgeInSeconds` and a failed one for `<namespace>.queue.removeOnFailAgeInSeconds`.
 - The processor base catches every failure. It logs the failure and one error line, and stamps the row `failed` on the last attempt or on an unrecoverable error. A retrying job stays `enqueued`. A stamp that fails logs one `warn` and leaves the job's outcome as it is, and the sweep reconciles the row later.
 - A `QueueUnrecoverableException` or a `HelperDecryptFailedException` becomes BullMQ's `UnrecoverableError` with the original as `cause`, so the job fails with no further attempt. A use case throws the first when no retry can fix the failure.
 - `QueueException` carries a `message`, an `isFatal` flag (default `false`), and the `rawError`. `QueueUnrecoverableException` defaults `isFatal` to `true`, and `throwUnknownProcess` throws a `QueueException` with `isFatal` `true`. `isFatal` is the Sentry switch only: it never changes how retries run. The base rethrows a `QueueException`, an `AppBaseException`, and an `UnrecoverableError` as they are, and wraps anything else in a fatal `QueueException` with the `queue.error.unknown` message.
 - `onFailed` reports to Sentry once, when the job will not retry: on the last attempt or on an `UnrecoverableError`. It skips a `QueueException` whose `isFatal` is `false`, itself or as the `cause`. An unrecoverable failure therefore reaches Sentry unless its exception sets `isFatal` to `false` ([Sentry][ref-doc-concept-sentry]).
 - A cache Redis error inside a job throws `RedisUnavailableException`, which extends `AppBaseException` and which the base rethrows unchanged, so BullMQ retries the job.
+
+## Scrubbing outbox rows
+
+The payload of an `Outbox` row of any queue can hold personal data: the sealed fields of a notification, and an activity entry's request log (IP address, user agent, location) in plain. The row does not keep the payload for good.
+
+- The `outbox` queue's `scrubExpired` job runs daily (`outbox.scrubExpiredCron`, `0 4 * * *`, in the `app.timezone` zone). `OutboxProcessor` calls `OutboxService.scrubExpired`, which scrubs with one `updateMany` every row that is `completed` or `failed`, has no `scrubbedAt`, and has an `updatedAt` older than `outbox.retentionInMs` (30 days). The scrub itself moves `updatedAt`, and `scrubbedAt` keeps the row out of a second pass.
+- A scrubbed row has `data` `{}`, `lastError` `null`, and `scrubbedAt` set to the scrub time. The row is never deleted: its queue, name, key, status, attempts, and stamps stay, so its `idempotencyKey` keeps deduplicating. This matters for a row with a business key; a row whose key is its own id matches nothing else.
+- The retention is longer than every queue's `removeOnCompleteAgeInSeconds` and `removeOnFailAgeInSeconds`, since completed rows are scrubbed too. No BullMQ job, completed or failed, outlives its row's payload, so a re-run from BullBoard never reads a scrubbed row: the recorded result of a handler sits in the row's `data`.
 
 <!-- REFERENCES -->
 

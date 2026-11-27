@@ -344,6 +344,7 @@ describe('MfaDeletePasskeyUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMfaPasskeyDeleted }
             );
         });

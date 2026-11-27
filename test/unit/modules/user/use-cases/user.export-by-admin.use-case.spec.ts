@@ -51,6 +51,7 @@ describe('UserExportByAdminUseCase', () => {
     const activityLog: IActivityLogActorPayload = {
         apiKeyId: apiKeyContext.apiKey.id,
         actorUserId: authContext.userId,
+        workspaceId: null,
         requestLog: requestContext.requestLog,
     };
     const exportEffect: IUserExportByAdminEffect = {
@@ -130,7 +131,8 @@ describe('UserExportByAdminUseCase', () => {
             expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                authContext
+                authContext,
+                null
             );
             expect(userQueue.exportByAdminEffect).toHaveBeenCalledWith(
                 [EnumUserStatus.active],

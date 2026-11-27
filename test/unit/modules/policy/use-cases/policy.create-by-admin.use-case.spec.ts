@@ -233,6 +233,7 @@ describe('PolicyCreateByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminPolicyCreated,
                     metadata: policyMetadata,

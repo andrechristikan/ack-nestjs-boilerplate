@@ -936,6 +936,7 @@ describe('MfaService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userMfaVerificationFailed,
                     userId: 'user-quartz',
@@ -970,6 +971,7 @@ describe('MfaService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userMfaVerificationFailed,
                     userId: 'user-quartz',
@@ -980,6 +982,7 @@ describe('MfaService', () => {
                 2,
                 requestContext,
                 apiKeyContext,
+                null,
                 null,
                 {
                     action: EnumActivityLogAction.userMaxMfaAttemptReached,
@@ -1312,6 +1315,7 @@ describe('MfaService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userMfaVerified,
                     userId: 'user-quartz',

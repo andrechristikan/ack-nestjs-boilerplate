@@ -43,7 +43,7 @@ This page lists the commands, agents, hooks, and copied skills of the AI harness
 | `tester` | covers existing code with unit specs | `test/unit/` | sonnet, high |
 | `writer` | docs, root people files, pull request text | `docs/`, `.scratch/pr/` | sonnet, medium |
 | `harness` | writes the harness from a settled requirement | `.claude/`, `AGENTS.md`, the Copilot digest, decision entries, the harness pages | opus, high |
-| `Explore` | locates code and hands back `file:line` pointers | nothing | haiku, medium |
+| `explore` | locates code and hands back `file:line` pointers | nothing | haiku, medium |
 | `researcher` | answers a question from the web, each finding with its URL and date | nothing | haiku, medium |
 
 ## Hooks

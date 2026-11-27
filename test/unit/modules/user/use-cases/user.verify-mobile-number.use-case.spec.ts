@@ -176,6 +176,7 @@ describe('UserVerifyMobileNumberUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMobileNumberVerified }
             );
             expect(outboxService.addManyInTx).toHaveBeenCalledWith(tx, [

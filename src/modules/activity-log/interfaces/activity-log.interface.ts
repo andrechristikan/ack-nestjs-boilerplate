@@ -47,6 +47,7 @@ export type IActivityLogInput<A extends EnumActivityLogAction> = {
 export interface IActivityLogContextPayload {
     apiKeyId: string;
     actorUserId: string | null;
+    workspaceId: string | null;
     requestLog: IRequestLog;
 }
 
@@ -59,6 +60,7 @@ export interface IActivityLogCreate {
     userId: string;
     createdBy: string;
     workspaceId: string | null;
+    apiKeyId: string;
     action: EnumActivityLogAction;
     description: string;
     requestLog: IRequestLog;
@@ -95,4 +97,8 @@ export interface IActivityLogCreateManyEffect extends IOutboxEffect {
 
 export interface IActivityLogCreateManyQueueResponse extends IQueueResponse {
     countRows: number;
+}
+
+export interface IActivityLogPurgeExpiredQueueResponse extends IQueueResponse {
+    activityLogs: number;
 }

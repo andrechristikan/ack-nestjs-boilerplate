@@ -403,6 +403,7 @@ describe('MfaEnableTotpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userMfaTotpEnabled,
                     userId: 'user-nell',

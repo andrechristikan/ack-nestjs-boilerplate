@@ -463,6 +463,7 @@ describe('UserChangePasswordUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userPasswordChanged }
             );
             expect(notificationQueue.notify).toHaveBeenCalledWith(

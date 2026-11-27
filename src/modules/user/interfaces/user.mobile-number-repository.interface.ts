@@ -34,13 +34,15 @@ export interface IUserMobileNumberRepository {
         mobileNumberId: string,
         verifiedAt: Date
     ): Promise<boolean>;
-    deleteInTx(
+    softDeleteInTx(
         tx: IDatabaseTransactionClient,
         userId: string,
-        mobileNumberId: string
-    ): Promise<IUserMobileNumber>;
-    deleteByUserInTx(
+        mobileNumberId: string,
+        deletedAt: Date
+    ): Promise<boolean>;
+    softDeleteByUserInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        deletedAt: Date
     ): Promise<void>;
 }

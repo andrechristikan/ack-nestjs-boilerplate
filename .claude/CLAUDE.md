@@ -42,7 +42,7 @@ A platform issue needs the owner's word (`gh issue create` asks). The sweep log 
 
 ### Agents
 
-Skills dispatch the agents in `.claude/agents/`; the session locates code with `Explore` there and dispatches `researcher` for a fact outside the repository. In an `ack-*` skill the session assigns, asks the owner, and reads hand-backs; gates, boots, endpoint calls, and data reads are `reviewer`'s, a symptom's `debugger`'s.
+Skills dispatch the agents in `.claude/agents/`; the session locates code with `explore` there and dispatches `researcher` for a fact outside the repository. In an `ack-*` skill the session assigns, asks the owner, and reads hand-backs; gates, boots, endpoint calls, and data reads are `reviewer`'s, a symptom's `debugger`'s.
 
 ### Gotchas
 

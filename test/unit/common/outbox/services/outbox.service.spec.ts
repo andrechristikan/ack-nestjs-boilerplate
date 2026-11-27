@@ -16,9 +16,9 @@ import {
     EnumTermPolicyQueue,
 } from '@modules/term-policy/enums/term-policy.enum';
 import {
-    EnumUserAuthProcess,
-    EnumUserQueue,
-} from '@modules/user/enums/user.enum';
+    EnumSessionProcess,
+    EnumSessionQueue,
+} from '@modules/session/enums/session.enum';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import {
     EnumQueueJobState,
@@ -51,8 +51,8 @@ describe('OutboxService', () => {
     const now = new Date('2026-11-11T10:00:00.000Z');
 
     const purgeEffect: IOutboxEffect = {
-        queue: EnumUserQueue.userAuth,
-        name: EnumUserAuthProcess.purgeLogins,
+        queue: EnumSessionQueue.session,
+        name: EnumSessionProcess.purgeLogins,
         data: {
             userId: 'user-1',
             sessions: [{ id: 'session-1' }],
@@ -62,8 +62,8 @@ describe('OutboxService', () => {
     };
     const purgeRow: Outbox = {
         id: 'outbox-1',
-        queue: EnumUserQueue.userAuth,
-        name: EnumUserAuthProcess.purgeLogins,
+        queue: EnumSessionQueue.session,
+        name: EnumSessionProcess.purgeLogins,
         data: {
             userId: 'user-1',
             sessions: [{ id: 'session-1' }],
@@ -77,6 +77,7 @@ describe('OutboxService', () => {
         sweptAt: null,
         completedAt: null,
         failedAt: null,
+        scrubbedAt: null,
         createdAt: new Date('2026-11-11T09:00:00.000Z'),
         createdBy: null,
         updatedAt: new Date('2026-11-11T09:00:00.000Z'),
@@ -101,6 +102,7 @@ describe('OutboxService', () => {
             'outbox.pendingAfterInMs': 30000,
             'outbox.enqueuedAfterInMs': 3600000,
             'outbox.sweepBatch': 100,
+            'outbox.retentionInMs': 2592000000,
         });
         databaseService.withTransaction.mockImplementation(
             async fn => fn(tx) as never
@@ -252,12 +254,13 @@ describe('OutboxService', () => {
             expect(outboxRepository.createManyInTx).toHaveBeenCalledWith(tx, [
                 {
                     id: 'outbox-1',
-                    queue: EnumUserQueue.userAuth,
-                    name: EnumUserAuthProcess.purgeLogins,
+                    queue: EnumSessionQueue.session,
+                    name: EnumSessionProcess.purgeLogins,
                     data: purgeEffect.data,
                     priority: EnumQueuePriority.high,
                     idempotencyKey: 'outbox-1',
                     status: EnumOutboxStatus.pending,
+                    scrubbedAt: null,
                 },
             ]);
         });
@@ -453,8 +456,8 @@ describe('OutboxService', () => {
             expect(userQueue.enqueue).toHaveBeenCalledWith([
                 {
                     id: 'outbox-2',
-                    queue: EnumUserQueue.userAuth,
-                    name: EnumUserAuthProcess.purgeLogins,
+                    queue: EnumSessionQueue.session,
+                    name: EnumSessionProcess.purgeLogins,
                     priority: EnumQueuePriority.high,
                     idempotencyKey: 'outbox-2',
                 },
@@ -554,6 +557,20 @@ describe('OutboxService', () => {
             );
             expect(outboxRepository.replaceData).not.toHaveBeenCalled();
             expect(outboxRepository.findOneById).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('scrubExpired', () => {
+        it('scrubs the rows finished before now minus the retention, stamps now, and returns the count', async () => {
+            outboxRepository.scrubExpired.mockResolvedValue(4);
+
+            const count = await service.scrubExpired();
+
+            expect(count).toBe(4);
+            expect(outboxRepository.scrubExpired).toHaveBeenCalledWith(
+                new Date('2026-10-12T10:00:00.000Z'),
+                now
+            );
         });
     });
 
@@ -858,9 +875,12 @@ describe('OutboxService', () => {
 
             await service['dispatch']([purgeRow, termPolicyRow]);
 
-            expect(moduleRef.get).toHaveBeenCalledWith(EnumUserQueue.userAuth, {
-                strict: false,
-            });
+            expect(moduleRef.get).toHaveBeenCalledWith(
+                EnumSessionQueue.session,
+                {
+                    strict: false,
+                }
+            );
             expect(moduleRef.get).toHaveBeenCalledWith(
                 EnumTermPolicyQueue.termPolicy,
                 { strict: false }

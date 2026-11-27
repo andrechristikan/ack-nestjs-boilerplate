@@ -42,6 +42,7 @@ describe('ActivityLogProcessCreateManyUseCase', () => {
                 userId: 'user-1',
                 createdBy: 'user-1',
                 workspaceId: null,
+                apiKeyId: 'api-key-1',
                 action: EnumActivityLogAction.userLoggedInWithCredential,
                 description: 'User login with credential',
                 requestLog,

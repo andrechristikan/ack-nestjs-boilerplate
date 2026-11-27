@@ -45,6 +45,7 @@ flowchart LR
 - Fraud and anomaly routes only report. They return counts, lists, and risk scores, and they never block a user, revoke a session, or change a credential.
 - The anomaly area holds impossible travel, login spike by IP, failed-login spike, and device proliferation. The fraud area holds credential stuffing, account takeover, mass registration, password-reset enumeration, shared fingerprint, session after admin, forgot-password token abuse, and the risk score.
 - The module reads every feature's models in its own read-only repositories. An area is the first route segment (`user`, `auth`, `device`, `api-key`, `term-policy`, `workspace`, `project`, `notification`, `fraud`, `anomaly`), and each has one service and one repository. A service injects its own repositories, services, utils, and caches, and `FeatureFlagService`, never another module's repository and never a queue class. Only the snapshot repository writes.
+- The `api-key` area counts active, expired, and inactive keys and skips soft-deleted ones ([Soft delete][ref-doc-concept-api-key-soft-delete]).
 - An admin route needs `@RoleProtected()` for an admin role and the `analytic` `read` policy. A workspace route needs the workspace guard for an `admin` and the `workspace` flag, and no policy.
 - A metric is one statement: one builder statement when it computes the whole result, otherwise one `aggregateRaw` pipeline. A pipeline's stages sit in the repository method that runs it, and the repository parses the result with a zod schema into a named shape.
 
@@ -97,6 +98,7 @@ Several metrics count or list `ActivityLog` rows by action ([Activity Log][ref-d
 [ref-doc-concept-activity-log-failed]: activity-log.md#failed-logins
 [ref-doc-concept-authorization]: authorization.md#policies-and-casl-abilities
 [ref-doc-concept-workspace]: workspace.md
+[ref-doc-concept-api-key-soft-delete]: api-key.md#soft-delete
 [ref-doc-concept-cache]: cache.md
 [ref-doc-concept-cache-readthrough]: cache.md#readthrough-and-ttls
 [ref-doc-concept-queue]: queue.md

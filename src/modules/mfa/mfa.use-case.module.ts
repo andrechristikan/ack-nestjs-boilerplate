@@ -7,6 +7,7 @@ import { MfaEnableTotpUseCase } from '@modules/mfa/use-cases/mfa.enable-totp.use
 import { MfaGeneratePasskeyRegistrationUseCase } from '@modules/mfa/use-cases/mfa.generate-passkey-registration.use-case';
 import { MfaGeneratePasskeyReauthenticationUseCase } from '@modules/mfa/use-cases/mfa.generate-passkey-reauthentication.use-case';
 import { MfaGetStatusUseCase } from '@modules/mfa/use-cases/mfa.get-status.use-case';
+import { MfaProcessPurgeExpiredUseCase } from '@modules/mfa/use-cases/mfa.process-purge-expired.use-case';
 import { MfaRegenerateBackupCodesUseCase } from '@modules/mfa/use-cases/mfa.regenerate-backup-codes.use-case';
 import { MfaRegisterPasskeyUseCase } from '@modules/mfa/use-cases/mfa.register-passkey.use-case';
 import { MfaResetByAdminUseCase } from '@modules/mfa/use-cases/mfa.reset-by-admin.use-case';
@@ -23,6 +24,7 @@ import { Module } from '@nestjs/common';
         MfaSetupTotpUseCase,
         MfaEnableTotpUseCase,
         MfaDisableTotpUseCase,
+        MfaProcessPurgeExpiredUseCase,
         MfaRegenerateBackupCodesUseCase,
         MfaResetByAdminUseCase,
         MfaGeneratePasskeyRegistrationUseCase,
@@ -36,6 +38,7 @@ import { Module } from '@nestjs/common';
         MfaSetupTotpUseCase,
         MfaEnableTotpUseCase,
         MfaDisableTotpUseCase,
+        MfaProcessPurgeExpiredUseCase,
         MfaRegenerateBackupCodesUseCase,
         MfaResetByAdminUseCase,
         MfaGeneratePasskeyRegistrationUseCase,

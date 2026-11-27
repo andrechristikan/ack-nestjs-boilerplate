@@ -187,6 +187,7 @@ export class MfaRegisterPasskeyUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMfaPasskeyRegistered }
             );
             await this.outboxService.addInTx(tx, entry);

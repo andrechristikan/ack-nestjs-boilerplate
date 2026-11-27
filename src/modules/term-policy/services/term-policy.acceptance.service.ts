@@ -158,6 +158,7 @@ export class TermPolicyAcceptanceService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userTermPolicyAccepted,
             }

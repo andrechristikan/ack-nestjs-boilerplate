@@ -163,6 +163,7 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.workspaceCreated,
                 userId,
@@ -192,6 +193,7 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: authContext.userId,
@@ -221,6 +223,7 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.workspaceVisibilityUpdated,
                 userId: authContext.userId,
@@ -250,6 +253,7 @@ export class WorkspaceService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.workspaceUpdated,
                 userId: authContext.userId,

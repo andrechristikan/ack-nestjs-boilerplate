@@ -11,6 +11,7 @@ This page lists the facts of the database, for a developer who looks up a model,
 
 - [Related Documents](#related-documents)
 - [Models](#models)
+- [Relations and referential actions](#relations-and-referential-actions)
 - [Composite types](#composite-types)
 - [Seeded rows](#seeded-rows)
 - [Rows removed by remove](#rows-removed-by-remove)
@@ -26,11 +27,11 @@ This page lists the facts of the database, for a developer who looks up a model,
 
 The table lists the models alphabetically. Every model in `prisma/schema.prisma` maps to a collection through `@@map`. A repository addresses a model by its Prisma name on `databaseService.client.<model>`, and MongoDB shows the collection name.
 
-Every model has an `id` and `createdAt`, `createdBy`. A model whose rows are updated adds `updatedAt`, `updatedBy`. `User`, `Workspace`, and `Project` add `deletedAt`, `deletedBy` and are the soft-deletable models.
+Every model has an `id` and `createdAt`, `createdBy`. A model whose rows are updated adds `updatedAt`, `updatedBy`. `User`, `Workspace`, `Project`, `ApiKey`, and `UserMobileNumber` add `deletedAt`, `deletedBy` and are the soft-deletable models.
 
 | Model | Collection | Holds |
 | --- | --- | --- |
-| `ActivityLog` | `ActivityLogs` | The audit trail of user actions |
+| `ActivityLog` | `ActivityLogs` | The audit trail of user actions, with the `apiKeyId` of the request that caused each entry |
 | `AnalyticSnapshot` | `AnalyticSnapshots` | The last computed snapshot of each analytic signal |
 | `AnalyticSnapshotItem` | `AnalyticSnapshotItems` | The ranked items of one snapshot run |
 | `ApiKey` | `ApiKeys` | API key credentials: key, hash, type, active flag, and an optional start and end |
@@ -49,7 +50,7 @@ Every model has an `id` and `createdAt`, `createdBy`. A model whose rows are upd
 | `Notification` | `Notifications` | Notification records |
 | `NotificationDelivery` | `NotificationDeliveries` | The per-channel delivery outcome of a notification |
 | `NotificationUserSetting` | `NotificationUserSettings` | A user's preference per channel and type |
-| `Outbox` | `Outboxes` | The side-effect rows the outbox dispatches |
+| `Outbox` | `Outboxes` | The side-effect rows the outbox dispatches, scrubbed after `outbox.retentionInMs` and never deleted |
 | `PasswordHistory` | `PasswordHistories` | Previous password hashes for reuse checks |
 | `Policy` | `Policies` | The `(subject, action[])` row a role grants, evaluated through CASL |
 | `Project` | `Projects` | Projects inside a workspace |
@@ -60,13 +61,27 @@ Every model has an `id` and `createdAt`, `createdBy`. A model whose rows are upd
 | `TermPolicyRecipient` | `TermPolicyRecipients` | One marker per user and term policy for the publication email |
 | `TermPolicyUserAcceptance` | `TermPolicyUserAcceptances` | A user's acceptance of one policy version |
 | `User` | `Users` | User accounts |
-| `UserMobileNumber` | `UserMobileNumbers` | A user's mobile numbers and their verification state |
+| `UserMobileNumber` | `UserMobileNumbers` | A user's mobile numbers and their verification state; a deleted number is rewritten to `deleted-{id}` |
 | `UserSocial` | `UserSocials` | The social provider and subject linked to a user |
 | `Verification` | `Verifications` | Email, mobile number, and reauthentication verification tokens |
 | `Workspace` | `Workspaces` | Workspaces |
 | `WorkspaceInvite` | `WorkspaceInvites` | Workspace invitations |
 | `WorkspaceJoinRequest` | `WorkspaceJoinRequests` | Requests to join a public workspace |
 | `WorkspaceMember` | `WorkspaceMembers` | Workspace membership and role |
+
+## Relations and referential actions
+
+Prisma on MongoDB runs in `relationMode = "prisma"`, so the client emulates every referential action with extra queries. Every relation is named on both sides and declares `onDelete` and `onUpdate`. `NoAction` is not used. The parent is the referenced model and the child is the model that holds the relation scalar; `prisma/schema.prisma` is the full list of relations.
+
+| Relation | `onDelete` | Meaning |
+| --- | --- | --- |
+| `Policy.role` | `Cascade` | A role's policies are deleted with it |
+| `User.lastWorkspace` | `SetNull` | A preference pointer, cleared when the `workspace` seed's `remove()` hard-deletes a seeded workspace; no application code hard-deletes a `Workspace` |
+| every other relation | `Restrict` | A parent with children is not deleted |
+
+- `onUpdate` never fires, because an `ObjectId` id never changes; `Restrict` states that every relation declares both actions.
+- The soft-deletable parents (`User`, `Workspace`, `Project`, `ApiKey`, `UserMobileNumber`) are never hard-deleted by application code. A seed's `remove()` deletes the children first. The one exception is `User.lastWorkspace`: `migration:remove` deletes workspaces before users, and `SetNull` clears the pointer ([Rows removed by `remove`](#rows-removed-by-remove)).
+- A `Role` that users hold, and a `TermPolicy` that has recipients or acceptances, are refused by `Restrict`.
 
 ## Composite types
 
@@ -271,9 +286,9 @@ The seed sets the policies of the public and the private bucket and writes no da
 
 ### templateEmailNotification
 
-The seed imports the SES email template of each notification kind and writes no database row.
+The seed upserts the SES email template of each notification kind and writes no database row.
 
-- The seed imports only the templates that are missing.
+- The seed updates every template and creates the ones SES lacks, so a changed template syncs with `--type seed` alone.
 - Missing dependency: the seed logs a warning and skips when SES is not configured.
 - Its `remove()` deletes the SES template of each notification kind.
 
@@ -283,7 +298,7 @@ The seed imports the SES email template of each notification kind and writes no 
 
 | Seed | `remove()` deletes |
 | --- | --- |
-| `apiKey` | every `ApiKey` row |
+| `apiKey` | every `ApiKey` row, a hard delete that `Restrict` refuses while an `ActivityLog` row names the key |
 | `country` | every `Country` row |
 | `featureFlag` | every `FeatureFlagTarget` and `FeatureFlag` row |
 | `role` | every `Role` row |

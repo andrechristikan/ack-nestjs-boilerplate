@@ -27,4 +27,5 @@ Beside the layer matrix (`layerPolicies` in `ts/boundaries`), lint holds six pol
 - `@typescript-eslint/parameter-properties` with `allow: ['readonly', 'private readonly', 'protected readonly']` and `@typescript-eslint/prefer-readonly` carry the allowed modifiers of `injectable.md`, Constructors and fields; a `no-restricted-syntax` selector on the Utility types names outside `**/interfaces/**` carries `code-style.md`, Utility types.
 - A `no-restricted-syntax` selector over `src/modules/**` carries the `CacheService.invalidate` caller list of `effects.md`, Cache invalidation.
 - A `no-restricted-syntax` selector over every `queues/` file carries the scheduler calls and the `onModuleInit` method `queue.md`, Where things live, keeps in `QueueBase` (Boundaries, policy 6).
+- `local/no-public-tag-on-class-member`, an inline plugin's rule in `sharedRules`, carries `code-style.md`, Types and comments: no class member carries `/** @public */`.
 - A `ts/boundaries` policy from the `repository` element type to another module's `shape` files under `exceptions/` carries `layering.md`, Repository: a repository imports no other feature module's exception.

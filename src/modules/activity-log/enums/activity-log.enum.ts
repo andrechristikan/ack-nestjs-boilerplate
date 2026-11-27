@@ -6,6 +6,7 @@ export enum EnumActivityLogQueue {
 /** @public */
 export enum EnumActivityLogProcess {
     createMany = 'createMany',
+    purgeExpired = 'purgeExpired',
 }
 
 /** @public */

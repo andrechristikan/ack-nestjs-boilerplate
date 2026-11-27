@@ -23,13 +23,13 @@ import { SessionRevokedException } from '@modules/session/exceptions/session.rev
 import type {
     ISessionList,
     ISessionLogin,
+    ISessionPurgeLoginsPayload,
     ISessionRef,
 } from '@modules/session/interfaces/session.interface';
 import { SessionCache } from '@modules/session/caches/session.cache';
 import { SessionRepository } from '@modules/session/repositories/session.repository';
 import { SessionUtil } from '@modules/session/utils/session.util';
-import type { IUserPurgeLoginsPayload } from '@modules/user/interfaces/user.interface';
-import { UserAuthQueue } from '@modules/user/queues/user.auth.queue';
+import { SessionQueue } from '@modules/session/queues/session.queue';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Duration } from 'luxon';
@@ -54,7 +54,7 @@ export class SessionService {
         private readonly helperHashService: HelperHashService,
         private readonly outboxService: OutboxService,
         private readonly activityLogQueue: ActivityLogQueue,
-        private readonly userAuthQueue: UserAuthQueue,
+        private readonly sessionQueue: SessionQueue,
         private readonly sessionUtil: SessionUtil
     ) {
         this.idleTimeoutInMs = this.configService.get<number>(
@@ -67,7 +67,7 @@ export class SessionService {
 
     private groupRefsByUser(
         sessions: ISessionRef[]
-    ): IUserPurgeLoginsPayload[] {
+    ): ISessionPurgeLoginsPayload[] {
         const grouped = new Map<string, ISessionRef[]>();
         for (const session of sessions) {
             const refs = grouped.get(session.userId) ?? [];
@@ -153,7 +153,7 @@ export class SessionService {
             revokedAt
         );
         if (sessions.length > 0) {
-            const effect = this.userAuthQueue.purgeLoginsEffect(
+            const effect = this.sessionQueue.purgeLoginsEffect(
                 userId,
                 sessions
             );
@@ -336,7 +336,7 @@ export class SessionService {
             return false;
         }
 
-        const effect = this.userAuthQueue.purgeLoginsEffect(userId, [
+        const effect = this.sessionQueue.purgeLoginsEffect(userId, [
             { id: sessionId, userId },
         ]);
         await this.outboxService.addInTx(tx, effect);
@@ -363,7 +363,7 @@ export class SessionService {
             throw new SessionNotFoundException();
         }
 
-        const effect = this.userAuthQueue.purgeLoginsEffect(userId, [
+        const effect = this.sessionQueue.purgeLoginsEffect(userId, [
             { id: sessionId, userId },
         ]);
         await this.outboxService.addInTx(tx, effect);
@@ -413,7 +413,7 @@ export class SessionService {
                 revokedAt
             );
         if (sessions.length > 0) {
-            const effect = this.userAuthQueue.purgeLoginsEffect(
+            const effect = this.sessionQueue.purgeLoginsEffect(
                 userId,
                 sessions
             );
@@ -449,13 +449,11 @@ export class SessionService {
                         revokedBy,
                         refs.length
                     );
-                const purge = this.userAuthQueue.purgeLoginsEffect(
-                    userId,
-                    refs
-                );
+                const purge = this.sessionQueue.purgeLoginsEffect(userId, refs);
                 const entry = this.activityLogQueue.recordEffect(
                     requestContext,
                     apiKeyContext,
+                    null,
                     null,
                     {
                         action: EnumActivityLogAction.userSessionRevokedByDeviceLogin,
@@ -494,13 +492,14 @@ export class SessionService {
             revokedAt
         );
         const effects: IOutboxEffect[] = [
-            this.userAuthQueue.purgeLoginsEffect(userId, [
+            this.sessionQueue.purgeLoginsEffect(userId, [
                 { id: sessionId, userId },
             ]),
             this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminSessionRevoked,
                     metadata: actorMetadata,
@@ -517,6 +516,7 @@ export class SessionService {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userSessionRevokedByAdmin,
                     userId,
@@ -560,6 +560,7 @@ export class SessionService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.adminAllSessionsRevoked,
                 metadata: actorMetadata,
@@ -574,6 +575,7 @@ export class SessionService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                 userId,

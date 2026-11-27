@@ -25,7 +25,7 @@ The session works alone and writes one spec. Write nothing under `src/`, `test/`
 Follow `.claude/skills/grilling/SKILL.md`, with these departures:
 
 - Ask each round with `AskUserQuestion`, the recommended answer first. A frontier larger than four questions takes several calls.
-- A fact the code, a rule, or a decision entry answers is yours to find: read it, or dispatch the `Explore` agent. A fact from outside the repository comes from the `researcher` agent. Never ask the owner for either.
+- A fact the code, a rule, or a decision entry answers is yours to find: read it, or dispatch the `explore` agent. A fact from outside the repository comes from the `researcher` agent. Never ask the owner for either.
 - When the owner says "you decide", decide and record it as an assumption.
 
 The frontier covers what the owner has not named:

@@ -93,7 +93,7 @@ The API key and feature flag caches are invalidated through the outbox. They are
 5. The next read after the job misses, and `readThrough` sets the entry again.
 
 - A create adds no invalidation, because no entry exists yet.
-- A Redis error in the job throws `RedisUnavailableException`, which extends `AppBaseException`, and the processor base rethrows it unchanged, so BullMQ retries the job with the `queue.job.cacheBackoffDelayInMs` backoff.
+- A Redis error in the job throws `RedisUnavailableException`, which extends `AppBaseException`, and the processor base rethrows it unchanged, so BullMQ retries the job with the `cache.queue.backoffDelayInMs` backoff.
 - `CacheService.invalidate` has two other callers, covered in [Session login entry](#session-login-entry): `SessionService.isLoginActive` and `SessionService.deleteLogins`.
 - `CacheService.flush` empties the whole Redis database of the cache connection, so it also empties the rate-limit counters. `MigrationSeedBase` is its one caller, after every seed run, so a seed run resets the rate-limit counters.
 
@@ -108,7 +108,7 @@ The session check of every JWT access token reads one entry per login, `User:{us
 - A hit whose digest matches the token passes. A hit with a different digest is invalidated and read through once more, and the check answers on that second read.
 - A refresh writes no entry. The first request with the new token reloads it, and the old access token passes only while the entry holds the old digest.
 - This entry has its own paths, apart from `CacheQueue`. `SessionService.isLoginActive` calls `CacheService.invalidate` directly in the request path when the digest differs.
-- A revoke adds a purge row, `UserAuthQueue.purgeLoginsEffect`, to the revoke's transaction. The `purgeLogins` job on the `userAuth` queue calls `SessionService.deleteLogins`, which invalidates the exact login keys of the revoked sessions. A revocation reaches the cache when that job runs.
+- A revoke adds a purge row, `SessionQueue.purgeLoginsEffect`, to the revoke's transaction. The `purgeLogins` job on the `session` queue calls `SessionService.deleteLogins`, which invalidates the exact login keys of the revoked sessions. A revocation reaches the cache when that job runs.
 
 <!-- REFERENCES -->
 

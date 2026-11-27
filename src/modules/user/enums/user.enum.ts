@@ -20,7 +20,6 @@ export enum EnumUserProcess {
 
 /** @public */
 export enum EnumUserAuthProcess {
-    purgeLogins = 'purgeLogins',
     purgeExpired = 'purgeExpired',
 }
 

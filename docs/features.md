@@ -96,7 +96,7 @@ Sessions:
 
 API keys:
 
-- A route checks the `x-api-key` header. A default key serves public routes and a system key serves operator routes such as health.
+- A route checks the `x-api-key` header. A default key serves public routes and a system key serves operator routes such as health. An admin soft-deletes a key, and the entries it caused stay listable.
 - Needed when a route must identify the calling application, or an operator calls a system route.
 - Pages: [API Key][ref-doc-concept-api-key].
 
@@ -171,7 +171,7 @@ File upload:
 
 Activity log:
 
-- An audited action adds its entry as an outbox row in the action's transaction, and a queue job writes the row after the commit. An action one user takes on another writes a row for the actor and a row for the target.
+- An audited action adds its entry as an outbox row in the action's transaction, and a queue job writes the row after the commit. An action one user takes on another writes a row for the actor and a row for the target. Each row records the API key of its request, and a daily job deletes rows older than a year.
 - Needed when you audit what a user or an admin did.
 - Pages: [Activity Log][ref-doc-concept-activity-log], [Activity Log Guide][ref-doc-guide-activity-log], [Activity Log Reference][ref-doc-reference-activity-log].
 
@@ -209,7 +209,7 @@ Cache:
 
 Queue and outbox:
 
-- BullMQ runs background jobs on the queue Redis. A side effect is an outbox row committed with the action, the enqueue follows the commit, and a sweep re-dispatches rows that were never enqueued.
+- BullMQ runs background jobs on the queue Redis. A side effect is an outbox row committed with the action, the enqueue follows the commit, and a sweep re-dispatches rows that were never enqueued. A daily job scrubs the payload of old finished rows, and each module purges its own expired rows with a daily job on its own queue.
 - Needed when work must run in the background after a write commits.
 - Pages: [Queue][ref-doc-concept-queue], [Queue Guide][ref-doc-guide-queue], [Queue Reference][ref-doc-reference-queue].
 

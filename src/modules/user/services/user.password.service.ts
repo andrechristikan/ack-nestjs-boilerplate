@@ -232,6 +232,7 @@ export class UserPasswordService {
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userMaxPasswordAttemptReached,
                     userId,
@@ -325,6 +326,7 @@ export class UserPasswordService {
             requestContext,
             apiKeyContext,
             null,
+            null,
             {
                 action: EnumActivityLogAction.userPasswordResetRequested,
                 userId,
@@ -389,7 +391,7 @@ export class UserPasswordService {
     }
 
     /** Deletes the reset rows that expired longer ago than forgotPassword.retentionInMs; returns the count. */
-    async purgeExpired(): Promise<number> {
+    async purgeExpiredForgotPasswords(): Promise<number> {
         const now = this.helperDateService.now();
         const retention = this.helperDateService.createDuration({
             milliseconds: this.retentionInMs,

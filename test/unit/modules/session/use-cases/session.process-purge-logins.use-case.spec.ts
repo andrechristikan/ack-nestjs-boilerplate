@@ -4,33 +4,33 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { MessageService } from '@common/message/services/message.service';
 import { SessionService } from '@modules/session/services/session.service';
-import type { IUserPurgeLoginsPayload } from '@modules/user/interfaces/user.interface';
-import { UserProcessPurgeLoginsUseCase } from '@modules/user/use-cases/user.process-purge-logins.use-case';
+import type { ISessionPurgeLoginsPayload } from '@modules/session/interfaces/session.interface';
+import { SessionProcessPurgeLoginsUseCase } from '@modules/session/use-cases/session.process-purge-logins.use-case';
 
-describe('UserProcessPurgeLoginsUseCase', () => {
+describe('SessionProcessPurgeLoginsUseCase', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
     const sessionService: MockProxy<SessionService> = mock<SessionService>();
-    const payload: IUserPurgeLoginsPayload = {
+    const payload: ISessionPurgeLoginsPayload = {
         userId: 'user-1',
         sessions: [
             { id: 'session-1', userId: 'user-1' },
             { id: 'session-2', userId: 'user-1' },
         ],
     };
-    let useCase: UserProcessPurgeLoginsUseCase;
+    let useCase: SessionProcessPurgeLoginsUseCase;
 
     beforeEach(async () => {
         messageService.setMessage.mockImplementation((path: string) => path);
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
-                UserProcessPurgeLoginsUseCase,
+                SessionProcessPurgeLoginsUseCase,
                 { provide: MessageService, useValue: messageService },
                 { provide: SessionService, useValue: sessionService },
             ],
         }).compile();
 
-        useCase = module.get(UserProcessPurgeLoginsUseCase);
+        useCase = module.get(SessionProcessPurgeLoginsUseCase);
     });
 
     describe('execute', () => {
@@ -43,7 +43,7 @@ describe('UserProcessPurgeLoginsUseCase', () => {
                 { id: 'session-2', userId: 'user-1' },
             ]);
             expect(result).toEqual({
-                message: 'user.queue.auth.purgeLogins',
+                message: 'session.queue.purgeLogins',
                 countSessions: 2,
             });
         });

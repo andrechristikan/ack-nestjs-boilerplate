@@ -47,6 +47,7 @@ export class ApiKeyRepository
                     ...where,
                     ...isActive,
                     ...type,
+                    deletedAt: null,
                 },
                 select: ApiKeySelect,
             }
@@ -70,6 +71,7 @@ export class ApiKeyRepository
                 type,
                 startAt,
                 endAt,
+                deletedAt: null,
             },
             select: ApiKeySelect,
         });
@@ -79,6 +81,7 @@ export class ApiKeyRepository
         return this.databaseService.client.apiKey.findUnique({
             where: {
                 id,
+                deletedAt: null,
             },
             select: ApiKeySelect,
         });
@@ -95,6 +98,7 @@ export class ApiKeyRepository
                 where: {
                     id,
                     isActive: expectedIsActive,
+                    deletedAt: null,
                 },
                 data: {
                     isActive,
@@ -111,15 +115,20 @@ export class ApiKeyRepository
         id: string,
         name: string
     ): Promise<IApiKey> {
-        return tx.apiKey.update({
-            where: {
-                id,
-            },
-            data: {
-                name,
-            },
-            select: ApiKeySelect,
-        });
+        try {
+            return await tx.apiKey.update({
+                where: {
+                    id,
+                    deletedAt: null,
+                },
+                data: {
+                    name,
+                },
+                select: ApiKeySelect,
+            });
+        } catch (error: unknown) {
+            throw this.toException(error);
+        }
     }
 
     async updateDatesInTx(
@@ -133,6 +142,7 @@ export class ApiKeyRepository
                 where: {
                     id,
                     isActive: true,
+                    deletedAt: null,
                 },
                 data: {
                     startAt,
@@ -155,6 +165,7 @@ export class ApiKeyRepository
                 where: {
                     id,
                     isActive: true,
+                    deletedAt: null,
                 },
                 data: {
                     hash,
@@ -166,22 +177,34 @@ export class ApiKeyRepository
         }
     }
 
-    async deleteInTx(
+    async softDeleteInTx(
         tx: IDatabaseTransactionClient,
-        id: string
+        id: string,
+        deletedAt: Date,
+        deletedBy: string
     ): Promise<IApiKey> {
-        return tx.apiKey.delete({
-            where: {
-                id,
-            },
-            select: ApiKeySelect,
-        });
+        try {
+            return await tx.apiKey.update({
+                where: {
+                    id,
+                    deletedAt: null,
+                },
+                data: {
+                    deletedAt,
+                    deletedBy,
+                },
+                select: ApiKeySelect,
+            });
+        } catch (error: unknown) {
+            throw this.toException(error);
+        }
     }
 
     async findOneByKey(key: string): Promise<ApiKey | null> {
         return this.databaseService.client.apiKey.findUnique({
             where: {
                 key,
+                deletedAt: null,
             },
         });
     }

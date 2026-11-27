@@ -28,6 +28,9 @@ import AnalyticConfig from '@configs/analytic.config';
 import OutboxConfig from '@configs/outbox.config';
 import HelperConfig from '@configs/helper.config';
 import MfaConfig from '@configs/mfa.config';
+import ActivityLogConfig from '@configs/activity-log.config';
+import PasswordHistoryConfig from '@configs/password-history.config';
+import CacheConfig from '@configs/cache.config';
 
 export default [
     AppConfig,
@@ -60,4 +63,7 @@ export default [
     OutboxConfig,
     HelperConfig,
     MfaConfig,
+    ActivityLogConfig,
+    PasswordHistoryConfig,
+    CacheConfig,
 ];

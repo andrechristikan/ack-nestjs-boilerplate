@@ -71,7 +71,7 @@ The auth module, a feature module and no kit, fetches the keys that verify a tok
 An adapter whose credentials are unset logs one `warn` in `onModuleInit` and stays uninitialized. `isInitialized()` reports its state. Every later call logs its own `warn` and returns an empty result.
 
 - AWS S3 (`AwsS3Service`): provider methods return `null`, `[]`, `false`, or nothing. A route that cannot work without S3 throws `AwsS3NotConfiguredException` (HTTP 501).
-- AWS SES (`AwsSesService`): `send` and template calls return an empty output. Forgot-password and resend-verification answer `AwsSesNotConfiguredException` (HTTP 501) for every caller, before the account is read.
+- AWS SES (`AwsSesService`): `send`, `sendBulk`, `getTemplate`, `deleteTemplate`, and `listTemplates` return an empty output, and `upsertTemplate` returns nothing. Forgot-password and resend-verification answer `AwsSesNotConfiguredException` (HTTP 501) for every caller, before the account is read.
 - Firebase (`FirebaseService`): `sendPush` returns `false` and `sendMulticast` reports every token as failed. The push send step checks `isInitialized()` first and skips the job without a failure or a retry.
 - Google and Apple sign-in: the sign-in route throws `AuthSocialGoogleNotConfiguredException` or `AuthSocialAppleNotConfiguredException` (HTTP 501).
 - Sentry: `src/instrument.ts` initializes Sentry only when `SENTRY_DSN` is set, and `SentryService` calls send nothing without it.

@@ -34,8 +34,8 @@ This guide shows how to add background work to a feature module, for a developer
 ### Add a queue
 
 1. Name the queue. Add a member to `Enum<Module>Queue` in `src/modules/<module>/enums/<module>.enum.ts`. Its value is the Redis queue name (`EnumWorkspaceQueue` in `src/modules/workspace/enums/workspace.enum.ts`).
-2. Add the backoff to config. Add `<name>BackoffDelayInMs` to `IConfigQueue` and its value in `src/configs/queue.config.ts`, where `<name>` is the queue's short name (`workspace` gives `workspaceBackoffDelayInMs`). The attempts, the log count, and the removal ages are shared keys.
-3. Write the queue factory in `src/modules/<module>/factories/<module>[.<concern>].queue.factory.ts`. The class implements `RegisterQueueOptionsFactory` and returns `defaultJobOptions` from the shared keys and its own backoff (`src/modules/workspace/factories/workspace.queue.factory.ts`):
+2. Add the job options to the module's config. The module's config (`src/configs/<module>.config.ts`) holds a `queue` object with `maxAttempts`, `keepLogs`, `removeOnCompleteAgeInSeconds`, `removeOnFailAgeInSeconds`, and `backoffDelayInMs`, declared in `IConfig<Namespace>` (`workspace.queue.*` in `src/configs/workspace.config.ts`). A module with a second queue adds `<concern>BackoffDelayInMs` beside `backoffDelayInMs` (`notification.queue.emailBackoffDelayInMs`). A module with no config file gets one and a line in `src/configs/index.ts` (`src/configs/cache.config.ts`).
+3. Write the queue factory in `src/modules/<module>/factories/<module>[.<concern>].queue.factory.ts`. The class implements `RegisterQueueOptionsFactory`, reads the module's `<namespace>.queue.*` keys once, and returns `defaultJobOptions` (`src/modules/workspace/factories/workspace.queue.factory.ts`):
 
     ```typescript
     return {
@@ -134,7 +134,7 @@ This guide shows how to add background work to a feature module, for a developer
         }
         ```
 
-        The base class returns an empty list, so only a queue class with a recurring job declares `schedulers()`: `OutboxQueue`, `NotificationPushQueue`, `WorkspaceQueue`, `UserAuthQueue`, and `AnalyticQueue`.
+        The base class returns an empty list, so only a queue class with a recurring job declares `schedulers()`: `OutboxQueue`, `NotificationPushQueue`, `WorkspaceQueue`, `UserAuthQueue`, `ActivityLogQueue`, `SessionQueue`, `MfaQueue`, `PasswordHistoryQueue`, and `AnalyticQueue`.
 
     - A payload that holds a sensitive field encrypts it in the effect builder (`NotificationQueue.notify`, the builder of the `notification` queue).
 4. Add one `case` to the processor's `handle` that awaits the new use case.

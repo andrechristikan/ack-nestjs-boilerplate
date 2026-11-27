@@ -112,8 +112,13 @@ describe('UserUpdateStatusByAdminUseCase', () => {
 
         beforeEach(() => {
             activityLogQueue.recordEffect.mockImplementation(
-                (_requestContext, _apiKeyContext, _authContext, input) =>
-                    buildActivityLogCreateManyEffect(input.action)
+                (
+                    _requestContext,
+                    _apiKeyContext,
+                    _authContext,
+                    _workspaceContext,
+                    input
+                ) => buildActivityLogCreateManyEffect(input.action)
             );
             userService.getOneWithRole.mockResolvedValue({
                 ...baseUser,
@@ -237,6 +242,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminAllSessionsRevoked,
                     metadata: { targetUserId: 'user-cinder', sessionCount: 1 },
@@ -246,6 +252,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userAllSessionsRevokedByAdmin,
                     userId: 'user-cinder',
@@ -257,6 +264,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminUserStatusUpdated,
                     metadata: {
@@ -270,6 +278,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userBlockedByAdmin,
                     userId: 'user-cinder',
@@ -340,6 +349,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 expect.objectContaining({
                     action: EnumActivityLogAction.userStatusUpdatedByAdmin,
                 })
@@ -425,6 +435,7 @@ describe('UserUpdateStatusByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 expect.objectContaining({
                     action: EnumActivityLogAction.userBlockedByAdmin,
                 })

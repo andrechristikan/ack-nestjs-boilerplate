@@ -45,20 +45,14 @@ This guide shows how to change the look or the subject of a transactional email 
     ```
 
 4. Sync the templates. The sync stores each subject and HTML in SES, and the running application sends by template name, so a change reaches the next send with no restart and no rebuild of the application.
-    - To import a template SES does not hold yet (a new kind), run `seed` alone. It reads each template from SES, imports only the missing ones, and logs `<Label> Email template missing, importing...` for each one it imports, which is how you tell which templates SES lacked:
+    - Run `seed` alone. It upserts every template the command manages (all 20 kinds, not only the edited one): SES updates a template it holds and creates one it lacks, and the command logs `<Label> Email template, upserting...` for each:
 
         ```bash
         pnpm migration templateEmailNotification --type seed
         ```
 
-    - To change a template SES already holds, take the replace path. `remove` deletes every template the command manages (all 20 kinds, not only the edited one), then `seed` imports them again. Run the two commands back to back, because a send in the gap fails: SES rejects the unknown template as a client fault, the email job throws and retries with its backoff, and the outbox row fails once the attempts run out:
-
-        ```bash
-        pnpm migration templateEmailNotification --type remove
-        pnpm migration templateEmailNotification --type seed
-        ```
-
-    - If `remove` succeeded and `seed` then failed, run `seed` again: it imports only the missing templates.
+    - A template is never missing between runs, so no send fails while the sync runs. If `seed` fails, run it again.
+    - To delete every template the command manages, run `pnpm migration templateEmailNotification --type remove`. No sync needs it.
 
     The command is not part of `pnpm migration:seed` or `pnpm migration:remove`. A failed SES call ends the command with exit code 1. With SES unset, `seed` logs `AWS SES is not configured. Skipping email template seed.` and exits 0, and `remove` logs `AWS SES is not configured. Skipping email template removal.` and exits 0 with nothing deleted.
 

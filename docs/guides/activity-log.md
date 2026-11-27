@@ -63,13 +63,14 @@ This guide shows how to record a new audited action, for a developer who adds an
 
 5. Write the unit spec first. It asserts the effect added on `tx` with the action, the owner, and the metadata, and it fails until the entry is recorded.
 
-6. Record the entry in the transaction of the write. The code that runs the write builds the effect with `ActivityLogQueue.recordEffect` after the write, so the entry carries what the write returned, and adds it with `OutboxService.addInTx` or `addManyInTx`. A use case takes the three contexts from its controller (`@RequestContext()`, `@ApiKeyContext()`, `@AuthJwtAccessContext()`), passing `null` for `authContext` where the route has none, and a service takes them from the use case that calls it. The workspace is the `workspaceId` of the input. The remove-member use case in `src/modules/workspace/use-cases/workspace.remove-member.use-case.ts` writes a pair:
+6. Record the entry in the transaction of the write. The code that runs the write builds the effect with `ActivityLogQueue.recordEffect` after the write, so the entry carries what the write returned, and adds it with `OutboxService.addInTx` or `addManyInTx`. A use case takes the four contexts from its controller (`@RequestContext()`, `@ApiKeyContext()`, `@AuthJwtAccessContext()`, `@WorkspaceContext()`), passing `null` for `authContext` or `workspaceContext` where the route has none, and a service takes them from the use case that calls it. The row's workspace is the `workspaceId` of the input, never the workspace context's. The remove-member use case in `src/modules/workspace/use-cases/workspace.remove-member.use-case.ts` writes a pair:
 
     ```typescript
     const actorEntry = this.activityLogQueue.recordEffect(
         requestContext,
         apiKeyContext,
         authContext,
+        workspaceContext,
         {
             action: EnumActivityLogAction.workspaceMemberRemoved,
             userId: authContext.userId,
@@ -82,6 +83,7 @@ This guide shows how to record a new audited action, for a developer who adds an
         requestContext,
         apiKeyContext,
         authContext,
+        workspaceContext,
         {
             action: EnumActivityLogAction.workspaceMemberRemovedByAdmin,
             userId: removed.userId,
@@ -99,7 +101,7 @@ This guide shows how to record a new audited action, for a developer who adds an
     - A caller in another module imports `ActivityLogModule` in its module file: `<module>.module.ts` when a service records the entry, `<module>.use-case.module.ts` when a use case does.
 
 7. Cover the other places an entry is recorded:
-    - A job records its entry from a payload. The request side builds it with `ActivityLogQueue.toPayload(...)` over the same three contexts and puts it in the job payload, and the job's use case calls `ActivityLogQueue.recordEffectFromPayload` and adds the rebuilt effect with `outboxService.addInTx` (or `addManyInTx`) on the transaction it opens.
+    - A job records its entry from a payload. The request side builds it with `ActivityLogQueue.toPayload(...)` over the same four contexts and puts it in the job payload, and the job's use case calls `ActivityLogQueue.recordEffectFromPayload` and adds the rebuilt effect with `outboxService.addInTx` (or `addManyInTx`) on the transaction it opens.
     - An action with no write adds its entry in a transaction that holds the add alone, committed before the use case throws. A write that must survive the failure of its request, such as a failed-attempt count with its entry, commits in a transaction of its own before the use case throws.
 
 ## Check the result

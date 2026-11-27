@@ -80,6 +80,7 @@ describe('UserQueue', () => {
             ];
             const activityLog: IActivityLogActorPayload = {
                 actorUserId: 'admin-bramble',
+                workspaceId: null,
                 apiKeyId: 'api-key-1',
                 requestLog: buildRequestContext().requestLog,
             };
@@ -119,6 +120,7 @@ describe('UserQueue', () => {
         it('returns the medium-priority exportByAdmin effect holding the filters and the activity payload given, exported null, no business key', () => {
             const activityLog: IActivityLogActorPayload = {
                 actorUserId: 'admin-bramble',
+                workspaceId: null,
                 apiKeyId: 'api-key-1',
                 requestLog: buildRequestContext().requestLog,
             };
@@ -150,6 +152,7 @@ describe('UserQueue', () => {
         it('returns the high-priority deleteSelf effect holding the user id, the owned workspace ids, and the activity payload only, no business key', () => {
             const activityLog: IActivityLogActorPayload = {
                 actorUserId: 'user-bramble',
+                workspaceId: null,
                 apiKeyId: 'api-key-1',
                 requestLog: buildRequestContext().requestLog,
             };

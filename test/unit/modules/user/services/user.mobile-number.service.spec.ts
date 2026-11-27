@@ -77,6 +77,8 @@ describe('UserMobileNumberService', () => {
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
         country,
     };
 
@@ -242,6 +244,7 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMobileNumberAdded }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -315,6 +318,7 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMobileNumberUpdated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -423,26 +427,45 @@ describe('UserMobileNumberService', () => {
     });
 
     describe('deleteMobileNumberInTx', () => {
-        it('deletes the mobile number, touches the user, and adds the entry on the given tx', async () => {
-            userMobileNumberRepository.deleteInTx.mockResolvedValue(
-                mobileNumber
-            );
+        const deletedAt = new Date('2026-03-01T00:00:00.000Z');
 
-            const result = await service.deleteMobileNumberInTx(
-                tx,
-                requestContext,
-                apiKeyContext,
-                authContext,
-                mobileNumber.id,
-                true
-            );
+        beforeAll(() => {
+            vi.useFakeTimers();
+        });
 
-            expect(result).toBe(mobileNumber);
-            expect(userMobileNumberRepository.deleteInTx).toHaveBeenCalledWith(
+        afterAll(() => {
+            vi.useRealTimers();
+        });
+
+        beforeEach(() => {
+            vi.setSystemTime(deletedAt);
+        });
+
+        it('soft-deletes the mobile number at now, touches the user, expires its codes, and adds the entry on the given tx', async () => {
+            userMobileNumberRepository.softDeleteInTx.mockResolvedValue(true);
+
+            await expect(
+                service.deleteMobileNumberInTx(
+                    tx,
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    mobileNumber.id,
+                    true
+                )
+            ).resolves.toBeUndefined();
+
+            expect(
+                userMobileNumberRepository.softDeleteInTx
+            ).toHaveBeenCalledWith(
                 tx,
                 'user-marlin',
-                mobileNumber.id
+                mobileNumber.id,
+                deletedAt
             );
+            expect(
+                userVerificationService.expireActiveByMobileNumberInTx
+            ).toHaveBeenCalledWith(tx, mobileNumber.id);
             expect(userService.touchUpdatedByInTx).toHaveBeenCalledWith(
                 tx,
                 'user-marlin',
@@ -452,20 +475,16 @@ describe('UserMobileNumberService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMobileNumberDeleted }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
-            expect(
-                userVerificationService.expireActiveByMobileNumberInTx
-            ).toHaveBeenCalledWith(tx, mobileNumber.id);
         });
 
         it('expires the number active codes while the user touch is pending', async () => {
             const touched = buildDeferred<void>();
-            userMobileNumberRepository.deleteInTx.mockResolvedValue(
-                mobileNumber
-            );
+            userMobileNumberRepository.softDeleteInTx.mockResolvedValue(true);
             userService.touchUpdatedByInTx.mockReturnValue(touched.promise);
 
             const running = service.deleteMobileNumberInTx(
@@ -485,12 +504,11 @@ describe('UserMobileNumberService', () => {
 
             touched.resolve();
 
-            await expect(running).resolves.toBe(mobileNumber);
+            await expect(running).resolves.toBeUndefined();
         });
 
-        it('passes the UserMobileNumberNotFoundException the guarded delete rejected through untouched', async () => {
-            const rejected = new UserMobileNumberNotFoundException();
-            userMobileNumberRepository.deleteInTx.mockRejectedValue(rejected);
+        it('throws UserMobileNumberNotFoundException and expires nothing when the guarded soft delete matches no row', async () => {
+            userMobileNumberRepository.softDeleteInTx.mockResolvedValue(false);
 
             await expect(
                 service.deleteMobileNumberInTx(
@@ -501,7 +519,7 @@ describe('UserMobileNumberService', () => {
                     mobileNumber.id,
                     false
                 )
-            ).rejects.toBe(rejected);
+            ).rejects.toBeInstanceOf(UserMobileNumberNotFoundException);
             expect(userService.touchUpdatedByInTx).not.toHaveBeenCalled();
             expect(outboxService.addInTx).not.toHaveBeenCalled();
             expect(
@@ -611,13 +629,15 @@ describe('UserMobileNumberService', () => {
         });
     });
 
-    describe('removeByUserInTx', () => {
-        it('deletes every mobile number of the user on the given transaction', async () => {
-            await service.removeByUserInTx(tx, 'user-marlin');
+    describe('softDeleteByUserInTx', () => {
+        it('soft-deletes every mobile number of the user at the given time on the given transaction', async () => {
+            const deletedAt = new Date('2026-03-01T00:00:00.000Z');
+
+            await service.softDeleteByUserInTx(tx, 'user-marlin', deletedAt);
 
             expect(
-                userMobileNumberRepository.deleteByUserInTx
-            ).toHaveBeenCalledWith(tx, 'user-marlin');
+                userMobileNumberRepository.softDeleteByUserInTx
+            ).toHaveBeenCalledWith(tx, 'user-marlin', deletedAt);
         });
     });
 

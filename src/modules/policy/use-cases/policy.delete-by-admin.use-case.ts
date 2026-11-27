@@ -62,6 +62,7 @@ export class PolicyDeleteByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminPolicyDeleted,
                     metadata,

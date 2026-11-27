@@ -1,6 +1,4 @@
 import { NotificationTemplateLabelWordRegex } from '@modules/notification/constants/notification.constant';
-import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
-import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -249,11 +247,11 @@ export class NotificationTemplateService {
         }
     }
 
-    async emailImport(name: INotificationTemplateName): Promise<void> {
+    async emailUpsert(name: INotificationTemplateName): Promise<void> {
         try {
             const template = this.getTemplateEmail(name);
 
-            await this.awsSesService.createTemplate({
+            await this.awsSesService.upsertTemplate({
                 name,
                 subject: template.subject,
                 htmlBody: template.htmlBody,
@@ -262,25 +260,7 @@ export class NotificationTemplateService {
             const label = this.toTemplateLabel(name);
             throw new AppUnknownException(
                 err,
-                `Failed to import ${label} template`
-            );
-        }
-    }
-
-    async getEmail(
-        name: INotificationTemplateName
-    ): Promise<GetTemplateCommandOutput | null> {
-        try {
-            return await this.awsSesService.getTemplate({ name });
-        } catch (err: unknown) {
-            if (err instanceof TemplateDoesNotExistException) {
-                return null;
-            }
-
-            const label = this.toTemplateLabel(name);
-            throw new AppUnknownException(
-                err,
-                `Failed to get ${label} template`
+                `Failed to upsert ${label} template`
             );
         }
     }

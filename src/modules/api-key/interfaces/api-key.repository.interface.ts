@@ -47,6 +47,11 @@ export interface IApiKeyRepository {
         id: string,
         hash: string
     ): Promise<IApiKey>;
-    deleteInTx(tx: IDatabaseTransactionClient, id: string): Promise<IApiKey>;
+    softDeleteInTx(
+        tx: IDatabaseTransactionClient,
+        id: string,
+        deletedAt: Date,
+        deletedBy: string
+    ): Promise<IApiKey>;
     findOneByKey(key: string): Promise<ApiKey | null>;
 }

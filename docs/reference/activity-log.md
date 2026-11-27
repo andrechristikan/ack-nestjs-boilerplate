@@ -252,6 +252,7 @@ A schema is a strict zod object under `src/modules/activity-log/dtos/`. Metadata
 | `geoLocation` | From the request log, nullable |
 | `metadata` | The validated metadata, `null` when empty |
 | `workspaceId` | Per the contract's `workspace` value, `null` for `none` |
+| `apiKeyId` | The `ApiKey` of the request that caused the entry, a job's included; the admin lists return it, and the shared lists return `null` on every row |
 | `createdAt` | The time the entry was recorded |
 
 <!-- REFERENCES -->

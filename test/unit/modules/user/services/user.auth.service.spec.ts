@@ -465,6 +465,7 @@ describe('UserAuthService', () => {
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userEmailVerified,
                     userId: user.id,
@@ -589,7 +590,13 @@ describe('UserAuthService', () => {
             );
             vi.setSystemTime(now);
             activityLogQueue.recordEffect.mockImplementation(
-                (_requestContext, _apiKeyContext, _authContext, input) => ({
+                (
+                    _requestContext,
+                    _apiKeyContext,
+                    _authContext,
+                    _workspaceContext,
+                    input
+                ) => ({
                     ...entryEffect,
                     idempotencyKey: `${input.action}:${input.userId ?? ''}`,
                 })
@@ -993,6 +1000,7 @@ describe('UserAuthService', () => {
                 expect(activityLogQueue.recordEffect).toHaveBeenCalledWith(
                     requestContext,
                     apiKeyContext,
+                    null,
                     null,
                     {
                         action,
@@ -1460,6 +1468,7 @@ describe('UserAuthService', () => {
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.userReauthenticationFailed,
                         userId: 'user-halcyon',

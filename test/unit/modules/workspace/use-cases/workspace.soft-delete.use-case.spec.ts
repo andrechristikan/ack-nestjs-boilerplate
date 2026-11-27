@@ -46,6 +46,7 @@ describe('WorkspaceSoftDeleteUseCase', () => {
     const activityLog: IActivityLogActorPayload = {
         apiKeyId: apiKeyContext.apiKey.id,
         actorUserId: 'user-1',
+        workspaceId: 'workspace-1',
         requestLog: requestContext.requestLog,
     };
     const effect: IWorkspaceSoftDeleteEffect = {
@@ -110,7 +111,8 @@ describe('WorkspaceSoftDeleteUseCase', () => {
             expect(activityLogQueue.toPayload).toHaveBeenCalledWith(
                 requestContext,
                 apiKeyContext,
-                authContext
+                authContext,
+                workspaceContext
             );
             expect(workspaceQueue.softDeleteEffect).toHaveBeenCalledWith(
                 'workspace-1',

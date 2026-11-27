@@ -11,17 +11,19 @@ export class CacheQueueFactory implements RegisterQueueOptionsFactory {
 
     createRegisterQueueOptions(): RegisterQueueOptions {
         const maxAttempts = this.configService.get<number>(
-            'queue.job.maxAttempts'
+            'cache.queue.maxAttempts'
         )!;
-        const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
+        const keepLogs = this.configService.get<number>(
+            'cache.queue.keepLogs'
+        )!;
         const backoffDelayInMs = this.configService.get<number>(
-            'queue.job.cacheBackoffDelayInMs'
+            'cache.queue.backoffDelayInMs'
         )!;
         const removeOnCompleteAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnCompleteAgeInSeconds'
+            'cache.queue.removeOnCompleteAgeInSeconds'
         )!;
         const removeOnFailAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnFailAgeInSeconds'
+            'cache.queue.removeOnFailAgeInSeconds'
         )!;
 
         return {

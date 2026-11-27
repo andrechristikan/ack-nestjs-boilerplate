@@ -25,6 +25,11 @@ export const ActivityLogResponseSchema = DatabaseResponseSchema.omit({
             'Identifier of the user this entry belongs to: the actor for payload actions, the affected user for target actions',
         example: faker.database.mongodbObjectId(),
     }),
+    apiKeyId: z.string().nullable().meta({
+        description:
+            'Identifier of the API key the request came with; `null` on the shared scope.',
+        example: faker.database.mongodbObjectId(),
+    }),
     user: UserRefResponseSchema.meta({
         description:
             'Embedded user this entry belongs to: the actor for payload actions, the affected user for target actions',

@@ -92,6 +92,7 @@ describe('UserUpdateProfileUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userProfileUpdated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);

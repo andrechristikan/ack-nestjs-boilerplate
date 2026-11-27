@@ -184,6 +184,8 @@ export function buildApiKey(): ApiKey {
         createdBy: null,
         updatedAt: date,
         updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
     };
 }
 

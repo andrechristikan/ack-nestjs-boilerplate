@@ -37,7 +37,7 @@ flowchart LR
     CE -->|miss| DB
     RF["Refresh"] -->|rotates the digest| DB
     RV["Revoke"] -->|marks revoked, adds an outbox row| DB
-    DB --> QU["userAuth queue"]
+    DB --> QU["session queue"]
     QU -->|purgeLogins job| CE
 ```
 
@@ -65,7 +65,7 @@ The login entry is the cache side:
 - `SessionService.isLoginActive` reads it through the cache with a loader that reads the live row. The entry lives for `session.loginCacheTtlInMs`, which is shorter than the access token lifetime, and takes no lease. An expired or idle session keeps passing until its entry TTL ends. The next miss finds no live row and caches nothing.
 - A refresh writes no entry. The mechanism is in [Session login entry][ref-doc-concept-cache-session].
 
-The daily `purgeExpired` job of the `userAuth` queue deletes a session row `session.retentionInMs` after its `expiredAt`, revoked or not. `session.retentionInMs` stays no shorter than `analytic.maxWindowInMs`, because the analytic repositories read sessions over that window. The same job purges expired MFA challenges, password history rows, verification rows, and reset rows. Its cron is `user.purgeExpiredCron`.
+The daily `purgeExpired` job of the `session` queue deletes a session row `session.retentionInMs` after its `expiredAt`, revoked or not. Its cron is `session.purgeExpiredCron`. `session.retentionInMs` stays no shorter than `analytic.maxWindowInMs`, because the analytic repositories read sessions over that window. Each other module purges its own expired rows on its own queue ([Queue][ref-doc-concept-queue-purge]).
 
 ## Lifecycle and revocation
 
@@ -79,8 +79,8 @@ A session passes through four events:
 A revoke is one transaction owned by the use case of the flow that causes it:
 
 1. A `SessionService` `*InTx` method marks the rows revoked with a guarded write that carries `isRevoked: false`. It sets `revokedAt` and `revokedById`. `revokedById` is the user whose action caused the revoke: the caller or the admin; the session's own user for a replayed token or a self-deletion; the signing-in user for a login on a shared device.
-2. The same method adds the purge row, `UserAuthQueue.purgeLoginsEffect`, to the transaction. The activity entries of the flow join it too.
-3. After the commit the outbox enqueues a `purgeLogins` job at high priority on the `userAuth` queue ([Queue][ref-doc-concept-queue-outbox]).
+2. The same method adds the purge row, `SessionQueue.purgeLoginsEffect`, to the transaction. The activity entries of the flow join it too.
+3. After the commit the outbox enqueues a `purgeLogins` job at high priority on the `session` queue ([Queue][ref-doc-concept-queue-outbox]).
 4. The job carries the user id and the exact session refs the revoke returned. It invalidates those login keys and nothing else, never a key pattern, so a login made after the revoke keeps its key.
 
 A revoke reaches the guard when the job runs. Until then the entry keeps passing, and the entry TTL bounds that window. A revoke write ignores the expiry and idle conditions, except the revoke of a replayed refresh token, which carries them, so a replayed token on an expired or idle session revokes nothing.
@@ -122,6 +122,7 @@ Each admin session-revoke route refuses a target the admin does not outrank (`Ro
 [ref-doc-concept-queue]: queue.md
 [ref-doc-concept-security-crypto]: security.md#cryptography-used
 [ref-doc-concept-queue-outbox]: queue.md#outbox-row-in-the-transaction
+[ref-doc-concept-queue-purge]: queue.md#queue-classes
 [ref-doc-concept-device]: device.md
 [ref-doc-concept-device-one-user]: device.md#one-signed-in-user-per-device
 [ref-doc-concept-user]: user.md

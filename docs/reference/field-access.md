@@ -96,7 +96,7 @@ Every schema follows these conventions.
     - The account holder updates the profile with `UserUpdateProfileRequestSchema`: `countryId`, `name` (`null` clears it), and `gender`.
     - The account holder claims a `username` with `UserClaimUsernameRequestSchema`.
     - The account holder changes the password with `UserChangePasswordRequestSchema`: the re-authentication proof plus `newPassword`.
-    - The account holder adds or changes a mobile number with `countryId` and `number` plus the proof, and deletes one with the proof alone.
+    - The account holder adds or changes a mobile number with `countryId` and `number` plus the proof, and deletes one with the proof alone. The delete route answers no data: the row is soft-deleted and its `number` rewritten to `deleted-{id}`.
     - The proof is `method` with `password`, `passkeyChallengeToken`, or `otp`, as the method needs (`UserReauthenticationRequestSchema`).
     - The account holder sets the photo in two steps: a presign request (`size`, `extension`), then a save (`key`).
     - A visitor signs up with `UserSignUpRequestSchema`: `UserCreateRequestSchema` without `roleId`, plus `password`, `marketing`, `cookies`, `from`, and an optional `inviteToken`.
@@ -190,10 +190,10 @@ Every schema follows these conventions.
 
 - Audiences:
     - The account holder reads the entries whose `userId` is theirs. As a member of the active workspace, they read the entries of that workspace whose `userId` is theirs. Both lists filter `userId`, never `createdBy`.
-    - A platform admin reads the entries of any user and of any workspace, optionally narrowed to one `userId`.
+    - A platform admin reads the entries of any user, of any workspace (optionally narrowed to one `userId`), and of any API key, a soft-deleted key included.
 - Response:
-    - Both scopes answer `ActivityLogResponseSchema`: `id`, `createdAt`, `createdBy`, `userId`, `user` (the reference shape), `action`, `description`, `ipAddress`, `userAgent`, `geoLocation`, and `metadata`. It has no `workspaceId` and no update or delete fields.
-    - The shared scope answers an entry the reader created whole.
+    - Both scopes answer `ActivityLogResponseSchema`: `id`, `createdAt`, `createdBy`, `userId`, `user` (the reference shape), `action`, `description`, `ipAddress`, `userAgent`, `geoLocation`, `metadata`, and `apiKeyId` (nullable). It has no `workspaceId` and no update or delete fields.
+    - The shared scope answers `apiKeyId` as `null` on every entry. It answers an entry the reader created whole otherwise.
     - The masking applies to an entry whose `createdBy` is another actor: the shared scope answers it with `ipAddress`, `userAgent`, `geoLocation`, and `createdBy` set to `null` and no `actorUserId` in its metadata (`ActivityLogUtil.toMaskedList`).
     - The admin scope answers every field.
 - Request: none. The entry is written by the action it records.

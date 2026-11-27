@@ -62,6 +62,7 @@ export class PolicyCreateByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminPolicyCreated,
                     metadata,

@@ -39,5 +39,5 @@ MFA: `mfa.md`. Sessions: `session.md`. Sign-in: `login.md`. Hashing: `security.m
 
 ## Retention
 
-- The daily purge (`queue.md`, Enqueuing) deletes a `PasswordHistory` row once past its `expiredAt`, the end of its reuse period, and an `MfaChallenge`, `Verification`, or `ForgotPassword` row `mfa.challengeRetentionInMs`, `verification.retentionInMs`, or `forgotPassword.retentionInMs` after its `expiredAt`.
+- Each owning module's daily `purgeExpired` (`queue.md`, Enqueuing) deletes a `PasswordHistory` row once past its `expiredAt`, the end of its reuse period, and an `MfaChallenge`, `Verification`, or `ForgotPassword` row `mfa.challengeRetentionInMs`, `verification.retentionInMs`, or `forgotPassword.retentionInMs` after its `expiredAt`.
 - The verification and reset retentions stay no shorter than `analytic.maxWindowInMs`: admin cards count those rows over that window.

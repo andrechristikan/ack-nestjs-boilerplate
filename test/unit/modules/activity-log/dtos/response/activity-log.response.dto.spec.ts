@@ -16,6 +16,7 @@ describe('ActivityLogResponseSchema', () => {
         createdAt,
         createdBy: 'user-1',
         userId: 'user-1',
+        apiKeyId: 'api-key-1',
         user: {
             id: 'user-1',
             createdAt,
@@ -50,6 +51,12 @@ describe('ActivityLogResponseSchema', () => {
             ipAddress: null,
             geoLocation: null,
         };
+
+        expect(ActivityLogResponseSchema.parse(masked)).toEqual(masked);
+    });
+
+    it('parses a row with apiKeyId null', () => {
+        const masked = { ...row, apiKeyId: null };
 
         expect(ActivityLogResponseSchema.parse(masked)).toEqual(masked);
     });

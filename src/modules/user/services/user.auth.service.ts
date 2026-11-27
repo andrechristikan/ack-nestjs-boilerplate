@@ -190,6 +190,7 @@ export class UserAuthService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userReauthenticationFailed,
                 userId: authContext.userId,
@@ -315,6 +316,7 @@ export class UserAuthService {
             requestContext,
             apiKeyContext,
             null,
+            null,
             {
                 action: EnumActivityLogAction.userEmailVerified,
                 userId: user.id,
@@ -399,6 +401,7 @@ export class UserAuthService {
             this.activityLogQueue.recordEffect(
                 requestContext,
                 apiKeyContext,
+                null,
                 null,
                 {
                     action: loginAction,

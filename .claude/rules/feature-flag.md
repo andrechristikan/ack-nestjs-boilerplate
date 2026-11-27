@@ -1,7 +1,8 @@
 ---
 paths:
     - 'src/modules/feature-flag/**'
-    - 'src/modules/mfa/**'
+    - 'src/modules/mfa/controllers/**'
+    - 'src/modules/mfa/services/**'
     - 'src/modules/workspace/services/**'
     - 'src/modules/user/services/**'
     - 'src/modules/analytic/services/**'

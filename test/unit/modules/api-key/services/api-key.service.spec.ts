@@ -40,7 +40,10 @@ import type {
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
-import { buildApiKey } from '@test/unit/helpers/test.unit.request.helper';
+import {
+    buildApiKey,
+    buildAuthJwtAccessContext,
+} from '@test/unit/helpers/test.unit.request.helper';
 import { ApiKeyCacheSchema } from '@modules/api-key/dtos/api-key.cache.dto';
 
 describe('ApiKeyService', () => {
@@ -609,15 +612,23 @@ describe('ApiKeyService', () => {
     });
 
     describe('deleteByAdminInTx', () => {
-        it('deletes the api key by id, adds the cache invalidation effect from the deleted row key on the tx, and returns the deleted row', async () => {
-            apiKeyRepository.deleteInTx.mockResolvedValue(apiKey);
+        const authContext = buildAuthJwtAccessContext('user-actor');
 
-            const result = await service.deleteByAdminInTx(tx, apiKey.id);
+        it('soft deletes the api key with the clock time and the actor, adds the cache invalidation effect from the deleted row key on the tx, and returns the deleted row', async () => {
+            apiKeyRepository.softDeleteInTx.mockResolvedValue(apiKey);
+
+            const result = await service.deleteByAdminInTx(
+                tx,
+                authContext,
+                apiKey.id
+            );
 
             expect(result).toBe(apiKey);
-            expect(apiKeyRepository.deleteInTx).toHaveBeenCalledWith(
+            expect(apiKeyRepository.softDeleteInTx).toHaveBeenCalledWith(
                 tx,
-                apiKey.id
+                apiKey.id,
+                now,
+                authContext.userId
             );
             expect(apiKeyCache.buildApiKeyKeys).toHaveBeenCalledWith(
                 apiKey.key
@@ -628,11 +639,11 @@ describe('ApiKeyService', () => {
 
         it('lets the repository rejection through and adds no effect', async () => {
             const failure = new ApiKeyNotFoundException();
-            apiKeyRepository.deleteInTx.mockRejectedValue(failure);
+            apiKeyRepository.softDeleteInTx.mockRejectedValue(failure);
 
-            await expect(service.deleteByAdminInTx(tx, apiKey.id)).rejects.toBe(
-                failure
-            );
+            await expect(
+                service.deleteByAdminInTx(tx, authContext, apiKey.id)
+            ).rejects.toBe(failure);
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
     });

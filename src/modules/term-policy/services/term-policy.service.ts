@@ -205,6 +205,7 @@ export class TermPolicyService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.adminTermPolicyCreated,
                 metadata,
@@ -250,6 +251,7 @@ export class TermPolicyService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.adminTermPolicyDeleted,
                 metadata,
@@ -356,6 +358,7 @@ export class TermPolicyService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.adminTermPolicyPublished,
                 metadata,

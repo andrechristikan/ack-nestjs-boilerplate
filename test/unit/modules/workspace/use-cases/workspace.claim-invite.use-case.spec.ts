@@ -253,6 +253,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteAccepted,
                     userId: 'user-2',
@@ -266,6 +267,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.workspaceInviteAcceptedByInvitee,
                     userId: 'user-1',
@@ -544,6 +546,7 @@ describe('WorkspaceClaimInviteUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 expect.objectContaining({
                     workspaceId: 'workspace-9',
                     metadata: { targetUserId: 'user-9' },

@@ -48,7 +48,6 @@ import { UserProcessDeleteSelfUseCase } from '@modules/user/use-cases/user.proce
 import { UserProcessExportByAdminUseCase } from '@modules/user/use-cases/user.process-export-by-admin.use-case';
 import { UserProcessImportByAdminUseCase } from '@modules/user/use-cases/user.process-import-by-admin.use-case';
 import { UserProcessPurgeExpiredUseCase } from '@modules/user/use-cases/user.process-purge-expired.use-case';
-import { UserProcessPurgeLoginsUseCase } from '@modules/user/use-cases/user.process-purge-logins.use-case';
 import { WorkspaceModule } from '@modules/workspace/workspace.module';
 import { Module } from '@nestjs/common';
 
@@ -96,7 +95,6 @@ import { Module } from '@nestjs/common';
         UserProcessExportByAdminUseCase,
         UserProcessDeleteSelfUseCase,
         UserProcessPurgeExpiredUseCase,
-        UserProcessPurgeLoginsUseCase,
     ],
     exports: [
         UserLoginWithSocialUseCase,
@@ -140,7 +138,6 @@ import { Module } from '@nestjs/common';
         UserProcessExportByAdminUseCase,
         UserProcessDeleteSelfUseCase,
         UserProcessPurgeExpiredUseCase,
-        UserProcessPurgeLoginsUseCase,
     ],
     imports: [
         ActivityLogModule,

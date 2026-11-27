@@ -28,6 +28,7 @@ import type {
     IApiKeyHeader,
     IApiKeyWithSecret,
 } from '@modules/api-key/interfaces/api-key.interface';
+import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
 import { ApiKeyRepository } from '@modules/api-key/repositories/api-key.repository';
 import { ApiKeyCache } from '@modules/api-key/caches/api-key.cache';
 import { ApiKeyCredentialUtil } from '@modules/api-key/utils/api-key.credential.util';
@@ -298,9 +299,16 @@ export class ApiKeyService {
 
     async deleteByAdminInTx(
         tx: IDatabaseTransactionClient,
+        authContext: IAuthJwtAccessContext,
         id: string
     ): Promise<IApiKey> {
-        const deleted = await this.apiKeyRepository.deleteInTx(tx, id);
+        const today = this.helperDateService.now();
+        const deleted = await this.apiKeyRepository.softDeleteInTx(
+            tx,
+            id,
+            today,
+            authContext.userId
+        );
         await this.addInvalidateEffectInTx(tx, deleted.key);
 
         return deleted;

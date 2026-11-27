@@ -50,6 +50,15 @@ export class ActivityLogRepository implements IActivityLogRepository {
         };
     }
 
+    private buildApiKeyScopedWhere(
+        apiKeyId: string,
+        where: Prisma.ActivityLogWhereInput | null
+    ): Prisma.ActivityLogWhereInput {
+        return {
+            AND: [...(where !== null ? [where] : []), { apiKeyId }],
+        };
+    }
+
     private mapCreateManyData(
         rows: IActivityLogCreate[]
     ): Prisma.ActivityLogCreateManyInput[] {
@@ -59,6 +68,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                 userId,
                 createdBy,
                 workspaceId,
+                apiKeyId,
                 action,
                 description,
                 requestLog: { ipAddress, userAgent, geoLocation },
@@ -74,6 +84,7 @@ export class ActivityLogRepository implements IActivityLogRepository {
                     id,
                     userId,
                     workspaceId,
+                    apiKeyId,
                     action,
                     ipAddress,
                     userAgent: plainUserAgent,
@@ -164,6 +175,25 @@ export class ActivityLogRepository implements IActivityLogRepository {
         );
     }
 
+    async findByApiKeyWithPaginationOffset(
+        apiKeyId: string,
+        { where, ...params }: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        const scopedWhere = this.buildApiKeyScopedWhere(
+            apiKeyId,
+            where ?? null
+        );
+
+        return this.paginationService.offset(
+            this.databaseService.client.activityLog,
+            {
+                ...params,
+                where: scopedWhere,
+                include: ActivityLogWithUserInclude,
+            }
+        );
+    }
+
     async createMany(rows: IActivityLogCreate[]): Promise<void> {
         const ids = rows.map(({ id }) => id);
 
@@ -181,5 +211,14 @@ export class ActivityLogRepository implements IActivityLogRepository {
 
         const data = this.mapCreateManyData(absentRows);
         await this.databaseService.client.activityLog.createMany({ data });
+    }
+
+    async deleteExpiredBefore(threshold: Date): Promise<number> {
+        const { count } =
+            await this.databaseService.client.activityLog.deleteMany({
+                where: { createdAt: { lt: threshold } },
+            });
+
+        return count;
     }
 }

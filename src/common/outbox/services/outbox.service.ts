@@ -25,6 +25,7 @@ export class OutboxService implements OnApplicationBootstrap {
     private readonly pendingAfterInMs: number;
     private readonly enqueuedAfterInMs: number;
     private readonly sweepBatch: number;
+    private readonly retentionInMs: number;
     private readonly bufferByTx: WeakMap<
         IDatabaseTransactionClient,
         IOutboxBuffer
@@ -45,6 +46,9 @@ export class OutboxService implements OnApplicationBootstrap {
             'outbox.enqueuedAfterInMs'
         )!;
         this.sweepBatch = this.configService.get<number>('outbox.sweepBatch')!;
+        this.retentionInMs = this.configService.get<number>(
+            'outbox.retentionInMs'
+        )!;
     }
 
     private async enqueue(rows: IOutboxDispatchRow[]): Promise<number> {
@@ -274,6 +278,7 @@ export class OutboxService implements OnApplicationBootstrap {
                 priority: effect.priority,
                 idempotencyKey,
                 status: EnumOutboxStatus.pending,
+                scrubbedAt: null,
             });
             buffer.dispatchRows.push({
                 id,
@@ -330,6 +335,17 @@ export class OutboxService implements OnApplicationBootstrap {
     ): Promise<void> {
         const plain = this.databaseUtil.toPlainObject(data);
         await this.outboxRepository.replaceDataInTx(tx, outboxId, plain);
+    }
+
+    /** Empties the payload and the last error of every completed or failed row not updated within outbox.retentionInMs, stamps it scrubbed, and returns the count; the row stays, so its key keeps deduplicating. */
+    async scrubExpired(): Promise<number> {
+        const now = this.helperDateService.now();
+        const retention = this.helperDateService.createDuration({
+            milliseconds: this.retentionInMs,
+        });
+        const threshold = this.helperDateService.backward(now, retention);
+
+        return this.outboxRepository.scrubExpired(threshold, now);
     }
 
     /** Stamps the rows it reads as swept, then dispatches those pending longer than outbox.pendingAfterInMs and reconciles those enqueued longer than outbox.enqueuedAfterInMs with their job, at most outbox.sweepBatch of each, the rows swept longest ago first and never-swept ones before them; returns the count dispatched or stamped and never throws. */

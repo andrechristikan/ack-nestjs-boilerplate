@@ -166,6 +166,7 @@ export class DeviceRemoveUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userDeviceRemoved,
                     userId,

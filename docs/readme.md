@@ -34,7 +34,7 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Dependencies][ref-doc-dependencies]: MongoDB, Redis, and the optional adapters, and how each answers when down or unset
 - [Database][ref-doc-concept-database]: the Prisma client, transactions, audit stamping, soft delete, and unique-value retries
 - [Cache][ref-doc-concept-cache]: the cache Redis, read-through entries, invalidation through the outbox, and the session login entry
-- [Queue][ref-doc-concept-queue]: the outbox, enqueue after commit, queue classes, processors, job ids, and retries
+- [Queue][ref-doc-concept-queue]: the outbox, enqueue after commit, queue classes, processors, job ids, retries, and the outbox scrub
 - [Logging][ref-doc-concept-logging]: the Pino logger, request logs, redaction, and boot failures
 - [Sentry][ref-doc-concept-sentry]: what reaches Sentry and how events are scrubbed
 - [File Upload][ref-doc-concept-file-upload]: multipart upload, the CSV pipe chain, presigned upload, and replaced object cleanup
@@ -49,7 +49,7 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Pagination][ref-doc-concept-pagination]: offset and cursor lists, cursor sealing, and ordering presets
 - [Authentication][ref-doc-concept-authentication]: login methods, password checks, tokens and JWKS, refresh rotation, logout, and the social nonce
 - [Session][ref-doc-concept-session]: the session row, the login entry, revocation, and the per-request check
-- [API Key][ref-doc-concept-api-key]: default and system keys and the cached lookup
+- [API Key][ref-doc-concept-api-key]: default and system keys, the cached lookup, and the soft delete
 - [MFA][ref-doc-concept-mfa]: TOTP, passkeys, backup codes, the login challenge, re-authentication, and the attempt lock
 - [User][ref-doc-concept-user]: sign-up, verification, profile, password flows, status and lockout, deletion, and import and export
 - [Authorization][ref-doc-concept-authorization]: the guard pipeline, roles, and policy abilities
@@ -59,7 +59,7 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Workspace][ref-doc-concept-workspace]: the active workspace, roles and ownership, invites, join requests, slugs, and soft delete
 - [Project][ref-doc-concept-project]: the project guard, the workspace bypass, membership, slugs, and soft delete
 - [Notification][ref-doc-concept-notification]: the recipient, orchestration and steps, the email and push channels, and payload encryption
-- [Activity Log][ref-doc-concept-activity-log]: entries recorded in the action's transaction, actor and target rows, and masking
+- [Activity Log][ref-doc-concept-activity-log]: entries recorded in the action's transaction, actor and target rows, masking, and retention
 - [Analytic][ref-doc-concept-analytic]: live metrics and snapshots, caching and thresholds, and the activity-log metrics
 - [AI Harness][ref-doc-concept-ai-harness]: how the Claude Code and Copilot configuration takes a feature from design to pull request
 
@@ -90,7 +90,7 @@ This page indexes every documentation page, for a reader who looks for the page 
 
 - [Configuration][ref-doc-reference-configuration]: every config key, its environment variable, and the Compose variables
 - [Commands][ref-doc-reference-commands]: every `pnpm` script, seed command, and Compose command
-- [Database][ref-doc-reference-database]: the models, composite types, and seeded rows
+- [Database][ref-doc-reference-database]: the models, relations and their referential actions, composite types, and seeded rows
 - [Queue][ref-doc-reference-queue]: every queue with its jobs, job ids, and options
 - [File Upload][ref-doc-reference-file-upload]: the upload decorators, pipes, extensions, limits, and presign options
 - [Logging][ref-doc-reference-logging]: the levels, record fields, and redacted keys

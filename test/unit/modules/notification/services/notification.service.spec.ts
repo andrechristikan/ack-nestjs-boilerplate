@@ -891,6 +891,7 @@ describe('NotificationService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userNotificationSettingUpdated,
                     metadata: {

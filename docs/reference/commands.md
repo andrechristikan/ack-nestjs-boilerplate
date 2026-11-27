@@ -93,7 +93,7 @@ The lifecycle scripts run on their own, so each sits in the row of the command t
 - The commands: `apiKey`, `awsS3Config`, `commonPassword`, `country`, `featureFlag`, `policy`, `role`, `templateEmailNotification`, `termPolicy`, `user`, `workspace`.
 - `awsS3Config` and `templateEmailNotification` sit outside `pnpm migration:seed`.
     - `awsS3Config` applies the bucket policy, CORS, and lifecycle settings to the public and private buckets. It skips with a warning when S3 or `AWS_S3_IAM_PRINCIPAL_ARN` is unset, and `--type remove` does nothing for it.
-    - `templateEmailNotification` syncs the Handlebars email templates to SES. It skips with a warning when SES is unset.
+    - `templateEmailNotification` upserts every Handlebars email template in SES, so `--type seed` alone syncs a changed template. It skips with a warning when SES is unset.
 - The `apiKey` seed writes keys for `APP_ENV=local` only.
 - A seed that throws exits with code 1 after one `FATAL [Bootstrap]` line.
 

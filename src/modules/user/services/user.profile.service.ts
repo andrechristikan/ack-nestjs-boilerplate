@@ -274,6 +274,7 @@ export class UserProfileService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userPhotoProfileUpdated,
             }
@@ -357,6 +358,7 @@ export class UserProfileService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userUsernameClaimed,
             }

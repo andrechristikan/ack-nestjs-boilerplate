@@ -376,6 +376,7 @@ export class NotificationService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userNotificationSettingUpdated,
                 metadata: {

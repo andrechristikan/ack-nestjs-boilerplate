@@ -120,6 +120,21 @@ export class OutboxRepository implements IOutboxRepository {
         });
     }
 
+    async scrubExpired(threshold: Date, scrubbedAt: Date): Promise<number> {
+        const { count } = await this.databaseService.client.outbox.updateMany({
+            where: {
+                status: {
+                    in: [EnumOutboxStatus.completed, EnumOutboxStatus.failed],
+                },
+                scrubbedAt: null,
+                updatedAt: { lt: threshold },
+            },
+            data: { data: {}, lastError: null, scrubbedAt },
+        });
+
+        return count;
+    }
+
     async replaceData(id: string, data: Prisma.InputJsonObject): Promise<void> {
         await this.databaseService.client.outbox.updateMany({
             where: { id },

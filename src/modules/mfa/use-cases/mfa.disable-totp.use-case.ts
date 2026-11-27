@@ -153,6 +153,7 @@ export class MfaDisableTotpUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userMfaTotpDisabled,
                 }

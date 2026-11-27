@@ -11,17 +11,17 @@ export class UserQueueFactory implements RegisterQueueOptionsFactory {
 
     createRegisterQueueOptions(): RegisterQueueOptions {
         const maxAttempts = this.configService.get<number>(
-            'queue.job.maxAttempts'
+            'user.queue.maxAttempts'
         )!;
-        const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
+        const keepLogs = this.configService.get<number>('user.queue.keepLogs')!;
         const backoffDelayInMs = this.configService.get<number>(
-            'queue.job.userBackoffDelayInMs'
+            'user.queue.backoffDelayInMs'
         )!;
         const removeOnCompleteAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnCompleteAgeInSeconds'
+            'user.queue.removeOnCompleteAgeInSeconds'
         )!;
         const removeOnFailAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnFailAgeInSeconds'
+            'user.queue.removeOnFailAgeInSeconds'
         )!;
 
         return {

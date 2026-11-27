@@ -364,9 +364,7 @@ export class UserSharedController {
     }
 
     @Doc({ summary: 'user delete mobile number' })
-    @Response('user.deleteMobileNumber', {
-        schema: UserMobileNumberResponseSchema,
-    })
+    @Response('user.deleteMobileNumber')
     @TermPolicyAcceptanceProtected()
     @UserProtected()
     @RequestThrottleProtected({
@@ -386,7 +384,7 @@ export class UserSharedController {
         mobileNumberId: string,
         @Body({ schema: UserDeleteMobileNumberRequestSchema })
         body: UserDeleteMobileNumberRequestDto
-    ): Promise<IResponseReturn<IUserMobileNumber>> {
+    ): Promise<IResponseReturn<void>> {
         return this.userDeleteMobileNumberUseCase.execute(
             requestContext,
             apiKeyContext,

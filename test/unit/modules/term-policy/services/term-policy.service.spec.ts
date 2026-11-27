@@ -546,6 +546,7 @@ describe('TermPolicyService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyCreated,
                     metadata: activityMetadata,
@@ -688,6 +689,7 @@ describe('TermPolicyService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyDeleted,
                     metadata: { ...activityMetadata, termPolicyVersion: 2 },
@@ -912,6 +914,7 @@ describe('TermPolicyService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyPublished,
                     metadata: activityMetadata,

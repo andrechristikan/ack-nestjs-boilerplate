@@ -11,6 +11,7 @@ import {
     SESServiceException,
     SendBulkTemplatedEmailCommand,
     SendTemplatedEmailCommand,
+    TemplateDoesNotExistException,
     UpdateTemplateCommand,
 } from '@aws-sdk/client-ses';
 import type {
@@ -39,6 +40,7 @@ import type {
     IAwsSesSendBulk,
     IAwsSesTemplate,
 } from '@common/aws/interfaces/aws.ses.interface';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSesTemplateBodyRequiredException } from '@common/aws/exceptions/aws.ses-template-body-required.exception';
 import { AwsUnavailableException } from '@common/aws/exceptions/aws.unavailable.exception';
 
@@ -208,77 +210,52 @@ export class AwsSesService implements OnModuleInit {
         return getTemplate;
     }
 
-    async createTemplate({
+    /** Updates the template and creates it when SES reports it missing; a no-op while SES is unset. */
+    async upsertTemplate({
         name,
         subject,
         htmlBody,
         plainTextBody,
-    }: IAwsSesTemplate): Promise<CreateTemplateCommandOutput> {
+    }: IAwsSesTemplate): Promise<void> {
         const isInitialized = this.isInitialized();
         if (!isInitialized) {
             this.logger.warn(
                 'AWS SES credentials not configured. Email functionalities will be disabled.'
             );
 
-            return { $metadata: {} } as CreateTemplateCommandOutput;
+            return;
         }
 
         if (!htmlBody && !plainTextBody) {
             throw new AwsSesTemplateBodyRequiredException();
         }
 
-        const command: CreateTemplateCommand = new CreateTemplateCommand({
-            Template: {
-                TemplateName: name,
-                SubjectPart: subject,
-                HtmlPart: htmlBody,
-                TextPart: plainTextBody,
-            },
-        });
+        const template = {
+            TemplateName: name,
+            SubjectPart: subject,
+            HtmlPart: htmlBody,
+            TextPart: plainTextBody,
+        };
 
-        const create: CreateTemplateCommandOutput = await this.sendCommand<
-            CreateTemplateCommandInput,
-            CreateTemplateCommandOutput
-        >(command);
+        try {
+            await this.sendCommand<
+                UpdateTemplateCommandInput,
+                UpdateTemplateCommandOutput
+            >(new UpdateTemplateCommand({ Template: template }));
+        } catch (error: unknown) {
+            if (error instanceof AwsUnavailableException) {
+                throw error;
+            }
 
-        return create;
-    }
+            if (!(error instanceof TemplateDoesNotExistException)) {
+                throw new AppUnknownException(error);
+            }
 
-    /** @public */
-    async updateTemplate({
-        name,
-        subject,
-        htmlBody,
-        plainTextBody,
-    }: IAwsSesTemplate): Promise<UpdateTemplateCommandOutput> {
-        const isInitialized = this.isInitialized();
-        if (!isInitialized) {
-            this.logger.warn(
-                'AWS SES credentials not configured. Email functionalities will be disabled.'
-            );
-
-            return { $metadata: {} } as UpdateTemplateCommandOutput;
+            await this.sendCommand<
+                CreateTemplateCommandInput,
+                CreateTemplateCommandOutput
+            >(new CreateTemplateCommand({ Template: template }));
         }
-
-        if (!htmlBody && !plainTextBody) {
-            throw new AwsSesTemplateBodyRequiredException();
-        }
-
-        const command: UpdateTemplateCommand = new UpdateTemplateCommand({
-            Template: {
-                TemplateName: name,
-                SubjectPart: subject,
-                HtmlPart: htmlBody,
-                TextPart: plainTextBody,
-            },
-        });
-
-        const update: UpdateTemplateCommandOutput = await this.sendCommand<
-            UpdateTemplateCommandInput,
-            UpdateTemplateCommandOutput
-        >(command);
-
-        return update;
     }
 
     async deleteTemplate({

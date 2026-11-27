@@ -2,12 +2,13 @@
 
 ## Outbox and queues
 
-### A side effect is an outbox row, kept after completion, with BullMQ as the worker
+### A side effect is an outbox row, kept after completion, its payload scrubbed after the retention, with BullMQ as the worker
 
-Rule: `effects.md`.
+Rule: `effects.md`; `outbox.md`, Retention.
 
 - No outbox, a post-commit enqueue: a crash or a Redis outage between commit and enqueue loses the side effect, and nothing sends it again.
-- A thin outbox deleting rows after enqueue, a cleanup job, or a retention period: the database keeps every side effect's history, and a completed job already leaves BullMQ on its own. A retention sweep is a separate decision, taken if storage calls for it.
+- A thin outbox deleting rows after enqueue, or a cleanup job: the database keeps every side effect's history, and a completed job already leaves BullMQ on its own.
+- Deleting rows after the retention: an old idempotency key inserts again, and a once-per-subject send can repeat.
 - The payload copied into the job: BullMQ is the worker and the database holds the data.
 
 ### BullMQ through the outbox is the one async mechanism
@@ -43,13 +44,12 @@ Rule: `use-case.md`, Jobs.
 - Every cascade, a session revoke included, as a job: a session revoke, a device removal, and an MFA factor wipe commit with the action that causes them.
 - The project delete route queuing a job per project: an action on one row stays in the request.
 
-### The session cache purge and the identity purge run on the `user` module's own `userAuth` queue, and every worker runs one job at a time
+### The session cache purge runs on the session module's own `session` queue, the user's purge on `userAuth`, and every worker runs one job at a time
 
 Rule: `queue.md`, Enqueuing and Processors; `session.md`, Session invalidation; `effects.md`, Effects.
 
-- The purge on its own `session` queue: a queue, a factory, and a processor for one job of the user's, where the user's jobs run on the `user` module's queues.
-- The purge on the `user` queue: it waits behind a running import, export, or account deletion, one worker serving the queue.
-- Only `purgeLogins` on `userAuth`, with `purgeExpired` left on the `user` queue: both jobs concern sessions and credentials, so both leave the queue of the long user jobs.
+- `purgeLogins` on `userAuth`: a session job on another module's queue, where each module runs its jobs on its own queue.
+- The user's purge on the `user` queue: it waits behind a running import, export, or account deletion, one worker serving the queue.
 - A configured worker concurrency, one key for every queue, a key per queue, or a value read in the processor decorator: not needed, since BullMQ's default of one job at a time serves every queue.
 
 ### Each feature registers its own queues
@@ -238,11 +238,13 @@ Rule: `role.md`.
 - A `publishing` status moved to `published` by the copy job: a new enum value and transition, and a row that stays in it when the job fails on every attempt.
 - The copy as a job after the row turns `published`: a failed job leaves every user gated behind a document whose links answer 404.
 
-### An email body is a seeded SES template
+### An email body is a seeded SES template, upserted by every seed run
 
-Rule: `notification.md`, Fan-out and send.
+Rule: `notification.md`, Fan-out and send; `seeding.md`, Idempotency and reset.
 
 - Rendering in the application and sending raw mail: the job payload would carry a rendered body, where a template keeps it to template data.
+- A create-only import, with `--type remove` then `--type seed` to change a template: a send in the gap finds no template.
+- `GetTemplate` before the create or the update: two calls per template on every run.
 
 ### An async process tells the admin its outcome through one `processResult` kind
 

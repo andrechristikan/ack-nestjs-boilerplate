@@ -141,6 +141,7 @@ describe('UserSendVerificationEmailUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 null,
+                null,
                 {
                     action: EnumActivityLogAction.userVerificationEmailSent,
                     userId: 'user-wren',

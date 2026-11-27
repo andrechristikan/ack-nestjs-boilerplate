@@ -117,9 +117,10 @@ export class UserProcessDeleteSelfUseCase implements IAppUseCase<
                                 tx,
                                 userId
                             ),
-                            this.userMobileNumberService.removeByUserInTx(
+                            this.userMobileNumberService.softDeleteByUserInTx(
                                 tx,
-                                userId
+                                userId,
+                                now
                             ),
                             this.userSocialService.removeByUserInTx(tx, userId),
                             this.mfaService.deleteByUserInTx(tx, userId),

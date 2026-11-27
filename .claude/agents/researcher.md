@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: >-
-    Answers one question from the web, official sources first and community second, each finding with its URL and date. Use for a fact from outside the repository: a library's behavior, a standard, a best practice. Not for locating code (Explore) or judging it (reviewer).
+    Answers one question from the web, official sources first and community second, each finding with its URL and date. Use for a fact from outside the repository: a library's behavior, a standard, a best practice. Not for locating code (explore) or judging it (reviewer).
 tools: WebSearch, WebFetch
 model: haiku
 effort: medium

@@ -2,15 +2,15 @@ import { MessageService } from '@common/message/services/message.service';
 import { SessionService } from '@modules/session/services/session.service';
 import { Injectable } from '@nestjs/common';
 import type {
-    IUserPurgeLoginsPayload,
-    IUserPurgeLoginsQueueResponse,
-} from '@modules/user/interfaces/user.interface';
+    ISessionPurgeLoginsPayload,
+    ISessionPurgeLoginsQueueResponse,
+} from '@modules/session/interfaces/session.interface';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 
 @Injectable()
-export class UserProcessPurgeLoginsUseCase implements IAppUseCase<
-    [IUserPurgeLoginsPayload],
-    IUserPurgeLoginsQueueResponse
+export class SessionProcessPurgeLoginsUseCase implements IAppUseCase<
+    [ISessionPurgeLoginsPayload],
+    ISessionPurgeLoginsQueueResponse
 > {
     constructor(
         private readonly sessionService: SessionService,
@@ -18,13 +18,13 @@ export class UserProcessPurgeLoginsUseCase implements IAppUseCase<
     ) {}
 
     async execute(
-        data: IUserPurgeLoginsPayload
-    ): Promise<IUserPurgeLoginsQueueResponse> {
+        data: ISessionPurgeLoginsPayload
+    ): Promise<ISessionPurgeLoginsQueueResponse> {
         const { userId, sessions } = data;
         await this.sessionService.deleteLogins(userId, sessions);
 
         const message = this.messageService.setMessage(
-            'user.queue.auth.purgeLogins'
+            'session.queue.purgeLogins'
         );
 
         return {

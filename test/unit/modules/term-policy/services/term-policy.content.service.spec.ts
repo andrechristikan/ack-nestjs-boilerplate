@@ -809,6 +809,7 @@ describe('TermPolicyContentService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyContentUpdated,
                     metadata: writtenMetadata,
@@ -1019,6 +1020,7 @@ describe('TermPolicyContentService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyContentAdded,
                     metadata: writtenMetadata,
@@ -1199,6 +1201,7 @@ describe('TermPolicyContentService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminTermPolicyContentRemoved,
                     metadata: writtenMetadata,

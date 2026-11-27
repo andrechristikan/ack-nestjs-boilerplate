@@ -100,6 +100,8 @@ describe('UserGetProfileUseCase', () => {
                 createdBy: null,
                 updatedAt: new Date('2026-01-01T00:00:00.000Z'),
                 updatedBy: null,
+                deletedAt: null,
+                deletedBy: null,
                 country: sableCountry,
             },
         ],

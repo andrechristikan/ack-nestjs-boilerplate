@@ -305,6 +305,7 @@ describe('MfaRegenerateBackupCodesUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userMfaBackupCodesRegenerated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);

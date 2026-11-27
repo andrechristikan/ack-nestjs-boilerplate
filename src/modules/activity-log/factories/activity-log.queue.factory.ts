@@ -11,17 +11,19 @@ export class ActivityLogQueueFactory implements RegisterQueueOptionsFactory {
 
     createRegisterQueueOptions(): RegisterQueueOptions {
         const maxAttempts = this.configService.get<number>(
-            'queue.job.maxAttempts'
+            'activityLog.queue.maxAttempts'
         )!;
-        const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
+        const keepLogs = this.configService.get<number>(
+            'activityLog.queue.keepLogs'
+        )!;
         const backoffDelayInMs = this.configService.get<number>(
-            'queue.job.activityLogBackoffDelayInMs'
+            'activityLog.queue.backoffDelayInMs'
         )!;
         const removeOnCompleteAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnCompleteAgeInSeconds'
+            'activityLog.queue.removeOnCompleteAgeInSeconds'
         )!;
         const removeOnFailAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnFailAgeInSeconds'
+            'activityLog.queue.removeOnFailAgeInSeconds'
         )!;
 
         return {

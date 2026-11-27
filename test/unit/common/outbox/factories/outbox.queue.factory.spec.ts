@@ -27,11 +27,11 @@ describe('OutboxQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options with the outbox backoff delay', () => {
             stubConfigValues(configService, {
-                'queue.job.maxAttempts': 5,
-                'queue.job.keepLogs': 100,
-                'queue.job.outboxBackoffDelayInMs': 10000,
-                'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                'queue.job.removeOnFailAgeInSeconds': 86400,
+                'outbox.queue.maxAttempts': 5,
+                'outbox.queue.keepLogs': 100,
+                'outbox.queue.backoffDelayInMs': 10000,
+                'outbox.queue.removeOnCompleteAgeInSeconds': 3600,
+                'outbox.queue.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

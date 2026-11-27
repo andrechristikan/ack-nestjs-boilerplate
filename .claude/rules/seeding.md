@@ -55,7 +55,7 @@ The `termPolicy` seed publishes version 1 of every `EnumTermPolicyType`, `publis
 
 ## Idempotency and reset
 
-`seed()` is safe against a database that already holds its rows: an `upsert` on a unique key, or an existence check (`findMany` on the keys, then `createMany` of the missing rows), never a blind `create`. A seed is seed-once: an upsert `update` writes `updatedBy` only, so changed seed data reaches the database through `migration:fresh`. Prisma on MongoDB has no `skipDuplicates` on `createMany`. `remove()` resets the collections its `seed()` owns outright. `MigrationSeedBase` ends every run with `CacheService.flush()` after `seed()` or `remove()`; a seed invalidates no cache key itself.
+`seed()` is safe against a database that already holds its rows: an `upsert` on a unique key, or an existence check (`findMany` on the keys, then `createMany` of the missing rows), never a blind `create`. A seed is seed-once: an upsert `update` writes `updatedBy` only, so changed seed data reaches the database through `migration:fresh`. The `templateEmailNotification` seed is the exception: it upserts every SES template (`AwsSesService.upsertTemplate`), since an SES template is no database row and `migration:fresh` does not reach it. Prisma on MongoDB has no `skipDuplicates` on `createMany`. `remove()` resets the collections its `seed()` owns outright. `MigrationSeedBase` ends every run with `CacheService.flush()` after `seed()` or `remove()`; a seed invalidates no cache key itself.
 
 ## Off-limits
 

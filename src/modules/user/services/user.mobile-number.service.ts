@@ -103,6 +103,7 @@ export class UserMobileNumberService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userMobileNumberAdded,
             }
@@ -211,6 +212,7 @@ export class UserMobileNumberService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userMobileNumberUpdated,
             }
@@ -220,7 +222,7 @@ export class UserMobileNumberService {
         return mobileNumber;
     }
 
-    /** Deletes the mobile number, touches the user (clearing the password attempt when its password was checked), marks the number's unused codes used, and adds the entry on the caller's transaction; a delete that matches no row rejects with UserMobileNumberNotFoundException. */
+    /** Soft-deletes the mobile number, touches the user (clearing the password attempt when its password was checked), marks the number's unused codes used, and adds the entry on the caller's transaction; a delete that matches no live row throws UserMobileNumberNotFoundException. */
     async deleteMobileNumberInTx(
         tx: IDatabaseTransactionClient,
         requestContext: IRequestContext,
@@ -228,14 +230,19 @@ export class UserMobileNumberService {
         authContext: IAuthJwtAccessContext,
         mobileNumberId: string,
         isPasswordChecked: boolean
-    ): Promise<IUserMobileNumber> {
+    ): Promise<void> {
         const userId = authContext.userId;
+        const deletedAt = this.helperDateService.now();
         // Sequential by design: a statement whose failure is the answer, awaited before an unrelated write
-        const mobileNumber = await this.userMobileNumberRepository.deleteInTx(
+        const isDeleted = await this.userMobileNumberRepository.softDeleteInTx(
             tx,
             userId,
-            mobileNumberId
+            mobileNumberId,
+            deletedAt
         );
+        if (!isDeleted) {
+            throw new UserMobileNumberNotFoundException();
+        }
 
         await Promise.all([
             this.userService.touchUpdatedByInTx(tx, userId, isPasswordChecked),
@@ -249,19 +256,23 @@ export class UserMobileNumberService {
             requestContext,
             apiKeyContext,
             authContext,
+            null,
             {
                 action: EnumActivityLogAction.userMobileNumberDeleted,
             }
         );
         await this.outboxService.addInTx(tx, entry);
-
-        return mobileNumber;
     }
 
-    async removeByUserInTx(
+    async softDeleteByUserInTx(
         tx: IDatabaseTransactionClient,
-        userId: string
+        userId: string,
+        deletedAt: Date
     ): Promise<void> {
-        await this.userMobileNumberRepository.deleteByUserInTx(tx, userId);
+        await this.userMobileNumberRepository.softDeleteByUserInTx(
+            tx,
+            userId,
+            deletedAt
+        );
     }
 }

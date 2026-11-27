@@ -134,6 +134,7 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
             expect(apiKeyService.getOneById).toHaveBeenCalledWith(apiKey.id);
             expect(apiKeyService.deleteByAdminInTx).toHaveBeenCalledWith(
                 tx,
+                authContext,
                 apiKey.id
             );
         });
@@ -152,6 +153,7 @@ describe('ApiKeyDeleteByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyDeleted,
                     metadata,

@@ -61,8 +61,7 @@
         "exportByAdmin": "Exported users by admin.",
         "deleteSelf": "Deleted the user account on its own request.",
         "auth": {
-            "purgeExpired": "Purged expired identity rows.",
-            "purgeLogins": "Purged revoked session logins.",
+            "purgeExpired": "Purged expired verifications and forgot-password requests.",
             "error": {
                 "unknownProcess": "No {process} job handler exists."
             }

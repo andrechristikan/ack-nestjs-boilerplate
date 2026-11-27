@@ -231,6 +231,7 @@ describe('ProjectService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectCreated,
                     userId: 'user-1',
@@ -271,6 +272,7 @@ describe('ProjectService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectUpdated,
                     userId: 'user-1',
@@ -329,6 +331,7 @@ describe('ProjectService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.projectUpdated,
                     userId: 'user-1',

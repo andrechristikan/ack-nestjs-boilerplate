@@ -38,7 +38,11 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
         await this.apiKeyService.getOneById(id);
 
         const updated = await this.databaseService.withTransaction(async tx => {
-            const apiKey = await this.apiKeyService.deleteByAdminInTx(tx, id);
+            const apiKey = await this.apiKeyService.deleteByAdminInTx(
+                tx,
+                authContext,
+                id
+            );
 
             const timestamp = this.helperDateService.now();
             const metadata = this.apiKeyUtil.mapActivityLogMetadata(
@@ -49,6 +53,7 @@ export class ApiKeyDeleteByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyDeleted,
                     metadata,

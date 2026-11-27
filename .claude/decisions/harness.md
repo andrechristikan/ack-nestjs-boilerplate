@@ -60,9 +60,9 @@ Rule: `AGENTS.md`, Prisma schema; `.claude/agents/reviewer.md` and `.claude/agen
 - A database or Redis shell for an agent: every write stays the owner's.
 - The session reading the data itself: the check belongs to the agent that judges the change.
 
-### `Explore` runs on haiku
+### `explore` runs on haiku
 
-Rule: `.claude/agents/Explore.md`, frontmatter.
+Rule: `.claude/agents/explore.md`, frontmatter.
 
 - The built-in on the session's model: a location lookup is mechanical work, and it ran on the session's most expensive model.
 
@@ -78,7 +78,7 @@ Rule: `.claude/skills/ack-quick/SKILL.md`.
 Rule: `.claude/agents/researcher.md`, frontmatter.
 
 - The session searching itself: fetched pages stay in the context every later call re-reads.
-- `Explore` given the web tools: an agent that reads untrusted pages would hold a shell.
+- `explore` given the web tools: an agent that reads untrusted pages would hold a shell.
 - `Read` in its tools: beside `WebFetch`, a page's instruction could send a repository file out.
 - Sonnet: a lookup extracts and cites what a page says, which the cheaper model does.
 

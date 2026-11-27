@@ -18,7 +18,7 @@ export class ActivityLogUtil {
 
     private toMasked(row: IActivityLog, userId: string): IActivityLogMasked {
         if (row.createdBy === userId) {
-            return row;
+            return { ...row, apiKeyId: null };
         }
 
         const { metadata } = row;
@@ -27,6 +27,7 @@ export class ActivityLogUtil {
             metadata !== null &&
             !Array.isArray(metadata);
         const hidden = {
+            apiKeyId: null,
             ipAddress: null,
             userAgent: null,
             geoLocation: null,
@@ -64,6 +65,7 @@ export class ActivityLogUtil {
 
         return {
             workspaceId,
+            apiKeyId: null,
             action,
             description,
             ipAddress,

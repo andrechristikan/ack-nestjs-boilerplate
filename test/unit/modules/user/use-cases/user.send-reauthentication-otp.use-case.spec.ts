@@ -237,6 +237,7 @@ describe('UserSendReauthenticationOtpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userReauthenticationOtpSent }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);

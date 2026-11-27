@@ -352,6 +352,7 @@ describe('MfaSetupTotpUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userMfaTotpSetUp,
                     userId: 'user-marten',

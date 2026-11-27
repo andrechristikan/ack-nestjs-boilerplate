@@ -9,6 +9,7 @@ import { ResponsePagination } from '@common/response/decorators/response.decorat
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { ActivityLogResponseSchema } from '@modules/activity-log/dtos/response/activity-log.response.dto';
 import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogGetListOffsetByApiKeyUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-api-key.use-case';
 import { ActivityLogGetListOffsetByUserUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-user.use-case';
 import { ActivityLogGetListOffsetByWorkspaceUseCase } from '@modules/activity-log/use-cases/activity-log.get-list-offset-by-workspace.use-case';
 import { ApiKeyProtected } from '@modules/api-key/decorators/api-key.decorator';
@@ -32,6 +33,7 @@ import {
 })
 export class ActivityLogAdminController {
     constructor(
+        private readonly activityLogGetListOffsetByApiKeyUseCase: ActivityLogGetListOffsetByApiKeyUseCase,
         private readonly activityLogGetListOffsetByUserUseCase: ActivityLogGetListOffsetByUserUseCase,
         private readonly activityLogGetListOffsetByWorkspaceUseCase: ActivityLogGetListOffsetByWorkspaceUseCase
     ) {}
@@ -104,6 +106,42 @@ export class ActivityLogAdminController {
     ): Promise<IResponsePaginationReturn<IActivityLog>> {
         return this.activityLogGetListOffsetByWorkspaceUseCase.execute(
             workspaceId,
+            query
+        );
+    }
+
+    @Doc({
+        summary: 'get all activity logs of an api key',
+        description: 'orderBy presets: latest (createdAt descending, default).',
+    })
+    @ResponsePagination('activityLog.listByApiKey', {
+        schema: ActivityLogResponseSchema,
+    })
+    @TermPolicyAcceptanceProtected()
+    @PolicyProtected(
+        {
+            subject: EnumPolicySubject.apiKey,
+            action: [EnumPolicyAction.read],
+        },
+        {
+            subject: EnumPolicySubject.activityLog,
+            action: [EnumPolicyAction.read],
+        }
+    )
+    @RoleProtected(EnumRoleType.admin)
+    @UserProtected()
+    @RequestThrottleProtected({ user: true })
+    @AuthJwtAccessProtected()
+    @ApiKeyProtected()
+    @Get('/api-key/:apiKeyId/list')
+    async listByApiKey(
+        @Param('apiKeyId', { schema: RequestMongoIdSchema })
+        apiKeyId: string,
+        @Query({ schema: ActivityLogAdminListRequestSchema })
+        query: ActivityLogAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        return this.activityLogGetListOffsetByApiKeyUseCase.execute(
+            apiKeyId,
             query
         );
     }

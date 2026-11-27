@@ -1,6 +1,7 @@
 {
     "queue": {
         "sweep": "Dispatched {count} pending or reconciled outbox rows.",
+        "scrubExpired": "Scrubbed the payload of {count} finished outbox rows.",
         "error": {
             "unknownProcess": "No {process} job handler exists.",
             "rowMissing": "Outbox row {outboxId} does not exist."

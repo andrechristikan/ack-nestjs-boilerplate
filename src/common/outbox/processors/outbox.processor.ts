@@ -23,6 +23,15 @@ export class OutboxProcessor extends QueueProcessorBase {
 
                 return { message, count };
             }
+            case EnumOutboxProcess.scrubExpired: {
+                const count = await this.outboxService.scrubExpired();
+                const message = this.messageService.setMessage(
+                    'outbox.queue.scrubExpired',
+                    { properties: { count } }
+                );
+
+                return { message, count };
+            }
             default:
                 this.throwUnknownProcess(
                     'outbox.queue.error.unknownProcess',

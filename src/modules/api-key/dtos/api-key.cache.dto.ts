@@ -16,6 +16,8 @@ export const ApiKeyCacheSchema = z.object({
     createdBy: z.string().nullable(),
     updatedAt: z.coerce.date(),
     updatedBy: z.string().nullable(),
+    deletedAt: z.coerce.date().nullable(),
+    deletedBy: z.string().nullable(),
 }) satisfies z.ZodType<ApiKey>;
 
 /** @public */

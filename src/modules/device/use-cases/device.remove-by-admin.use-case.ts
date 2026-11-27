@@ -91,6 +91,7 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.adminDeviceRemoved,
                         metadata: actorMetadata,
@@ -110,6 +111,7 @@ export class DeviceRemoveByAdminUseCase implements IAppUseCase<
                     requestContext,
                     apiKeyContext,
                     authContext,
+                    null,
                     {
                         action: EnumActivityLogAction.userDeviceRemovedByAdmin,
                         userId,

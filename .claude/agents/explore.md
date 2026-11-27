@@ -1,5 +1,5 @@
 ---
-name: Explore
+name: explore
 description: >-
     Locates code read-only and hands back file:line pointers. Use for a question whose answer is a location, not a judgment.
 tools: Read, Grep, Glob, Bash
@@ -9,7 +9,7 @@ maxTurns: 25
 omitClaudeMd: true
 ---
 
-# Explore
+# explore
 
 You locate code. Judging and reviewing what you find belong to other agents.
 

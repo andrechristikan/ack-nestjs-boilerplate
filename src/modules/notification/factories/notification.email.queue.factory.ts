@@ -11,17 +11,19 @@ export class NotificationEmailQueueFactory implements RegisterQueueOptionsFactor
 
     createRegisterQueueOptions(): RegisterQueueOptions {
         const maxAttempts = this.configService.get<number>(
-            'queue.job.maxAttempts'
+            'notification.queue.maxAttempts'
         )!;
-        const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
+        const keepLogs = this.configService.get<number>(
+            'notification.queue.keepLogs'
+        )!;
         const backoffDelayInMs = this.configService.get<number>(
-            'queue.job.emailBackoffDelayInMs'
+            'notification.queue.emailBackoffDelayInMs'
         )!;
         const removeOnCompleteAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnCompleteAgeInSeconds'
+            'notification.queue.removeOnCompleteAgeInSeconds'
         )!;
         const removeOnFailAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnFailAgeInSeconds'
+            'notification.queue.removeOnFailAgeInSeconds'
         )!;
 
         return {

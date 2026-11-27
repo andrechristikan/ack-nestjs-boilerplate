@@ -8,13 +8,33 @@ import type {
     IActivityLogCreate,
 } from '@modules/activity-log/interfaces/activity-log.interface';
 import { ActivityLogRepository } from '@modules/activity-log/repositories/activity-log.repository';
+import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ActivityLogService {
+    private readonly retentionInMs: number;
+
     constructor(
-        private readonly activityLogRepository: ActivityLogRepository
-    ) {}
+        private readonly configService: ConfigService,
+        private readonly activityLogRepository: ActivityLogRepository,
+        private readonly helperDateService: HelperDateService
+    ) {
+        this.retentionInMs = this.configService.get<number>(
+            'activityLog.retentionInMs'
+        )!;
+    }
+
+    async purgeExpired(): Promise<number> {
+        const now = this.helperDateService.now();
+        const retention = this.helperDateService.createDuration({
+            milliseconds: this.retentionInMs,
+        });
+        const threshold = this.helperDateService.backward(now, retention);
+
+        return this.activityLogRepository.deleteExpiredBefore(threshold);
+    }
 
     async createMany(rows: IActivityLogCreate[]): Promise<void> {
         await this.activityLogRepository.createMany(rows);
@@ -48,6 +68,16 @@ export class ActivityLogService {
         return this.activityLogRepository.findByWorkspaceWithPaginationOffset(
             workspaceId,
             userId,
+            pagination
+        );
+    }
+
+    async getListOffsetByApiKey(
+        apiKeyId: string,
+        pagination: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        return this.activityLogRepository.findByApiKeyWithPaginationOffset(
+            apiKeyId,
             pagination
         );
     }

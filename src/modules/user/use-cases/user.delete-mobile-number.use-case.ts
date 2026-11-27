@@ -3,14 +3,10 @@ import type { IRequestContext } from '@common/request/interfaces/request.interfa
 import type { IResponseReturn } from '@common/response/interfaces/response.interface';
 import { EnumUserReauthenticationAction } from '@generated/prisma-client/client';
 import type { UserDeleteMobileNumberRequestDto } from '@modules/user/dtos/request/user.delete-mobile-number.request.dto';
-import type {
-    IUserContext,
-    IUserMobileNumber,
-} from '@modules/user/interfaces/user.interface';
+import type { IUserContext } from '@modules/user/interfaces/user.interface';
 import { MfaService } from '@modules/mfa/services/mfa.service';
 import { UserAuthService } from '@modules/user/services/user.auth.service';
 import { UserMobileNumberService } from '@modules/user/services/user.mobile-number.service';
-import { UserUtil } from '@modules/user/utils/user.util';
 import { Injectable } from '@nestjs/common';
 import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
@@ -26,14 +22,13 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
         string,
         UserDeleteMobileNumberRequestDto,
     ],
-    IResponseReturn<IUserMobileNumber>
+    IResponseReturn<void>
 > {
     constructor(
         private readonly userMobileNumberService: UserMobileNumberService,
         private readonly userAuthService: UserAuthService,
         private readonly mfaService: MfaService,
-        private readonly databaseService: DatabaseService,
-        private readonly userUtil: UserUtil
+        private readonly databaseService: DatabaseService
     ) {}
 
     async execute(
@@ -51,7 +46,7 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
             passkeyResponse,
             otp,
         }: UserDeleteMobileNumberRequestDto
-    ): Promise<IResponseReturn<IUserMobileNumber>> {
+    ): Promise<IResponseReturn<void>> {
         const { user } = userContext;
         const state = await this.mfaService.getFactorState(user.id);
         // Sequential by design: a credential proof, awaited alone
@@ -121,36 +116,31 @@ export class UserDeleteMobileNumberUseCase implements IAppUseCase<
             mobileNumberId
         );
 
-        const mobileNumber = await this.databaseService.withTransaction(
-            async tx => {
-                await this.userAuthService.completeReauthenticationInTx(
-                    tx,
-                    authContext,
-                    passwordCheck.isPasswordChecked,
-                    verificationId,
-                    true
-                );
-                await this.mfaService.completeReauthenticationInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mfaCheck
-                );
+        await this.databaseService.withTransaction(async tx => {
+            await this.userAuthService.completeReauthenticationInTx(
+                tx,
+                authContext,
+                passwordCheck.isPasswordChecked,
+                verificationId,
+                true
+            );
+            await this.mfaService.completeReauthenticationInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mfaCheck
+            );
+            await this.userMobileNumberService.deleteMobileNumberInTx(
+                tx,
+                requestContext,
+                apiKeyContext,
+                authContext,
+                mobileNumberId,
+                passwordCheck.isPasswordChecked
+            );
+        });
 
-                return this.userMobileNumberService.deleteMobileNumberInTx(
-                    tx,
-                    requestContext,
-                    apiKeyContext,
-                    authContext,
-                    mobileNumberId,
-                    passwordCheck.isPasswordChecked
-                );
-            }
-        );
-
-        const censored = this.userUtil.toCensoredMobileNumber(mobileNumber);
-
-        return { data: censored };
+        return {};
     }
 }

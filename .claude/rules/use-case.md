@@ -17,7 +17,7 @@ Its place in the layer chain and what it injects: `layering.md`, Roles.
 - Composes in sequence:
     1. the fail-fast checks (`transaction.md`, Transactions), the independent ones in one `Promise.all` (`concurrency.md`, Together and alone), a rank or permission assert on a row a check returned following it;
     2. the transaction it opens: each service's `*InTx` write, the side effects and activity entries added inside it (`effects.md`).
-- A use case taking the request takes its controller's contexts in the `http.md` order, and passes each service, `ActivityLogQueue.recordEffect`, and `toPayload` `requestContext`, `apiKeyContext`, and `authContext` whole (the actor: `service.md`, Shape). A job use case passes on what its payload carries.
+- A use case taking the request takes its controller's contexts in the `http.md` order, and passes each service, `ActivityLogQueue.recordEffect`, and `toPayload` `requestContext`, `apiKeyContext`, and `authContext` whole (the actor: `service.md`, Shape), and `recordEffect` and `toPayload` `workspaceContext` too. A job use case passes on what its payload carries.
 - A row a guard loaded is the fail-fast read, taken from its context (`guards.md`, Contexts).
 - Originates only these (a rethrow or wrap originates nothing: `exceptions.md`, The hierarchy); `UserSignUpUseCase` (`src/modules/user/use-cases/user.sign-up.use-case.ts`) shows the first:
     - the slug retry exhaustion `AppUnknownException` after the retry loop's last attempt (`transaction.md`, Generated unique values);

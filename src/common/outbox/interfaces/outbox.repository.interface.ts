@@ -29,6 +29,7 @@ export interface IOutboxRepository {
         lastError: string,
         failedAt: Date
     ): Promise<void>;
+    scrubExpired(threshold: Date, scrubbedAt: Date): Promise<number>;
     replaceData(id: string, data: Prisma.InputJsonObject): Promise<void>;
     replaceDataInTx(
         tx: IDatabaseTransactionClient,

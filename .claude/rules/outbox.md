@@ -9,7 +9,7 @@ paths:
 
 Effects, writing, and payloads: `effects.md`.
 
-`src/common/outbox/` is a kit module beside the queue kit; `OutboxRepository` is the kit's one repository, over an infrastructure model. `OutboxModule` registers its own queue, `EnumOutboxQueue.outbox`; its `OutboxQueue` declares the sweep and takes no enum-value token, since no row targets the `outbox` queue. `OutboxProcessor` awaits `OutboxService.sweep()`.
+`src/common/outbox/` is a kit module beside the queue kit; `OutboxRepository` is the kit's one repository, over an infrastructure model. `OutboxModule` registers its own queue, `EnumOutboxQueue.outbox`; its `OutboxQueue` declares the sweep and the scrub and takes no enum-value token, since no row targets the `outbox` queue. `OutboxProcessor` awaits `OutboxService.sweep()` or `scrubExpired()`.
 
 ## Dispatch
 
@@ -25,3 +25,9 @@ Effects, writing, and payloads: `effects.md`.
 
 - `QueueProcessorBase.process` loads the row of a job whose data holds an `outboxId` and passes `row.data` and the id to `handle(job, data, outboxId)`. A job scheduler tick carries no `outboxId`, has no row, and passes `job.data` and `null`. A use case that records step state takes `execute(outboxId, data)`; step state that must commit with a step's writes goes through `OutboxService.replaceDataInTx(tx, outboxId, data)` in that transaction, any other through `replaceData`. Each writes the whole payload, the data `handle` received with the step's changes spread over it, and reads no row first.
 - The base stamps the row `completed` with its attempts on return, and `failed` with the message on the last attempt or an `UnrecoverableError`. A retrying job stays `enqueued`. A stamp that fails logs one `warn` and leaves the job's outcome as it is; the row stays `enqueued` for the reconcile.
+
+## Retention
+
+- An `Outbox` row is never deleted, so its key keeps deduplicating.
+- The `scrubExpired` job (`outbox.scrubExpiredCron`) scrubs every `completed` or `failed` row whose `updatedAt` is older than `outbox.retentionInMs` and whose `scrubbedAt` is `null`, with one `updateMany`: `data` `{}`, `lastError` `null`, `scrubbedAt` now. The row keeps its queue, name, key, status, attempts, and timestamps, `updatedAt` aside; `OutboxService.addManyInTx` writes `scrubbedAt: null`.
+- `outbox.retentionInMs` stays longer than every `<namespace>.queue.removeOnFailAgeInSeconds`, so no BullMQ job outlives its payload.

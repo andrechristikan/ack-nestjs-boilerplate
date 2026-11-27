@@ -27,11 +27,11 @@ describe('UserAuthQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
             stubConfigValues(configService, {
-                'queue.job.maxAttempts': 5,
-                'queue.job.keepLogs': 100,
-                'queue.job.userAuthBackoffDelayInMs': 2500,
-                'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                'queue.job.removeOnFailAgeInSeconds': 86400,
+                'user.queue.maxAttempts': 5,
+                'user.queue.keepLogs': 100,
+                'user.queue.authBackoffDelayInMs': 2500,
+                'user.queue.removeOnCompleteAgeInSeconds': 3600,
+                'user.queue.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

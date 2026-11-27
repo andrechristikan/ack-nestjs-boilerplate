@@ -36,10 +36,14 @@ import {
     buildRequestContext,
     buildApiKeyContext,
     buildAuthJwtAccessContext,
+    buildWorkspace,
+    buildWorkspaceContext,
+    buildWorkspaceMember,
 } from '@test/unit/helpers/test.unit.request.helper';
 
 describe('ActivityLogQueue', () => {
     const messageService: MockProxy<MessageService> = mock<MessageService>();
+    const activityLogQueue: MockProxy<Queue> = mock<Queue>();
     const createdAt = new Date('2026-01-01T00:00:00.000Z');
 
     const userAgent: UserAgent = {
@@ -82,19 +86,23 @@ describe('ActivityLogQueue', () => {
                 ActivityLogQueue,
                 {
                     provide: getQueueToken(EnumActivityLogQueue.activityLog),
-                    useValue: mock<Queue>(),
+                    useValue: activityLogQueue,
                 },
                 ActivityLogUtil,
                 { provide: MessageService, useValue: messageService },
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
-                    useValue: buildConfigService(TestUnitKitConfigValues),
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'activityLog.purgeExpiredCron': '0 3 * * *',
+                    }),
                 },
             ],
         }).compile();
 
         messageService.setMessage.mockReturnValue('Description');
+        activityLogQueue.getJobSchedulers.mockResolvedValue([]);
         vi.spyOn(module.get(DatabaseUtil), 'createId').mockReturnValue(
             'aaaaaaaaaaaaaaaaaaaaaaaa'
         );
@@ -102,34 +110,72 @@ describe('ActivityLogQueue', () => {
         queue = module.get(ActivityLogQueue);
     });
 
+    describe('onModuleInit', () => {
+        it('schedules the recurring purge of expired activity entries', async () => {
+            await queue.onModuleInit();
+
+            expect(activityLogQueue.upsertJobScheduler).toHaveBeenCalledTimes(
+                1
+            );
+            expect(activityLogQueue.upsertJobScheduler).toHaveBeenCalledWith(
+                EnumActivityLogProcess.purgeExpired,
+                { pattern: '0 3 * * *', tz: 'UTC' },
+                {
+                    name: EnumActivityLogProcess.purgeExpired,
+                    data: {},
+                    opts: { priority: EnumQueuePriority.low },
+                }
+            );
+        });
+
+        it('rejects when the scheduler upsert rejects', async () => {
+            const error = new Error('redis down');
+            activityLogQueue.upsertJobScheduler.mockRejectedValue(error);
+
+            await expect(queue.onModuleInit()).rejects.toBe(error);
+        });
+    });
+
     describe('toPayload', () => {
-        it('carries the ids and the request log of the three contexts', () => {
+        it('carries the ids and the request log of the four contexts', () => {
             const requestContext = buildRequestContext();
             const apiKeyContext = buildApiKeyContext();
             const authContext = buildAuthJwtAccessContext('actor-1');
+            const workspaceContext = buildWorkspaceContext(
+                buildWorkspace(),
+                buildWorkspaceMember('actor-1')
+            );
 
             const result = queue.toPayload(
                 requestContext,
                 apiKeyContext,
-                authContext
+                authContext,
+                workspaceContext
             );
 
             expect(result).toStrictEqual({
                 apiKeyId: apiKeyContext.apiKey.id,
                 actorUserId: 'actor-1',
+                workspaceId: workspaceContext.workspaceId,
                 requestLog: requestContext.requestLog,
             });
         });
 
-        it('carries a null actor when the route has none', () => {
+        it('carries a null actor and workspace when the route has none', () => {
             const requestContext = buildRequestContext();
             const apiKeyContext = buildApiKeyContext();
 
-            const result = queue.toPayload(requestContext, apiKeyContext, null);
+            const result = queue.toPayload(
+                requestContext,
+                apiKeyContext,
+                null,
+                null
+            );
 
             expect(result).toStrictEqual({
                 apiKeyId: apiKeyContext.apiKey.id,
                 actorUserId: null,
+                workspaceId: null,
                 requestLog: requestContext.requestLog,
             });
         });
@@ -140,10 +186,15 @@ describe('ActivityLogQueue', () => {
             const requestContext = buildRequestContext();
             const apiKeyContext = buildApiKeyContext();
             const authContext = buildAuthJwtAccessContext('actor-1');
+            const workspaceContext = buildWorkspaceContext(
+                buildWorkspace(),
+                buildWorkspaceMember('actor-1')
+            );
             const result = queue.recordEffect(
                 requestContext,
                 apiKeyContext,
                 authContext,
+                workspaceContext,
                 { action: EnumActivityLogAction.userProfileUpdated }
             );
 
@@ -157,6 +208,7 @@ describe('ActivityLogQueue', () => {
                             userId: 'actor-1',
                             createdBy: 'actor-1',
                             workspaceId: null,
+                            apiKeyId: apiKeyContext.apiKey.id,
                             action: EnumActivityLogAction.userProfileUpdated,
                             description: 'Description',
                             requestLog: requestContext.requestLog,
@@ -174,6 +226,7 @@ describe('ActivityLogQueue', () => {
     describe('recordEffectFromPayload', () => {
         const payload: IActivityLogContextPayload = {
             actorUserId: 'actor-1',
+            workspaceId: 'workspace-1',
             apiKeyId: 'api-key-1',
             requestLog,
         };
@@ -194,6 +247,7 @@ describe('ActivityLogQueue', () => {
                             userId: 'actor-1',
                             createdBy: 'actor-1',
                             workspaceId: null,
+                            apiKeyId: 'api-key-1',
                             action: EnumActivityLogAction.userProfileUpdated,
                             description: 'Description',
                             requestLog,
@@ -221,7 +275,7 @@ describe('ActivityLogQueue', () => {
 
         it('records userMfaVerificationFailed on a public route with the user id and createdBy the contract requires', () => {
             const result = queue.recordEffectFromPayload(
-                { ...payload, actorUserId: null },
+                { ...payload, actorUserId: null, workspaceId: null },
                 {
                     action: EnumActivityLogAction.userMfaVerificationFailed,
                     userId: 'user-1',
@@ -245,7 +299,7 @@ describe('ActivityLogQueue', () => {
             let thrown: unknown;
             try {
                 queue.recordEffectFromPayload(
-                    { ...payload, actorUserId: null },
+                    { ...payload, actorUserId: null, workspaceId: null },
                     { action: EnumActivityLogAction.userMfaVerificationFailed }
                 );
             } catch (error) {
@@ -686,6 +740,7 @@ describe('ActivityLogQueue', () => {
             const result = queue['buildCreate'](
                 activityLog,
                 null,
+                'api-key-1',
                 requestLog,
                 createdAt
             );
@@ -695,6 +750,7 @@ describe('ActivityLogQueue', () => {
                 userId: 'user-1',
                 createdBy: 'creator-1',
                 workspaceId: null,
+                apiKeyId: 'api-key-1',
                 action: EnumActivityLogAction.userLoggedInWithCredential,
                 description: 'User login with credential',
                 requestLog,

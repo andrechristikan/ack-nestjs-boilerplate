@@ -25,11 +25,11 @@ describe('NotificationSmsQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
             stubConfigValues(configService, {
-                'queue.job.maxAttempts': 5,
-                'queue.job.keepLogs': 100,
-                'queue.job.smsBackoffDelayInMs': 1500,
-                'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                'queue.job.removeOnFailAgeInSeconds': 86400,
+                'notification.queue.maxAttempts': 5,
+                'notification.queue.keepLogs': 100,
+                'notification.queue.smsBackoffDelayInMs': 1500,
+                'notification.queue.removeOnCompleteAgeInSeconds': 3600,
+                'notification.queue.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

@@ -30,7 +30,7 @@ Producing a notification, its key, and the `snapshot`: `notify.md`.
 - Ciphertext travels unchanged. A channel use case decrypts immediately before its SES or FCM call, an email value into `templateData` only.
 - `NotificationEmailDeliveryUnknownException` and `NotificationPushDeliveryNotFoundException` extend `QueueUnrecoverableException`: the processor base turns them, and a `HelperDecryptFailedException`, into `UnrecoverableError` (`queue.md`, Processors).
 - `FirebaseService.sendMulticast` returns `failureTokens` (invalid, cleared from the user's devices through `DeviceService.cleanupNotificationTokensInTx` in the transaction that stamps the push sent; the delivery row keeps only their count, never the tokens) and `retryTokens` (a `FirebaseRetryableTokenCodes` code, no code, or a rejected chunk), kept as `encryptedPendingTokens`: a retry sends only to those, and push `sentAt` is stamped once none is pending.
-- An email body is a seeded SES Handlebars template (`seeding.md`), one per kind, registered in `NotificationTemplateService`.
+- An email body is a seeded SES Handlebars template (`seeding.md`), one per kind, registered in `NotificationTemplateService` and upserted by `templateEmailNotification --type seed`.
 
 ## Term-policy publish
 

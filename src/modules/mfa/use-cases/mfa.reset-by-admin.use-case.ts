@@ -93,6 +93,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminUserMfaReset,
                     metadata: actorMetadata,
@@ -102,6 +103,7 @@ export class MfaResetByAdminUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userMfaResetByAdmin,
                     userId,

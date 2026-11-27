@@ -11,17 +11,19 @@ export class WorkspaceQueueFactory implements RegisterQueueOptionsFactory {
 
     createRegisterQueueOptions(): RegisterQueueOptions {
         const maxAttempts = this.configService.get<number>(
-            'queue.job.maxAttempts'
+            'workspace.queue.maxAttempts'
         )!;
-        const keepLogs = this.configService.get<number>('queue.job.keepLogs')!;
+        const keepLogs = this.configService.get<number>(
+            'workspace.queue.keepLogs'
+        )!;
         const backoffDelayInMs = this.configService.get<number>(
-            'queue.job.workspaceBackoffDelayInMs'
+            'workspace.queue.backoffDelayInMs'
         )!;
         const removeOnCompleteAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnCompleteAgeInSeconds'
+            'workspace.queue.removeOnCompleteAgeInSeconds'
         )!;
         const removeOnFailAgeInSeconds = this.configService.get<number>(
-            'queue.job.removeOnFailAgeInSeconds'
+            'workspace.queue.removeOnFailAgeInSeconds'
         )!;
 
         return {

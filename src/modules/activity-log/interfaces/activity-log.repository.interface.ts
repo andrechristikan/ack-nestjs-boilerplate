@@ -28,5 +28,10 @@ export interface IActivityLogRepository {
         userId: string | null,
         { where, ...params }: IPaginationQueryCursorParams
     ): Promise<IPaginationCursorReturn<IActivityLog>>;
+    findByApiKeyWithPaginationOffset(
+        apiKeyId: string,
+        { where, ...params }: IPaginationQueryOffsetParams
+    ): Promise<IResponsePaginationReturn<IActivityLog>>;
     createMany(rows: IActivityLogCreate[]): Promise<void>;
+    deleteExpiredBefore(threshold: Date): Promise<number>;
 }

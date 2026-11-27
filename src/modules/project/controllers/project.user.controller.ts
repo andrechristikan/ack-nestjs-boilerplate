@@ -265,12 +265,14 @@ export class ProjectUserController {
         @RequestContext() requestContext: IRequestContext,
         @ApiKeyContext() apiKeyContext: IApiKeyContext,
         @AuthJwtAccessContext() authContext: IAuthJwtAccessContext,
+        @WorkspaceContext() workspaceContext: IWorkspaceContext,
         @ProjectContext() projectContext: IProjectContext
     ): Promise<IResponseReturn<void>> {
         return this.projectSoftDeleteUseCase.execute(
             requestContext,
             apiKeyContext,
             authContext,
+            workspaceContext,
             projectContext
         );
     }

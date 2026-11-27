@@ -393,6 +393,7 @@ describe('DeviceRemoveUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userDeviceRemoved,
                     userId: 'user-1',

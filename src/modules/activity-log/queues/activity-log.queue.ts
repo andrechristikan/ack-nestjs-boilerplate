@@ -2,6 +2,7 @@ import { DatabaseUtil } from '@common/database/utils/database.util';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { QueueBase } from '@common/queue/bases/queue.base';
 import { EnumQueuePriority } from '@common/queue/enums/queue.enum';
+import type { IQueueScheduler } from '@common/queue/interfaces/queue.interface';
 import type {
     IRequestContext,
     IRequestLog,
@@ -28,20 +29,30 @@ import type {
 import { ActivityLogUtil } from '@modules/activity-log/utils/activity-log.util';
 import type { IApiKeyContext } from '@modules/api-key/interfaces/api-key.interface';
 import type { IAuthJwtAccessContext } from '@modules/auth/interfaces/auth.interface';
+import type { IWorkspaceContext } from '@modules/workspace/interfaces/workspace.interface';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 
 @Injectable()
 export class ActivityLogQueue extends QueueBase {
+    private readonly timezone: string;
+    private readonly purgeExpiredCron: string;
+
     constructor(
         @InjectQueue(EnumActivityLogQueue.activityLog)
         protected override readonly queue: Queue,
+        private readonly configService: ConfigService,
         private readonly activityLogUtil: ActivityLogUtil,
         private readonly databaseUtil: DatabaseUtil,
         private readonly helperDateService: HelperDateService
     ) {
         super(queue);
+        this.timezone = this.configService.get<string>('app.timezone')!;
+        this.purgeExpiredCron = this.configService.get<string>(
+            'activityLog.purgeExpiredCron'
+        )!;
     }
 
     private getContract(
@@ -154,6 +165,7 @@ export class ActivityLogQueue extends QueueBase {
     private buildCreate(
         input: IActivityLogInput<EnumActivityLogAction>,
         payloadUserId: string | null,
+        apiKeyId: string,
         requestLog: IRequestLog,
         createdAt: Date
     ): IActivityLogCreate {
@@ -189,6 +201,7 @@ export class ActivityLogQueue extends QueueBase {
             userId,
             createdBy,
             workspaceId,
+            apiKeyId,
             action: input.action,
             description,
             requestLog,
@@ -197,16 +210,35 @@ export class ActivityLogQueue extends QueueBase {
         };
     }
 
+    protected override schedulers(): IQueueScheduler[] {
+        return [
+            {
+                id: EnumActivityLogProcess.purgeExpired,
+                repeat: {
+                    pattern: this.purgeExpiredCron,
+                    tz: this.timezone,
+                },
+                template: {
+                    name: EnumActivityLogProcess.purgeExpired,
+                    data: {},
+                    opts: { priority: EnumQueuePriority.low },
+                },
+            },
+        ];
+    }
+
     recordEffect(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
         authContext: IAuthJwtAccessContext | null,
+        workspaceContext: IWorkspaceContext | null,
         input: IActivityLogInput<EnumActivityLogAction>
     ): IActivityLogCreateManyEffect {
         const payload = this.toPayload(
             requestContext,
             apiKeyContext,
-            authContext
+            authContext,
+            workspaceContext
         );
 
         return this.recordEffectFromPayload(payload, input);
@@ -237,6 +269,7 @@ export class ActivityLogQueue extends QueueBase {
         const row = this.buildCreate(
             input,
             payload.actorUserId,
+            payload.apiKeyId,
             payload.requestLog,
             createdAt
         );
@@ -255,21 +288,25 @@ export class ActivityLogQueue extends QueueBase {
     toPayload(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext
+        authContext: IAuthJwtAccessContext,
+        workspaceContext: IWorkspaceContext | null
     ): IActivityLogActorPayload;
     toPayload(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext | null
+        authContext: IAuthJwtAccessContext | null,
+        workspaceContext: IWorkspaceContext | null
     ): IActivityLogContextPayload;
     toPayload(
         requestContext: IRequestContext,
         apiKeyContext: IApiKeyContext,
-        authContext: IAuthJwtAccessContext | null
+        authContext: IAuthJwtAccessContext | null,
+        workspaceContext: IWorkspaceContext | null
     ): IActivityLogContextPayload {
         return {
             apiKeyId: apiKeyContext.apiKey.id,
             actorUserId: authContext?.userId ?? null,
+            workspaceId: workspaceContext?.workspaceId ?? null,
             requestLog: requestContext.requestLog,
         };
     }

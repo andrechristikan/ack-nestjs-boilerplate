@@ -190,6 +190,7 @@ describe('ApiKeyCreateByAdminUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.adminApiKeyCreated,
                     metadata,

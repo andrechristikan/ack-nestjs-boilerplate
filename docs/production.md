@@ -412,7 +412,7 @@ S3 bucket setup:
 SES identity and templates:
 
 - `AWS_SES_IDENTITY_ARN` is optional. When set, every send passes it as `SourceArn`. `EMAIL_NO_REPLY_ADDRESS` and `EMAIL_SUPPORT_ADDRESS` are the sender addresses.
-- `pnpm migration templateEmailNotification --type seed` syncs the Handlebars templates to SES. It skips with a warning when SES is unset.
+- `pnpm migration templateEmailNotification --type seed` upserts every Handlebars template in SES, so it syncs a changed template. It skips with a warning when SES is unset.
 
 IAM permissions follow the calls the application makes:
 

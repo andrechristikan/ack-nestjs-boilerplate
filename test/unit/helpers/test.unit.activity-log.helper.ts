@@ -11,6 +11,7 @@ export function buildActivityLog(
         id,
         userId: 'user-1',
         workspaceId: null,
+        apiKeyId: 'api-key-1',
         action: EnumActivityLogAction.userLoggedInWithCredential,
         description: 'User login with credential',
         ipAddress: '10.0.0.1',

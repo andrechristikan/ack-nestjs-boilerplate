@@ -1,0 +1,45 @@
+import { PaginationStoreKey } from '@common/pagination/constants/pagination.constant';
+import { PaginationQueryUtil } from '@common/pagination/utils/pagination.query.util';
+import { RequestStoreService } from '@common/request/services/request.store.service';
+import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
+import type { ActivityLogAdminListRequestDto } from '@modules/activity-log/dtos/request/activity-log.admin-list.request.dto';
+import type { IActivityLog } from '@modules/activity-log/interfaces/activity-log.interface';
+import { ActivityLogService } from '@modules/activity-log/services/activity-log.service';
+import { Injectable } from '@nestjs/common';
+import { ActivityLogOrderBy } from '@modules/activity-log/constants/activity-log.list.constant';
+import type { IAppUseCase } from '@app/interfaces/app.use-case.interface';
+import { EnumActivityLogOrderBy } from '@modules/activity-log/enums/activity-log.enum';
+
+@Injectable()
+export class ActivityLogGetListOffsetByApiKeyUseCase implements IAppUseCase<
+    [string, ActivityLogAdminListRequestDto],
+    IResponsePaginationReturn<IActivityLog>
+> {
+    constructor(
+        private readonly activityLogService: ActivityLogService,
+        private readonly paginationQueryUtil: PaginationQueryUtil,
+        private readonly requestStoreService: RequestStoreService
+    ) {}
+
+    async execute(
+        apiKeyId: string,
+        query: ActivityLogAdminListRequestDto
+    ): Promise<IResponsePaginationReturn<IActivityLog>> {
+        const { params, storePatch } = this.paginationQueryUtil.offset(query, {
+            orderBy: ActivityLogOrderBy,
+            defaultOrderBy: EnumActivityLogOrderBy.latest,
+        });
+        this.requestStoreService.merge(PaginationStoreKey, storePatch);
+
+        const { data, ...others } =
+            await this.activityLogService.getListOffsetByApiKey(
+                apiKeyId,
+                params
+            );
+
+        return {
+            data,
+            ...others,
+        };
+    }
+}

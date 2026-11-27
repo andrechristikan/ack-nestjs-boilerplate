@@ -15,10 +15,12 @@ This page explains the `activity-log` module, for a developer who records an act
 - [Actor and target rows](#actor-and-target-rows)
 - [Failed logins](#failed-logins)
 - [Reading entries](#reading-entries)
+- [Retention](#retention)
 
 ## Related Documents
 
-- [Queue][ref-doc-concept-queue]: the outbox row, the dispatch after the commit, and the retries behind the `activityLog` queue
+- [Queue][ref-doc-concept-queue]: the outbox row, the dispatch after the commit, the retries behind the `activityLog` queue, and the queue's daily purge
+- [API Key][ref-doc-concept-api-key]: the key an entry records and the soft delete that keeps its entries listable
 - [Analytic][ref-doc-concept-analytic]: the metrics that count and list entries
 - [User][ref-doc-concept-user]: the sign-up, lockout, and deletion flows that write entries
 - [Session][ref-doc-concept-session]: the revoke entries of a login on a shared device
@@ -51,12 +53,12 @@ sequenceDiagram
 - An entry is an outbox row added in the transaction of the write it records. The action and its entry commit together or not at all, and a worker writes the row afterward ([Queue][ref-doc-concept-queue-outbox]).
 - `ActivityLogProcessor` hands the job to `ActivityLogProcessCreateManyUseCase`, which calls `ActivityLogService.createMany`. `ActivityLogRepository.createMany` reads which ids already exist and inserts only the absent ones, so a retried job writes no row twice.
 - The id and the `createdAt` of a row are drawn when the entry is recorded, so every retry carries the same values.
-- A job records entries too. Every row stores the actor's request log and a job runs outside the request, so its payload carries `ActivityLogQueue.toPayload(...)`, the ids and the request log of the request that queued it, and its use case passes that payload to `recordEffectFromPayload`.
+- A job records entries too. Every row stores the actor's request log and a job runs outside the request, so its payload carries `ActivityLogQueue.toPayload(...)`, the API key id, the actor id, the workspace id, and the request log of the request that queued it, and its use case passes that payload to `recordEffectFromPayload`.
 - Every `EnumActivityLogAction` member has a contract row in `ActivityLogActionContract` and a message under `activityLog.<action>`.
 
 ## Recording an entry in the transaction
 
-`ActivityLogQueue.recordEffect(requestContext, apiKeyContext, authContext, input)` builds the effect. It takes the request log (IP, user agent, geo location), the API key, and the actor from the three contexts, and `authContext` is `null` where the route has none.
+`ActivityLogQueue.recordEffect(requestContext, apiKeyContext, authContext, workspaceContext, input)` builds the effect. It takes the request log (IP, user agent, geo location), the API key, and the actor from the four contexts, and `authContext` and `workspaceContext` are `null` where the route has none. Every row stores the `apiKeyId` of the request that caused it, a job's included.
 
 - One call records one entry: `recordEffect` takes one input and returns a `createMany` effect holding one row. A flow that writes several entries calls it once per entry and adds the effects together with `addManyInTx`.
 - Whoever runs the write adds the entry: a service for its own action, a use case for a flow it sequences. The entry is built after the write, so it carries what the write returned.
@@ -64,7 +66,7 @@ sequenceDiagram
 - The contract validates the entry. A missing required field, a field the contract does not take, or metadata that fails the schema throws `ActivityLogContractInvalidException`.
 - The `user` value of the contract decides where the owner comes from, and names no target row of a pair. With `payload`, the owner and `createdBy` are the `userId` of the JWT, taken from the context payload `toPayload` builds, the input carries neither, and a request with no JWT throws `ActivityLogContractInvalidException`. With `target`, the input carries the owner as `userId` and the acting user as `createdBy`.
 - A flow with no signed-in user (a login, a sign-up, a failed attempt, a job) records with `target`, and so do many actions of a signed-in user (`workspaceSwitched`, `userAllSessionsRevoked`). Other self actions use `payload` (`userSessionRevoked`).
-- The `workspace` value is `none` or `target`. With `target` the input carries the `workspaceId` and the row stores it, and a missing or empty one throws `ActivityLogContractInvalidException`. With `none` the input carries none and the row stores `null`. Every action with a workspace uses `target`.
+- The `workspace` value is `none` or `target`. The row's workspace is the input's `workspaceId`, never the workspace context's. With `target` the input carries the `workspaceId` and the row stores it, and a missing or empty one throws `ActivityLogContractInvalidException`. With `none` the input carries none and the row stores `null`. Every action with a workspace uses `target`.
 - Metadata is a strict zod object per action, so a key the schema does not declare fails. It holds no secret and no large object, and it is `null` when empty.
 - The description is rendered when the entry is recorded: `ActivityLogUtil.getDescription` resolves `activityLog.<action>` with the metadata as placeholders in the default language (`message.defaultLanguage`), not the caller's, and the text is stored on the row.
 
@@ -93,14 +95,23 @@ The analytic failed-login and lockout metrics count these three rows ([Analytic]
 
 ## Reading entries
 
-There are four lists: the caller's own entries and a workspace's entries, each for the signed-in user and for an admin.
+There are five lists: the caller's own entries and a workspace's entries, each for the signed-in user and for an admin, and an admin list of one API key's entries.
 
 - A user-scoped list returns every row whose `userId` is that user, with or without a workspace: the actions the user performed and the target rows written when someone else acted on the user.
 - A workspace-scoped list returns the rows of one workspace. The shared one (the `/shared` routes the signed-in user calls) is narrowed to the caller's rows, the rows whose `userId` is the caller, and sits behind the `workspace` flag and the workspace guard. The admin one is narrowed only when a `userId` filter is passed, so a paired workspace action shows twice there, once for each party.
+- The admin list by API key returns the rows whose `apiKeyId` is that key, offset-paginated like the other admin lists. A soft-deleted key keeps its entries listable until the retention purges them, and an id no key holds answers an empty list ([API Key][ref-doc-concept-api-key-delete]).
 - The only order preset is `latest`, `createdAt` descending.
-- The shared scope maps its page through `ActivityLogUtil.toMaskedList`. A row the reader created stays whole. A row another actor created has `ipAddress`, `userAgent`, `geoLocation`, and `createdBy` set to `null` and no `actorUserId` in its metadata, so a target row never exposes the actor's request.
-- The admin scope returns every field.
+- The shared scope maps its page through `ActivityLogUtil.toMaskedList`. A row the reader created stays whole. A row another actor created has `ipAddress`, `userAgent`, `geoLocation`, and `createdBy` set to `null` and no `actorUserId` in its metadata, so a target row never exposes the actor's request. Every shared row has `apiKeyId` set to `null`, the reader's own included.
+- The admin scope returns every field, `apiKeyId` included.
 - Both scopes answer through `ActivityLogResponseSchema`. The metadata passes through `ActivityLogMetadataResponseSchema`, which declares every metadata key as optional and strips a stored key it does not declare.
+
+## Retention
+
+An entry stores the actor's request log (IP address, user agent, location), personal data that the purge deletes once the retention has passed.
+
+- The `activityLog` queue declares a daily `purgeExpired` job (cron `activityLog.purgeExpiredCron`, `0 3 * * *`, in the `app.timezone` zone). `ActivityLogProcessPurgeExpiredUseCase` calls `ActivityLogService.purgeExpired`, which deletes with one `deleteMany` every row whose `createdAt` is older than `activityLog.retentionInMs` (365 days) and answers the count in the job's message. Until then an entry stays listable, a deleted key's included.
+- The retention is no shorter than `analytic.maxWindowInMs` (90 days), so no metric window reads a purged row.
+- The keys are in the [Configuration Reference][ref-doc-reference-configuration-activity-log].
 
 <!-- REFERENCES -->
 
@@ -112,10 +123,13 @@ There are four lists: the caller's own entries and a workspace's entries, each f
 [ref-doc-concept-user-lockout]: user.md#status-and-lockout
 [ref-doc-concept-session]: session.md
 [ref-doc-concept-mfa]: mfa.md
+[ref-doc-concept-api-key]: api-key.md
+[ref-doc-concept-api-key-delete]: api-key.md#soft-delete
 [ref-doc-concept-workspace]: workspace.md
 [ref-doc-concept-i18n]: i18n.md
 [ref-doc-concept-pagination]: pagination.md
 [ref-doc-guide-activity-log]: ../guides/activity-log.md
+[ref-doc-reference-configuration-activity-log]: ../reference/configuration.md#activitylog
 [ref-doc-reference-activity-log]: ../reference/activity-log.md
 [ref-doc-reference-activity-log-pairs]: ../reference/activity-log.md#actor-and-target-pairs
 [ref-doc-reference-status-codes-activity-log]: ../reference/status-codes.md#activity-log

@@ -11,8 +11,10 @@ import {
 
 @Injectable()
 export class OutboxQueue extends QueueBase {
+    private readonly timezone: string;
     private readonly sweepIntervalInMs: number;
     private readonly sweepKeepCompleted: number;
+    private readonly scrubExpiredCron: string;
 
     constructor(
         @InjectQueue(EnumOutboxQueue.outbox)
@@ -20,11 +22,15 @@ export class OutboxQueue extends QueueBase {
         private readonly configService: ConfigService
     ) {
         super(queue);
+        this.timezone = this.configService.get<string>('app.timezone')!;
         this.sweepIntervalInMs = this.configService.get<number>(
             'outbox.sweepIntervalInMs'
         )!;
         this.sweepKeepCompleted = this.configService.get<number>(
             'outbox.sweepKeepCompleted'
+        )!;
+        this.scrubExpiredCron = this.configService.get<string>(
+            'outbox.scrubExpiredCron'
         )!;
     }
 
@@ -39,6 +45,18 @@ export class OutboxQueue extends QueueBase {
                     opts: {
                         removeOnComplete: { count: this.sweepKeepCompleted },
                     },
+                },
+            },
+            {
+                id: EnumOutboxProcess.scrubExpired,
+                repeat: {
+                    pattern: this.scrubExpiredCron,
+                    tz: this.timezone,
+                },
+                template: {
+                    name: EnumOutboxProcess.scrubExpired,
+                    data: {},
+                    opts: {},
                 },
             },
         ];

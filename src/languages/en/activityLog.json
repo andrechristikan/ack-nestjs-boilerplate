@@ -3,6 +3,7 @@
     "listSelfByWorkspace": "Here's your activity history in this workspace.",
     "listByUser": "User activity history has been retrieved.",
     "listByWorkspace": "Workspace activity history has been retrieved.",
+    "listByApiKey": "API key activity history has been retrieved.",
     "userCreated": "User account has been created",
     "userBlockedByAdmin": "User account has been blocked",
     "userStatusUpdatedByAdmin": "Your status has been updated",
@@ -123,6 +124,7 @@
     "adminDeviceRemoved": "A device of user {targetUsername} has been removed",
     "queue": {
         "createMany": "Created activity logs.",
+        "purgeExpired": "Purged expired activity entries.",
         "error": {
             "unknownProcess": "No {process} job handler exists."
         }

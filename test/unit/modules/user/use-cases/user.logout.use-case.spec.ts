@@ -166,6 +166,7 @@ describe('UserLogoutUseCase', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userLoggedOut }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entryEffect);

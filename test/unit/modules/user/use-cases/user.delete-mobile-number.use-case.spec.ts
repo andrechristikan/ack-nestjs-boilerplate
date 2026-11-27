@@ -34,7 +34,6 @@ import {
     TestUnitKitConfigValues,
     TestUnitKitProviders,
 } from '@test/unit/helpers/test.unit.kit.helper';
-import { UserUtil } from '@modules/user/utils/user.util';
 
 const passkeyResponse = {
     id: 'AbC_-123',
@@ -76,6 +75,8 @@ describe('UserDeleteMobileNumberUseCase', () => {
         createdBy: null,
         updatedAt: new Date('2026-01-01T00:00:00.000Z'),
         updatedBy: null,
+        deletedAt: null,
+        deletedBy: null,
         country: {
             id: 'country-swift',
             name: 'Swift Coast',
@@ -109,9 +110,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
         userMobileNumberService.getOneMobileNumber.mockResolvedValue(
             mobileNumber
         );
-        userMobileNumberService.deleteMobileNumberInTx.mockResolvedValue(
-            mobileNumber
-        );
+        userMobileNumberService.deleteMobileNumberInTx.mockResolvedValue();
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -123,7 +122,6 @@ describe('UserDeleteMobileNumberUseCase', () => {
                 { provide: UserAuthService, useValue: userAuthService },
                 { provide: MfaService, useValue: mfaService },
                 { provide: DatabaseService, useValue: databaseService },
-                UserUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
@@ -248,9 +246,7 @@ describe('UserDeleteMobileNumberUseCase', () => {
                     mobileNumber.id,
                     dto
                 )
-            ).resolves.toEqual({
-                data: { ...mobileNumber, number: '8123*****90' },
-            });
+            ).resolves.toEqual({});
 
             expect(
                 userAuthService.checkReauthenticationPassword

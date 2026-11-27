@@ -27,11 +27,11 @@ describe('TermPolicyQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
             stubConfigValues(configService, {
-                'queue.job.maxAttempts': 5,
-                'queue.job.keepLogs': 100,
-                'queue.job.termPolicyBackoffDelayInMs': 2500,
-                'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                'queue.job.removeOnFailAgeInSeconds': 86400,
+                'termPolicy.queue.maxAttempts': 5,
+                'termPolicy.queue.keepLogs': 100,
+                'termPolicy.queue.backoffDelayInMs': 2500,
+                'termPolicy.queue.removeOnCompleteAgeInSeconds': 3600,
+                'termPolicy.queue.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

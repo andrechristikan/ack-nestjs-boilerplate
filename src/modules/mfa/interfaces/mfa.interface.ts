@@ -11,6 +11,7 @@ import type {
     MfaTotp,
     Prisma,
 } from '@generated/prisma-client/client';
+import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type { MfaPasskeyRefSelect } from '@modules/mfa/constants/mfa.constant';
 import type { IDeviceIdentity } from '@modules/device/interfaces/device.interface';
 import type { EnumMfaMethod } from '@modules/mfa/enums/mfa.enum';
@@ -192,6 +193,10 @@ export interface IMfaChallengeLogin {
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
     webAuthnChallenge: string | null;
+}
+
+export interface IMfaPurgeExpiredQueueResponse extends IQueueResponse {
+    mfaChallenges: number;
 }
 
 export interface IMfaChallenge {

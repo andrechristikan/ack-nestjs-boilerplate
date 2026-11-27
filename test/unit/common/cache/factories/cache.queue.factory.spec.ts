@@ -27,11 +27,11 @@ describe('CacheQueueFactory', () => {
     describe('createRegisterQueueOptions', () => {
         it('builds the default job options and no connection from queue config', () => {
             stubConfigValues(configService, {
-                'queue.job.maxAttempts': 5,
-                'queue.job.keepLogs': 100,
-                'queue.job.cacheBackoffDelayInMs': 2500,
-                'queue.job.removeOnCompleteAgeInSeconds': 3600,
-                'queue.job.removeOnFailAgeInSeconds': 86400,
+                'cache.queue.maxAttempts': 5,
+                'cache.queue.keepLogs': 100,
+                'cache.queue.backoffDelayInMs': 2500,
+                'cache.queue.removeOnCompleteAgeInSeconds': 3600,
+                'cache.queue.removeOnFailAgeInSeconds': 86400,
             });
 
             const options = factory.createRegisterQueueOptions();

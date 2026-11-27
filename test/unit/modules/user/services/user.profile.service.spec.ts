@@ -636,6 +636,7 @@ describe('UserProfileService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userPhotoProfileUpdated }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);
@@ -845,6 +846,7 @@ describe('UserProfileService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 { action: EnumActivityLogAction.userUsernameClaimed }
             );
             expect(outboxService.addInTx).toHaveBeenCalledWith(tx, entry);

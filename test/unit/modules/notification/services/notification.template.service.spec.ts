@@ -3,8 +3,6 @@ import { join } from 'path';
 import { Test } from '@nestjs/testing';
 import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
-import { TemplateDoesNotExistException } from '@aws-sdk/client-ses';
-import type { GetTemplateCommandOutput } from '@aws-sdk/client-ses';
 import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { AwsSesService } from '@common/aws/services/aws.ses.service';
 import { EnumNotificationKind } from '@modules/notification/enums/notification.enum';
@@ -157,18 +155,16 @@ describe('NotificationTemplateService', () => {
         service = module.get(NotificationTemplateService);
     });
 
-    describe('emailImport', () => {
+    describe('emailUpsert', () => {
         it.each(templates)(
-            'creates the $name template from $file',
+            'upserts the $name template from $file',
             async ({ name, file, subject }) => {
-                awsSesService.createTemplate.mockResolvedValue({
-                    $metadata: {},
-                });
+                awsSesService.upsertTemplate.mockResolvedValue(undefined);
 
                 await expect(
-                    service.emailImport(name)
+                    service.emailUpsert(name)
                 ).resolves.toBeUndefined();
-                expect(awsSesService.createTemplate).toHaveBeenCalledWith({
+                expect(awsSesService.upsertTemplate).toHaveBeenCalledWith({
                     name,
                     subject,
                     htmlBody: readFileSync(join(templateDir, file), 'utf8'),
@@ -176,59 +172,16 @@ describe('NotificationTemplateService', () => {
             }
         );
 
-        it('throws an AppUnknownException naming the import when the create call rejects', async () => {
+        it('throws an AppUnknownException naming the upsert when the upsert call rejects', async () => {
             const error = new Error('ses down');
-            awsSesService.createTemplate.mockRejectedValue(error);
+            awsSesService.upsertTemplate.mockRejectedValue(error);
 
             await expect(
-                service.emailImport(EnumNotificationKind.workspaceInvite)
+                service.emailUpsert(EnumNotificationKind.workspaceInvite)
             ).rejects.toMatchObject({
                 constructor: AppUnknownException,
                 rawError: error,
-                description: 'Failed to import workspace invite template',
-            });
-        });
-    });
-
-    describe('getEmail', () => {
-        it('returns the template from SES', async () => {
-            const template: GetTemplateCommandOutput = {
-                $metadata: {},
-                Template: { TemplateName: EnumNotificationKind.welcome },
-            };
-            awsSesService.getTemplate.mockResolvedValue(template);
-
-            const result = await service.getEmail(EnumNotificationKind.welcome);
-
-            expect(result).toBe(template);
-            expect(awsSesService.getTemplate).toHaveBeenCalledWith({
-                name: EnumNotificationKind.welcome,
-            });
-        });
-
-        it('returns null for the template-not-found answer', async () => {
-            awsSesService.getTemplate.mockRejectedValue(
-                new TemplateDoesNotExistException({
-                    message: 'missing',
-                    $metadata: {},
-                })
-            );
-
-            await expect(
-                service.getEmail(EnumNotificationKind.welcome)
-            ).resolves.toBeNull();
-        });
-
-        it('throws an AppUnknownException naming the get for any other error', async () => {
-            const error = new Error('ses down');
-            awsSesService.getTemplate.mockRejectedValue(error);
-
-            await expect(
-                service.getEmail(EnumNotificationKind.welcome)
-            ).rejects.toMatchObject({
-                constructor: AppUnknownException,
-                rawError: error,
-                description: 'Failed to get welcome template',
+                description: 'Failed to upsert workspace invite template',
             });
         });
     });

@@ -1,8 +1,12 @@
 import {
+    CreateTemplateCommand,
     MessageRejected,
     SESClient,
     SESServiceException,
+    TemplateDoesNotExistException,
+    UpdateTemplateCommand,
 } from '@aws-sdk/client-ses';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsUnavailableException } from '@common/aws/exceptions/aws.unavailable.exception';
 import type {
@@ -268,65 +272,33 @@ describe('AwsSesService', () => {
         });
     });
 
-    describe('createTemplate', () => {
+    describe('upsertTemplate', () => {
         const template: IAwsSesTemplate = {
             name: 'welcome',
             subject: 'Welcome',
             htmlBody: '<p>Welcome</p>',
             plainTextBody: 'Welcome',
         };
-
-        it('returns an empty result when not initialized', async () => {
-            const service = await createAwsSesService(configValues, {});
-
-            await expect(service.createTemplate(template)).resolves.toEqual({
-                $metadata: {},
-            });
-        });
-
-        it('throws when both bodies are missing', async () => {
-            const service = await createInitializedAwsSesService(
-                configValues,
-                {}
-            );
-
-            const rejection = service.createTemplate({
-                name: 'welcome',
-                subject: 'Welcome',
-            });
-
-            await expect(rejection).rejects.toMatchObject({
-                module: 'aws',
-                statusCode: EnumAwsStatusCodeError.sesTemplateBodyRequired,
-            });
-        });
-
-        it('creates the template', async () => {
-            const service = await createInitializedAwsSesService(
-                configValues,
-                {}
-            );
-            send.mockResolvedValueOnce({ $metadata: {} });
-
-            await expect(service.createTemplate(template)).resolves.toEqual({
-                $metadata: {},
-            });
-        });
-    });
-
-    describe('updateTemplate', () => {
-        const template: IAwsSesTemplate = {
-            name: 'welcome',
-            subject: 'Welcome',
-            htmlBody: '<p>Welcome</p>',
+        const expectedInput = {
+            Template: {
+                TemplateName: 'welcome',
+                SubjectPart: 'Welcome',
+                HtmlPart: '<p>Welcome</p>',
+                TextPart: 'Welcome',
+            },
         };
+        const templateMissingError = new TemplateDoesNotExistException({
+            $metadata: {},
+            message: 'Template does not exist',
+        });
 
-        it('returns an empty result when not initialized', async () => {
+        it('sends nothing when not initialized', async () => {
             const service = await createAwsSesService(configValues, {});
 
-            await expect(service.updateTemplate(template)).resolves.toEqual({
-                $metadata: {},
-            });
+            await expect(
+                service.upsertTemplate(template)
+            ).resolves.toBeUndefined();
+            expect(send).not.toHaveBeenCalled();
         });
 
         it('throws when both bodies are missing', async () => {
@@ -335,7 +307,7 @@ describe('AwsSesService', () => {
                 {}
             );
 
-            const rejection = service.updateTemplate({
+            const rejection = service.upsertTemplate({
                 name: 'welcome',
                 subject: 'Welcome',
             });
@@ -344,18 +316,89 @@ describe('AwsSesService', () => {
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.sesTemplateBodyRequired,
             });
+            expect(send).not.toHaveBeenCalled();
         });
 
-        it('updates the template', async () => {
+        it('sends the update and no create when the update succeeds', async () => {
             const service = await createInitializedAwsSesService(
                 configValues,
                 {}
             );
             send.mockResolvedValueOnce({ $metadata: {} });
 
-            await expect(service.updateTemplate(template)).resolves.toEqual({
-                $metadata: {},
+            await expect(
+                service.upsertTemplate(template)
+            ).resolves.toBeUndefined();
+
+            expect(send).toHaveBeenCalledTimes(1);
+            expect(send).toHaveBeenCalledWith(
+                expect.any(UpdateTemplateCommand)
+            );
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({ input: expectedInput })
+            );
+            expect(send).not.toHaveBeenCalledWith(
+                expect.any(CreateTemplateCommand)
+            );
+        });
+
+        it('sends the create with the same template when the update finds no template', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(templateMissingError);
+            send.mockResolvedValueOnce({ $metadata: {} });
+
+            await expect(
+                service.upsertTemplate(template)
+            ).resolves.toBeUndefined();
+
+            expect(send).toHaveBeenCalledTimes(2);
+            expect(send).toHaveBeenNthCalledWith(
+                1,
+                expect.any(UpdateTemplateCommand)
+            );
+            expect(send).toHaveBeenNthCalledWith(
+                2,
+                expect.any(CreateTemplateCommand)
+            );
+            expect(send).toHaveBeenNthCalledWith(
+                2,
+                expect.objectContaining({ input: expectedInput })
+            );
+        });
+
+        it('rejects and sends no create when the update fails for another reason', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(messageRejectedError);
+
+            await expect(
+                service.upsertTemplate(template)
+            ).rejects.toMatchObject({
+                constructor: AppUnknownException,
+                rawError: messageRejectedError,
             });
+            expect(send).toHaveBeenCalledTimes(1);
+            expect(send).not.toHaveBeenCalledWith(
+                expect.any(CreateTemplateCommand)
+            );
+        });
+
+        it('rejects with the unavailable exception when the update hits a server fault', async () => {
+            const service = await createInitializedAwsSesService(
+                configValues,
+                {}
+            );
+            send.mockRejectedValueOnce(serverFaultError);
+
+            await expect(
+                service.upsertTemplate(template)
+            ).rejects.toBeInstanceOf(AwsUnavailableException);
+            expect(send).toHaveBeenCalledTimes(1);
         });
     });
 

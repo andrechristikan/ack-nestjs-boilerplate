@@ -1,6 +1,8 @@
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { SessionGetListCursorUseCase } from '@modules/session/use-cases/session.get-list-cursor.use-case';
 import { SessionGetListOffsetByAdminUseCase } from '@modules/session/use-cases/session.get-list-offset-by-admin.use-case';
+import { SessionProcessPurgeExpiredUseCase } from '@modules/session/use-cases/session.process-purge-expired.use-case';
+import { SessionProcessPurgeLoginsUseCase } from '@modules/session/use-cases/session.process-purge-logins.use-case';
 import { SessionRevokeAllByAdminUseCase } from '@modules/session/use-cases/session.revoke-all-by-admin.use-case';
 import { SessionRevokeByAdminUseCase } from '@modules/session/use-cases/session.revoke-by-admin.use-case';
 import { SessionRevokeUseCase } from '@modules/session/use-cases/session.revoke.use-case';
@@ -13,6 +15,8 @@ import { Module } from '@nestjs/common';
     providers: [
         SessionGetListOffsetByAdminUseCase,
         SessionGetListCursorUseCase,
+        SessionProcessPurgeExpiredUseCase,
+        SessionProcessPurgeLoginsUseCase,
         SessionRevokeUseCase,
         SessionRevokeByAdminUseCase,
         SessionRevokeAllByAdminUseCase,
@@ -20,6 +24,8 @@ import { Module } from '@nestjs/common';
     exports: [
         SessionGetListOffsetByAdminUseCase,
         SessionGetListCursorUseCase,
+        SessionProcessPurgeExpiredUseCase,
+        SessionProcessPurgeLoginsUseCase,
         SessionRevokeUseCase,
         SessionRevokeByAdminUseCase,
         SessionRevokeAllByAdminUseCase,

@@ -53,6 +53,7 @@ export class UserUpdateProfileUseCase implements IAppUseCase<
                 requestContext,
                 apiKeyContext,
                 authContext,
+                null,
                 {
                     action: EnumActivityLogAction.userProfileUpdated,
                 }
