@@ -29,6 +29,7 @@ This page explains the protections the request kit applies to every route and th
 - [Authentication][ref-doc-authentication]: tokens, sessions, passwords, and API keys
 - [Authorization][ref-doc-authorization]: roles, policies, and the guards that enforce them
 - [Logging][ref-doc-concept-logging]: redaction of sensitive fields in logs
+- [Sensitive Data Reference][ref-doc-reference-sensitive-data]: each sensitive datum by protection level
 - [Sentry][ref-doc-concept-sentry]: the scrub of Sentry payloads
 
 ## Overview
@@ -157,6 +158,7 @@ Every use of `node:crypto` goes through the `Helper*` services in `src/common/he
 - The purpose names one use, such as `PaginationCursor`. The context is the owning id, or a fixed string where the value has no owner: a cursor token has none.
 - A root secret is 48 random bytes written as 64 base64url characters. `pnpm generate:secret:encryption` creates both.
 - A root has no rotation path: a payload names no key, so replacing a root makes what it sealed unreadable.
+- Every sensitive datum with its protection level, its form at rest, and its retention is in [Sensitive Data Reference][ref-doc-reference-sensitive-data].
 - A sensitive field never reaches a log line or a Sentry payload: `LoggerSensitiveFields` lists the redacted keys, and the Pino `redact` option, `LoggerUtil`, and the scrubbers in `src/instrument.ts` apply the list. See [Redaction][ref-doc-concept-logging-redaction] and [Scrubbing][ref-doc-concept-sentry-scrubbing].
 
 <!-- REFERENCES -->
@@ -178,3 +180,4 @@ Every use of `node:crypto` goes through the `Helper*` services in `src/common/he
 [ref-doc-concept-logging-redaction]: logging.md#redaction
 [ref-doc-concept-sentry]: sentry.md
 [ref-doc-concept-sentry-scrubbing]: sentry.md#scrubbing
+[ref-doc-reference-sensitive-data]: ../reference/sensitive-data.md

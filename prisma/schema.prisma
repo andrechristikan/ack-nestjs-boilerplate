@@ -625,12 +625,12 @@ model Notification {
 }
 
 model NotificationDelivery {
-  id             String                  @id @default(auto()) @map("_id") @db.ObjectId
-  notificationId String                  @db.ObjectId
-  channel        EnumNotificationChannel
-  sentAt         DateTime?
-  processedAt    DateTime?
-  failureTokens  String[]                @default([])
+  id                String                  @id @default(auto()) @map("_id") @db.ObjectId
+  notificationId    String                  @db.ObjectId
+  channel           EnumNotificationChannel
+  sentAt            DateTime?
+  processedAt       DateTime?
+  failureTokenCount Int                     @default(0)
 
   createdAt DateTime @default(now())
   createdBy String?  @db.ObjectId

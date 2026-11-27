@@ -122,7 +122,6 @@ export class AuthJwtService {
             userId: data.id,
             roleId: data.roleId,
             username: data.username,
-            email: data.email,
             sessionId,
             deviceOwnershipId,
             loginAt,

@@ -36,7 +36,7 @@ export class NotificationSmsDeliveryService {
             notificationId,
             EnumNotificationChannel.sms,
             sentAt,
-            [],
+            0,
             proceedBy
         );
     }

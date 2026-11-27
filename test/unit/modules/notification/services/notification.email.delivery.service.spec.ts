@@ -96,7 +96,7 @@ describe('NotificationEmailDeliveryService', () => {
                 'notification-id',
                 EnumNotificationChannel.email,
                 stampedAt,
-                [],
+                0,
                 'proceed-by-id'
             );
         });

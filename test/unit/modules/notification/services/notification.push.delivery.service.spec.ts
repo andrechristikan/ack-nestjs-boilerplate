@@ -335,7 +335,7 @@ describe('NotificationPushDeliveryService', () => {
             await service.stampSentInTx(
                 tx,
                 'notification-id',
-                ['token-1'],
+                1,
                 EnumNotificationPushProcess.send,
                 'proceed-by-id'
             );
@@ -347,7 +347,7 @@ describe('NotificationPushDeliveryService', () => {
                 'notification-id',
                 EnumNotificationChannel.push,
                 TestPushStampedAt,
-                ['token-1'],
+                1,
                 'proceed-by-id'
             );
         });
@@ -361,7 +361,7 @@ describe('NotificationPushDeliveryService', () => {
                 service.stampSentInTx(
                     tx,
                     'notification-id',
-                    [],
+                    0,
                     EnumNotificationPushProcess.send,
                     'proceed-by-id'
                 )

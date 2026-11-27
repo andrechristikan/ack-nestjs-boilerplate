@@ -31,7 +31,6 @@ export interface IAuthJwtAccessTokenPayload {
     loginAt: Date;
     loginFrom: EnumUserLoginFrom;
     loginWith: EnumUserLoginWith;
-    email: string;
     username: string;
     userId: string;
     sessionId: string;
@@ -49,7 +48,7 @@ export interface IAuthJwtAccessTokenPayload {
 
 export type IAuthJwtRefreshTokenPayload = Omit<
     IAuthJwtAccessTokenPayload,
-    'type' | 'roleId' | 'username' | 'email' | 'verification'
+    'type' | 'roleId' | 'username' | 'verification'
 >;
 
 export type IAuthJwtPayloadIdentified<

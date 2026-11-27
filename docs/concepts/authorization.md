@@ -31,6 +31,7 @@ This page explains how a route decides whether the caller may use it, for a deve
 - [Route Protection Guide][ref-doc-guide-route-protection]: stack the decorators on a route
 - [Role Guide][ref-doc-guide-role]: create a role and its policies
 - [Decorators and Guards Reference][ref-doc-reference-decorators-and-guards]: the decorator order, each guard's store key, and the missing-entry exceptions
+- [Field Access Reference][ref-doc-reference-field-access]: the fields each audience reads and writes per resource
 
 ## Overview
 
@@ -119,6 +120,8 @@ Policies belong to admin-type roles:
 - On `@ProjectProtected(...roles)` with roles listed, a workspace member with the role `owner` or `admin` (`EnumWorkspaceMemberRole`, not the role type `admin`) passes without a project membership row. With no roles, a project membership row is required.
 - Their guards, their exceptions, and the roles are in [Workspace][ref-doc-workspace] and [Project][ref-doc-project]. Their place in the stack is in [Decorators and Guards Reference][ref-doc-reference-decorators-and-guards].
 
+The fields each audience reads and writes on a resource are in [Field Access Reference][ref-doc-reference-field-access].
+
 <!-- REFERENCES -->
 
 [ref-doc-concept-authentication]: authentication.md
@@ -135,3 +138,4 @@ Policies belong to admin-type roles:
 [ref-doc-guide-role]: ../guides/role.md
 [ref-doc-reference-decorators-and-guards]: ../reference/decorators-and-guards.md
 [ref-doc-reference-database-policy]: ../reference/database.md#policy
+[ref-doc-reference-field-access]: ../reference/field-access.md

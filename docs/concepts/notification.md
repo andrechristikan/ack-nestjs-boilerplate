@@ -117,7 +117,7 @@ A push token belongs to a device ownership ([Device][ref-doc-concept-device]). `
 3. It builds the title and body from the kind's message paths with the metadata as properties and calls `FirebaseService.sendMulticast`. The service splits the tokens into batches of `FirebaseMaxSendPushBatchSize` (500) and takes no batch size from the caller.
 4. A token Firebase rejects as invalid is a failure token. A token that failed for a retryable code, with no code, or in a rejected batch is a pending token, one a push retry sends to again. Both stay encrypted in the row as `encryptedFailureTokens` and `encryptedPendingTokens`.
 5. A pending token fails the `sendMulticast` step with a retrying `QueueException`, and the retry sends only to the pending tokens.
-6. When none is pending, one transaction stamps `sentAt` and `failureTokens` on the delivery row and clears the invalid tokens from the user's devices.
+6. When none is pending, one transaction stamps `sentAt` and `failureTokenCount`, the number of invalid tokens, on the delivery row and clears the invalid tokens from the user's devices.
 
 The push processor's limiter matches the Firebase quota (`FirebaseMaxRateLimitPerDuration`).
 

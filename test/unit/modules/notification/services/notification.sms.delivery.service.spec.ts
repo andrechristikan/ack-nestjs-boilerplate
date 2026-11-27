@@ -93,7 +93,7 @@ describe('NotificationSmsDeliveryService', () => {
                 'notification-flint',
                 EnumNotificationChannel.sms,
                 stampedAt,
-                [],
+                0,
                 'user-flint'
             );
         });

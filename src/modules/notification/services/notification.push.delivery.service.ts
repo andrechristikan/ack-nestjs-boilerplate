@@ -165,7 +165,7 @@ export class NotificationPushDeliveryService {
     async stampSentInTx(
         tx: IDatabaseTransactionClient,
         notificationId: string,
-        failureTokens: string[],
+        failureTokenCount: number,
         process: EnumNotificationPushProcess,
         proceedBy: string
     ): Promise<void> {
@@ -176,7 +176,7 @@ export class NotificationPushDeliveryService {
                 notificationId,
                 EnumNotificationChannel.push,
                 sentAt,
-                failureTokens,
+                failureTokenCount,
                 proceedBy
             );
         if (!stamped) {

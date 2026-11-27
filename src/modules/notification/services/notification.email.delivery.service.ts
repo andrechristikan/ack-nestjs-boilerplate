@@ -91,7 +91,7 @@ export class NotificationEmailDeliveryService {
             notificationId,
             EnumNotificationChannel.email,
             sentAt,
-            [],
+            0,
             proceedBy
         );
     }

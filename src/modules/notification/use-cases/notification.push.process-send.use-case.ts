@@ -135,7 +135,7 @@ export class NotificationPushProcessSendUseCase implements IAppUseCase<
                 await this.notificationPushDeliveryService.stampSentInTx(
                     tx,
                     notificationId,
-                    plainTokens,
+                    tokens.length,
                     process,
                     context.proceedBy
                 );

@@ -103,6 +103,8 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Pagination][ref-doc-reference-pagination]: the query parameters, limits, metadata fields, and service methods
 - [Status Codes][ref-doc-reference-status-codes]: the status code, HTTP status, and message of every exception, by module
 - [Decorators and Guards][ref-doc-reference-decorators-and-guards]: the decorator order, each guard with its store key and missing-entry exception, and the request store keys
+- [Sensitive Data][ref-doc-reference-sensitive-data]: every sensitive datum by protection level, with its protection at rest, in payloads, in logs, in responses, and in retention
+- [Field Access][ref-doc-reference-field-access]: per resource, the fields each audience reads and writes and the attribute a rule depends on
 - [AI Harness][ref-doc-reference-ai-harness]: the commands, agents, hooks, and copied skills
 
 ## Production
@@ -188,5 +190,7 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-reference-middleware]: reference/middleware.md
 [ref-doc-reference-pagination]: reference/pagination.md
 [ref-doc-reference-status-codes]: reference/status-codes.md
+[ref-doc-reference-sensitive-data]: reference/sensitive-data.md
+[ref-doc-reference-field-access]: reference/field-access.md
 [ref-doc-production]: production.md
 [ref-doc-contributors]: contributors.md

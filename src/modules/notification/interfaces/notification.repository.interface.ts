@@ -58,7 +58,7 @@ export interface INotificationRepository {
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[],
+        failureTokenCount: number,
         updatedBy: string
     ): Promise<boolean>;
     updateDeliverySentAtInTx(
@@ -66,7 +66,7 @@ export interface INotificationRepository {
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[],
+        failureTokenCount: number,
         updatedBy: string
     ): Promise<boolean>;
 }

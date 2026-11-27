@@ -256,13 +256,13 @@ export class NotificationRepository implements INotificationRepository {
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[],
+        failureTokenCount: number,
         updatedBy: string
     ): Promise<boolean> {
         const { count } =
             await this.databaseService.client.notificationDelivery.updateMany({
                 where: { notificationId, channel },
-                data: { failureTokens, sentAt: at, updatedBy },
+                data: { failureTokenCount, sentAt: at, updatedBy },
             });
 
         return count > 0;
@@ -273,12 +273,12 @@ export class NotificationRepository implements INotificationRepository {
         notificationId: string,
         channel: EnumNotificationChannel,
         at: Date,
-        failureTokens: string[],
+        failureTokenCount: number,
         updatedBy: string
     ): Promise<boolean> {
         const { count } = await tx.notificationDelivery.updateMany({
             where: { notificationId, channel },
-            data: { failureTokens, sentAt: at, updatedBy },
+            data: { failureTokenCount, sentAt: at, updatedBy },
         });
 
         return count > 0;

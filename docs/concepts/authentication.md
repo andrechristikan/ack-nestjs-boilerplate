@@ -121,7 +121,7 @@ A password enters the system at sign-up, a change, and a reset. `AuthPasswordSer
 - The access token is an ES256 JWT valid for one hour (`auth.jwt.accessToken.expiresInSeconds`). The refresh token is an ES512 JWT valid for 30 days (`auth.jwt.refreshToken.expiresInSeconds`).
 - `AuthJwtService` signs both with the private keys from the environment and stamps the `kid`, the audience, the issuer, the user id as `sub`, and the session `jti` into each.
 - The client sends a token as `Authorization: Bearer <token>`. A login response reports `Bearer` as its `tokenType`.
-- The access payload carries `userId`, `roleId`, `username`, `email`, `sessionId`, `deviceOwnershipId`, `loginAt`, `loginFrom`, and `loginWith`; the user id is also the `sub` claim. The refresh payload carries the same fields without `roleId`, `username`, and `email`.
+- The access payload carries `userId`, `roleId`, `username`, `sessionId`, `deviceOwnershipId`, `loginAt`, `loginFrom`, and `loginWith`; the user id is also the `sub` claim. The refresh payload carries the same fields without `roleId` and `username`.
 - `jti` is a random 32-character string drawn for every issue. The session row and the login entry hold only its SHA-256 digest ([Cryptography used][ref-doc-concept-security-crypto]).
 
 `pnpm generate:secret` writes `keys/access-jwks.json` and `keys/refresh-jwks.json`, and the Compose JWKS server (`ci/jwks-server/`) serves them ([Installation][ref-doc-installation-keys]).

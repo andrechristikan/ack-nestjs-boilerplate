@@ -113,7 +113,6 @@ describe('AuthJwtAccessStrategy', () => {
             loginAt: new Date('2026-01-01T00:00:00.000Z'),
             loginFrom: EnumUserLoginFrom.website,
             loginWith: EnumUserLoginWith.credential,
-            email: 'jane@example.com',
             username: 'jane',
             userId: 'user-1',
             sessionId: 'session-1',

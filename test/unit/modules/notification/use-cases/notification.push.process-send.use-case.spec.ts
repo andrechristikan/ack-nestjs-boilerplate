@@ -227,7 +227,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             ).toHaveBeenCalledWith(
                 tx,
                 'notification-id',
-                ['token-2'],
+                1,
                 EnumNotificationPushProcess.send,
                 'actor-id'
             );
@@ -356,7 +356,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             ).toHaveBeenCalledWith(
                 tx,
                 'notification-id',
-                [],
+                0,
                 EnumNotificationPushProcess.send,
                 'actor-id'
             );
@@ -476,7 +476,7 @@ describe('NotificationPushProcessSendUseCase', () => {
             ).toHaveBeenCalledWith(
                 tx,
                 'notification-id',
-                [],
+                0,
                 EnumNotificationPushProcess.send,
                 'actor-id'
             );

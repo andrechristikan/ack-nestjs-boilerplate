@@ -203,6 +203,13 @@ Rule: `notification.md`, Fan-out and send.
 
 - The `cleanupTokens` job: a second job for one `updateMany` on `device` rows, where the step state in the outbox row already keeps a retry from sending twice.
 
+### A device push token is stored plain on its ownership
+
+Rule: `security.md`, Credentials; `notification.md`, Fan-out and send.
+
+- A sealed token with a SHA-256 digest column for the lookup: a push token is no credential, since sending needs the Firebase service account, and Firebase's token guidance asks for stale-token cleanup (`cleanupStaleTokens` runs it) and no encryption.
+- The failed tokens kept on the delivery row: a copy no code reads.
+
 ### The notification processor resolves the recipient
 
 Rule: `notification.md`, Recipient.

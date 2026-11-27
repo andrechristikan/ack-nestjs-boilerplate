@@ -58,7 +58,7 @@ The queue priority of a job is a separate value, the `queuePriority` of the kind
 | Channel | Delivery | `processedAt` and `sentAt` |
 | --- | --- | --- |
 | `email` | SES, through the `notificationEmail` queue | `processedAt` before the send, `sentAt` after it |
-| `push` | Firebase, through the `notificationPush` queue | `processedAt` before the first send, `sentAt` once no token awaits a retry. `failureTokens` stores the tokens Firebase rejected as invalid |
+| `push` | Firebase, through the `notificationPush` queue | `processedAt` before the first send, `sentAt` once no token awaits a retry. `failureTokenCount` stores the number of tokens Firebase rejected as invalid; the email and sms stamps write 0 |
 | `sms` | A stub adapter with no provider, through the `notificationSms` queue: it logs the kind and the masked number and sends nothing | `processedAt` before the adapter call, `sentAt` after it, as for email |
 | `inApp` | The in-app list of the user | Both stamped at creation |
 | `silent` | No external delivery: the record only | Both stamped at creation |

@@ -425,6 +425,7 @@ IAM permissions follow the calls the application makes:
 - In production Sentry Logs receive `warn`, `error`, and `fatal` only. Every other environment sends every level.
 - Set `LOGGER_PRETTY_ENABLED` and `LOGGER_FILE_ENABLED` to `false` for JSON logs on standard output.
 - Swagger is off in production.
+- The application logs the client IP and user agent on each request, so the log sink restricts who reads the logs and how long it keeps them ([Personal level][ref-doc-reference-sensitive-data-personal]).
 - A failure while the application starts, such as an invalid `.env` value or an unreachable MongoDB, logs one `FATAL [Bootstrap]` line, reports to Sentry when `SENTRY_DSN` is set, and ends the process with exit code 1.
 
 ## Check the deployment
@@ -450,3 +451,4 @@ curl -i http://127.0.0.1:3000/api/public/hello
 [ref-doc-dependencies-health]: concepts/dependencies.md#health-checks
 [ref-doc-vault]: concepts/vault.md
 [ref-doc-architecture]: concepts/architecture.md
+[ref-doc-reference-sensitive-data-personal]: reference/sensitive-data.md#personal
