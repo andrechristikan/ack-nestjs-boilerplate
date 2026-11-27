@@ -1,3 +1,4 @@
+import type { AppBaseException } from '@app/exceptions/app.base.exception';
 import type { IQueueResponse } from '@common/queue/interfaces/queue.interface';
 import type {
     EnumTermPolicyProcess,
@@ -34,14 +35,26 @@ export interface ITermPolicyContent extends Omit<IAwsS3, 'data'> {
     language: EnumMessageLanguage;
 }
 
+export interface ITermPolicyContentConfirm {
+    language: EnumMessageLanguage;
+    key: string;
+}
+
+export interface ITermPolicyContentCheck {
+    isSizeAllowed: boolean;
+    isContentValid: boolean;
+    content: ITermPolicyContent;
+}
+
 export interface ITermPolicyCreate {
     type: EnumTermPolicyType;
     version: number;
-    contents: ITermPolicyContentUpload[];
+    contents: ITermPolicyContentConfirm[];
 }
 
 export interface ITermPolicyCreatePrepared {
-    contents: ITermPolicyContent[];
+    checks: ITermPolicyContentCheck[];
+    readFailure: AppBaseException | null;
 }
 
 export interface ITermPolicyPublishPrepared {
@@ -51,12 +64,16 @@ export interface ITermPolicyPublishPrepared {
 
 export interface ITermPolicyContentPrepared<
     TExisting extends ITermPolicyContent | null = ITermPolicyContent | null,
-    TMapped extends ITermPolicyContent | null = ITermPolicyContent | null,
 > {
     termPolicy: TermPolicy;
     contents: ITermPolicyContent[];
     existingContent: TExisting;
-    mappedContent: TMapped;
+}
+
+export interface ITermPolicyContentUploadPrepared<
+    TExisting extends ITermPolicyContent | null = ITermPolicyContent | null,
+> extends ITermPolicyContentPrepared<TExisting> {
+    checks: [ITermPolicyContentCheck];
 }
 
 export interface ITermPolicyContentPresign {

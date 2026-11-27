@@ -117,7 +117,7 @@ Users:
 
 - Sign-up, email and mobile verification, forgot password, profile, and self-deletion are user flows. An admin creates, imports, and exports users, and an import reports every invalid row at once.
 - Needed when you manage accounts, import or export users, or change a user flow.
-- Pages: [Authentication][ref-doc-authentication], [File Upload][ref-doc-file-upload].
+- Pages: [Authentication][ref-doc-authentication], [File Upload][ref-doc-concept-file-upload].
 
 ## Access control
 
@@ -167,7 +167,7 @@ File upload:
 
 - A file reaches S3 through a multipart request, with its extension and content signature checked, or through a presigned URL the client uses directly. A CSV import validates every row and reports all failures together.
 - Needed when users upload files or an admin imports a CSV.
-- Pages: [File Upload][ref-doc-file-upload].
+- Pages: [File Upload][ref-doc-concept-file-upload], [File Upload Guide][ref-doc-guide-file-upload], [File Upload Reference][ref-doc-reference-file-upload].
 
 Activity log:
 
@@ -199,19 +199,19 @@ Database:
 
 - Prisma runs on a MongoDB replica set. A use case opens the transaction of a flow, the client stamps audit fields, and a repository maps database errors to typed exceptions.
 - Needed when you write a flow that changes more than one table.
-- Pages: [Database][ref-doc-database].
+- Pages: [Database][ref-doc-concept-database], [Module Guide][ref-doc-guide-module], [Seed Guide][ref-doc-guide-seed], [Database Reference][ref-doc-reference-database], [Helper Reference][ref-doc-reference-helper].
 
 Cache:
 
 - Redis holds cache entries with a TTL, read through a loader on a miss and invalidated by an outbox job.
 - Needed when a read is expensive and may be a little stale.
-- Pages: [Cache][ref-doc-cache].
+- Pages: [Cache][ref-doc-concept-cache].
 
 Queue and outbox:
 
 - BullMQ runs background jobs on the queue Redis. A side effect is an outbox row committed with the action, the enqueue follows the commit, and a sweep re-dispatches rows that were never enqueued.
 - Needed when work must run in the background after a write commits.
-- Pages: [Queue][ref-doc-queue].
+- Pages: [Queue][ref-doc-concept-queue], [Queue Guide][ref-doc-guide-queue], [Queue Reference][ref-doc-reference-queue].
 
 Request and response:
 
@@ -227,9 +227,9 @@ Errors:
 
 Logging and Sentry:
 
-- Pino writes structured logs with request ids and redacts sensitive fields. Sentry receives errors, traces, and warning-level logs with credentials scrubbed.
+- Pino writes structured logs with request ids and redacts sensitive fields. Sentry, when a DSN is set, receives 5xx errors, failed jobs, traces, and logs with credentials scrubbed.
 - Needed when you trace a request or report an error.
-- Pages: [Logger][ref-doc-logger].
+- Pages: [Logging][ref-doc-concept-logging], [Sentry][ref-doc-concept-sentry], [Logging Reference][ref-doc-reference-logging].
 
 Pagination:
 
@@ -251,7 +251,9 @@ API docs:
 [ref-doc-authentication]: authentication.md
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-device]: device.md
-[ref-doc-file-upload]: file-upload.md
+[ref-doc-concept-file-upload]: concepts/file-upload.md
+[ref-doc-guide-file-upload]: guides/file-upload.md
+[ref-doc-reference-file-upload]: reference/file-upload.md
 [ref-doc-authorization]: authorization.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-feature-flag]: feature-flag.md
@@ -262,10 +264,18 @@ API docs:
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-analytic]: analytic.md
 [ref-doc-dependencies-health]: concepts/dependencies.md#health-checks
-[ref-doc-database]: database.md
-[ref-doc-cache]: cache.md
-[ref-doc-queue]: queue.md
-[ref-doc-logger]: logger.md
+[ref-doc-concept-database]: concepts/database.md
+[ref-doc-guide-module]: guides/module.md
+[ref-doc-guide-seed]: guides/seed.md
+[ref-doc-reference-database]: reference/database.md
+[ref-doc-reference-helper]: reference/helper.md
+[ref-doc-concept-cache]: concepts/cache.md
+[ref-doc-concept-queue]: concepts/queue.md
+[ref-doc-guide-queue]: guides/queue.md
+[ref-doc-reference-queue]: reference/queue.md
+[ref-doc-concept-logging]: concepts/logging.md
+[ref-doc-concept-sentry]: concepts/sentry.md
+[ref-doc-reference-logging]: reference/logging.md
 [ref-doc-concept-i18n]: concepts/i18n.md
 [ref-doc-guide-i18n]: guides/i18n.md
 [ref-doc-concept-request-pipeline]: concepts/request-pipeline.md

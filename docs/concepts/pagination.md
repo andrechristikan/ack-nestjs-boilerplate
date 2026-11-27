@@ -24,7 +24,7 @@ This page explains how the list routes page their results, for a developer who b
 - [Response][ref-doc-response]: the interceptor that builds the page metadata
 - [HTTP Contract][ref-doc-http-contract]: the envelope a page rides in
 - [Status Codes][ref-doc-reference-status-codes]: the pagination errors
-- [Database][ref-doc-database]: the Prisma statements behind a repository
+- [Database][ref-doc-concept-database]: the Prisma statements behind a repository
 
 ## Overview
 
@@ -158,4 +158,4 @@ this.requestStoreService.merge(PaginationStoreKey, {
 [ref-doc-response]: response.md
 [ref-doc-http-contract]: ../reference/http-contract.md
 [ref-doc-reference-status-codes]: ../reference/status-codes.md
-[ref-doc-database]: ../database.md
+[ref-doc-concept-database]: database.md

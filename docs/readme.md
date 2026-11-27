@@ -33,6 +33,12 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Architecture][ref-doc-architecture]: folder layout, layers, import levels, modules, router scopes, entry points, and Twelve-Factor
 - [Configuration][ref-doc-concept-configuration]: how `.env` becomes validated, typed config
 - [Dependencies][ref-doc-dependencies]: MongoDB, Redis, and the optional adapters, and how each answers when down or unset
+- [Database][ref-doc-concept-database]: the Prisma client, transactions, audit stamping, soft delete, and unique-value retries
+- [Cache][ref-doc-concept-cache]: the cache Redis, read-through entries, invalidation through the outbox, and the session login entry
+- [Queue][ref-doc-concept-queue]: the outbox, enqueue after commit, queue classes, processors, job ids, and retries
+- [Logging][ref-doc-concept-logging]: the Pino logger, request logs, redaction, and boot failures
+- [Sentry][ref-doc-concept-sentry]: what reaches Sentry and how events are scrubbed
+- [File Upload][ref-doc-concept-file-upload]: multipart upload, the CSV pipe chain, presigned upload, and replaced object cleanup
 - [Vault][ref-doc-concept-vault]: the bundled Vault containers, key-value layout, and helpers
 - [Request Pipeline][ref-doc-concept-request-pipeline]: the path of a request through middleware, guards, the pipe, interceptors, and filters
 - [Security][ref-doc-concept-security]: security headers, rate limiting, CORS, environment protection, the request timeout, and the cryptography used
@@ -48,6 +54,10 @@ This page indexes every documentation page, for a reader who looks for the page 
 
 - [Hosted Dependencies][ref-doc-guide-hosted-dependencies]: run the application against hosted MongoDB and Redis
 - [Vault][ref-doc-guide-vault]: start Vault, push, pull, and reset
+- [Module][ref-doc-guide-module]: add a feature module
+- [Seed][ref-doc-guide-seed]: push the schema, run, add, and remove seeds
+- [Queue][ref-doc-guide-queue]: add a queue, a processor, and an outbox effect
+- [File Upload][ref-doc-guide-file-upload]: add a multipart upload, a CSV import, or a presigned upload
 - [Schema][ref-doc-guide-schema]: write the request and response schemas of a route and bind them
 - [API Documentation][ref-doc-guide-api-documentation]: add `@Doc` and the error kits, and get `swagger.json`
 - [Pagination][ref-doc-guide-pagination]: build an offset or cursor list route
@@ -59,6 +69,11 @@ This page indexes every documentation page, for a reader who looks for the page 
 
 - [Configuration][ref-doc-reference-configuration]: every config key, its environment variable, and the Compose variables
 - [Commands][ref-doc-reference-commands]: every `pnpm` script, seed command, and Compose command
+- [Database][ref-doc-reference-database]: the models, composite types, and seeded rows
+- [Queue][ref-doc-reference-queue]: every queue with its jobs, job ids, and options
+- [File Upload][ref-doc-reference-file-upload]: the upload decorators, pipes, extensions, limits, and presign options
+- [Logging][ref-doc-reference-logging]: the levels, record fields, and redacted keys
+- [Helper][ref-doc-reference-helper]: every public method of the helper services
 - [HTTP Contract][ref-doc-reference-http-contract]: the success and error envelopes, the metadata fields, and the headers
 - [Middleware][ref-doc-reference-middleware]: each middleware and interceptor with its order, config keys, and behavior
 - [Pagination][ref-doc-reference-pagination]: the query parameters, limits, metadata fields, and service methods
@@ -71,16 +86,11 @@ This page indexes every documentation page, for a reader who looks for the page 
 - [Analytic][ref-doc-analytic]: admin and workspace metrics, anomaly summaries, and fraud reports
 - [Authentication][ref-doc-authentication]: password login, JWT, sessions, social sign-in, and API keys
 - [Authorization][ref-doc-authorization]: guards, roles, policies, and term-policy acceptance
-- [Cache][ref-doc-cache]: Redis cache entries and TTLs
-- [Database][ref-doc-database]: Prisma on MongoDB, transactions, and seeds
 - [Device][ref-doc-device]: device ownership and one signed-in user per device
 - [Email][ref-doc-email]: SES templates and the sync command
 - [Feature Flag][ref-doc-feature-flag]: targeting, rollout, and caching
-- [File Upload][ref-doc-file-upload]: multipart upload, CSV import, and S3 presign
-- [Logger][ref-doc-logger]: Pino logging, redaction, and Sentry
 - [Notification][ref-doc-notification]: channels, queues, and delivery
 - [Project][ref-doc-project]: workspace-scoped projects and their members
-- [Queue][ref-doc-queue]: BullMQ queues, processors, and the outbox
 - [Term Policy][ref-doc-term-policy]: versioned legal documents and acceptance
 - [Two-Factor Authentication][ref-doc-two-factor]: TOTP and backup codes
 - [Workspace][ref-doc-workspace]: tenancy, membership, invites, and join requests
@@ -103,12 +113,27 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-concept-configuration]: concepts/configuration.md
 [ref-doc-dependencies]: concepts/dependencies.md
 [ref-doc-concept-vault]: concepts/vault.md
+[ref-doc-concept-database]: concepts/database.md
+[ref-doc-concept-cache]: concepts/cache.md
+[ref-doc-concept-queue]: concepts/queue.md
+[ref-doc-concept-logging]: concepts/logging.md
+[ref-doc-concept-sentry]: concepts/sentry.md
+[ref-doc-concept-file-upload]: concepts/file-upload.md
 [ref-doc-concept-ai-harness]: concepts/ai-harness.md
 [ref-doc-guide-hosted-dependencies]: guides/hosted-dependencies.md
 [ref-doc-guide-vault]: guides/vault.md
+[ref-doc-guide-module]: guides/module.md
+[ref-doc-guide-seed]: guides/seed.md
+[ref-doc-guide-queue]: guides/queue.md
+[ref-doc-guide-file-upload]: guides/file-upload.md
 [ref-doc-guide-ai-harness]: guides/ai-harness.md
 [ref-doc-reference-configuration]: reference/configuration.md
 [ref-doc-reference-commands]: reference/commands.md
+[ref-doc-reference-database]: reference/database.md
+[ref-doc-reference-queue]: reference/queue.md
+[ref-doc-reference-file-upload]: reference/file-upload.md
+[ref-doc-reference-logging]: reference/logging.md
+[ref-doc-reference-helper]: reference/helper.md
 [ref-doc-reference-ai-harness]: reference/ai-harness.md
 [ref-doc-concept-request-pipeline]: concepts/request-pipeline.md
 [ref-doc-concept-security]: concepts/security.md
@@ -131,16 +156,11 @@ This page indexes every documentation page, for a reader who looks for the page 
 [ref-doc-analytic]: analytic.md
 [ref-doc-authentication]: authentication.md
 [ref-doc-authorization]: authorization.md
-[ref-doc-cache]: cache.md
-[ref-doc-database]: database.md
 [ref-doc-device]: device.md
 [ref-doc-email]: email.md
 [ref-doc-feature-flag]: feature-flag.md
-[ref-doc-file-upload]: file-upload.md
-[ref-doc-logger]: logger.md
 [ref-doc-notification]: notification.md
 [ref-doc-project]: project.md
-[ref-doc-queue]: queue.md
 [ref-doc-term-policy]: term-policy.md
 [ref-doc-two-factor]: two-factor.md
 [ref-doc-workspace]: workspace.md

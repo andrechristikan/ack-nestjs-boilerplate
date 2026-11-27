@@ -109,5 +109,5 @@ Queue names, rate limits, job ids, and payload encryption: [Notification Documen
 [ref-doc-third-party-ses]: concepts/dependencies.md#optional-adapters
 [ref-doc-environment]: reference/configuration.md
 [ref-doc-configuration]: reference/configuration.md
-[ref-doc-logger]: logger.md#migration-command-failure
+[ref-doc-logger]: concepts/logging.md#boot-and-seed-failures
 [ref-doc-term-policy]: term-policy.md#migration--seeding

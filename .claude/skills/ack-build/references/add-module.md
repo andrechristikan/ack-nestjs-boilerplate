@@ -48,7 +48,7 @@ Create `src/languages/<lang>/<module>.json` in every directory under `src/langua
 
 ## 8. Seed and docs
 
-Reference rows an empty database needs: `.claude/skills/ack-build/references/add-seed.md`. Swagger comes from the decorators; no separate doc file. A `docs/<module>.md` page is `writer`'s, from the hand-back.
+Reference rows an empty database needs: `.claude/skills/ack-build/references/add-seed.md`. Swagger comes from the decorators; no separate doc file. The module's pages under `docs/concepts/`, `docs/guides/`, and `docs/reference/` are `writer`'s, from the hand-back.
 
 ## 9. Verify
 

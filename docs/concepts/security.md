@@ -28,7 +28,8 @@ This page explains the protections the request kit applies to every route and th
 - [Error Handling][ref-doc-error-handling]: how a refused request is logged and answered
 - [Authentication][ref-doc-authentication]: tokens, sessions, passwords, and API keys
 - [Authorization][ref-doc-authorization]: roles, policies, and the guards that enforce them
-- [Logger][ref-doc-logger]: redaction of sensitive fields in logs and Sentry payloads
+- [Logging][ref-doc-concept-logging]: redaction of sensitive fields in logs
+- [Sentry][ref-doc-concept-sentry]: the scrub of Sentry payloads
 
 ## Overview
 
@@ -156,7 +157,7 @@ Every use of `node:crypto` goes through the `Helper*` services in `src/common/he
 - The purpose names one use, such as `PaginationCursor`. The context is the owning id, or a fixed string where the value has no owner: a cursor token has none.
 - A root secret is 48 random bytes written as 64 base64url characters. `pnpm generate:secret:encryption` creates both.
 - A root has no rotation path: a payload names no key, so replacing a root makes what it sealed unreadable.
-- A sensitive field never reaches a log line or a Sentry payload: `LoggerSensitiveFields` lists the redacted keys, and the Pino `redact` option, `LoggerUtil`, and the scrubbers in `src/instrument.ts` apply the list. See [Logger][ref-doc-logger].
+- A sensitive field never reaches a log line or a Sentry payload: `LoggerSensitiveFields` lists the redacted keys, and the Pino `redact` option, `LoggerUtil`, and the scrubbers in `src/instrument.ts` apply the list. See [Redaction][ref-doc-concept-logging-redaction] and [Scrubbing][ref-doc-concept-sentry-scrubbing].
 
 <!-- REFERENCES -->
 
@@ -173,4 +174,7 @@ Every use of `node:crypto` goes through the `Helper*` services in `src/common/he
 [ref-doc-error-handling]: error-handling.md
 [ref-doc-authentication]: ../authentication.md
 [ref-doc-authorization]: ../authorization.md
-[ref-doc-logger]: ../logger.md
+[ref-doc-concept-logging]: logging.md
+[ref-doc-concept-logging-redaction]: logging.md#redaction
+[ref-doc-concept-sentry]: sentry.md
+[ref-doc-concept-sentry-scrubbing]: sentry.md#scrubbing

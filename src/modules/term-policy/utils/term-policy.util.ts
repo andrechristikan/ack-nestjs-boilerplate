@@ -6,6 +6,7 @@ import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptio
 import type {
     ITermPolicyActivityLogSubject,
     ITermPolicyContent,
+    ITermPolicyContentCheck,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -49,6 +50,13 @@ export class TermPolicyUtil {
 
     isContentSizeAllowed(size: number): boolean {
         return size <= this.maxSizeInBytes;
+    }
+
+    isContentRejected(checks: ITermPolicyContentCheck[]): boolean {
+        return checks.some(
+            ({ isSizeAllowed, isContentValid }) =>
+                !isSizeAllowed || !isContentValid
+        );
     }
 
     isContentKeyInPath(

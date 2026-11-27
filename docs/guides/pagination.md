@@ -25,7 +25,7 @@ This guide shows how to add a list route that pages by offset or by cursor, for 
 
 ## Prerequisites
 
-- The Prisma model the list reads, and its repository ([Database][ref-doc-database]).
+- The Prisma model the list reads, and its repository ([Database][ref-doc-concept-database]).
 - The strategy of the route. A route under `/admin` pages by offset, and a route of any other scope pages by cursor.
 - For a cursor route, sort fields that are immutable and never null on a row the route returns.
 - A response schema for one item, and the item type the repository returns.
@@ -234,4 +234,4 @@ An offset route under `/admin` follows the same ten steps with these changes:
 [ref-doc-guide-schema]: schema.md
 [ref-doc-guide-api-documentation]: api-documentation.md
 [ref-doc-guide-i18n]: i18n.md
-[ref-doc-database]: ../database.md
+[ref-doc-concept-database]: ../concepts/database.md

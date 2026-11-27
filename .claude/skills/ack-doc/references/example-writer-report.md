@@ -2,22 +2,22 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 
 # Example: a writer report
 
-`writer` hands this back to step 2 of `SKILL.md` after a run over `docs/reference/status-codes.md`, `docs/database.md`, and `docs/authentication.md`, with `Context: Country gained isActive; CountryInactiveException throws 50901`. The six classes are the ones `.claude/agents/writer.md`, Docs, defines. Commit hashes in the CONFLICT evidence depend on the history, so they stay in angle brackets.
+`writer` hands this back to step 2 of `SKILL.md` after a run over `docs/reference/status-codes.md`, `docs/reference/database.md`, and `docs/authentication.md`, with `Context: Country gained isActive; CountryInactiveException throws 50901`. The six classes are the ones `.claude/agents/writer.md`, Docs, defines. Commit hashes in the CONFLICT evidence depend on the history, so they stay in angle brackets.
 
 ```markdown
 ## Findings by class
 
-- ACCURATE: `docs/database.md:360`: `Country` maps to the `Countries` collection (`prisma/schema.prisma:94`).
-- STALE: `docs/reference/status-codes.md:196`: `inactive` `50901` read "Reserved enum member; no exception or i18n path."; repaired to 400 (`BAD_REQUEST`), `country.error.inactive`, "Country is not available." (`CountryInactiveException`).
-- MISSING: `docs/database.md`: no page said which requests reject a country whose `isActive` is `false`; added the `Country availability` section after the model table.
-- PHANTOM: `docs/database.md:<line>`: named a `pnpm migration:country` script that `package.json` `scripts` lacks; removed, and the line now points at `pnpm migration {module} --type seed`.
-- CONTRADICTS: `docs/database.md:<line>`: the example shape declared `isActive?: boolean | null`, which `.claude/rules/null-safety.md` (rule 2) forbids; repaired to `isActive: boolean`.
-- CONFLICT: `docs/authentication.md:<line>` says the public country list answers without an API key; `src/modules/country/controllers/country.public.controller.ts:25` carries `@ApiKeyProtected()`. Left unresolved.
+- ACCURATE: `docs/reference/database.md:<line>`: `Country` maps to the `Countries` collection (`prisma/schema.prisma:<line>`).
+- STALE: `docs/reference/status-codes.md:<line>`: `inactive` `50901` read "Reserved enum member; no exception or i18n path."; repaired to 400 (`BAD_REQUEST`), `country.error.inactive`, "Country is not available." (`CountryInactiveException`).
+- MISSING: `docs/reference/database.md`: no page said which requests reject a country whose `isActive` is `false`; added the `Country availability` section after the model table.
+- PHANTOM: `docs/reference/database.md:<line>`: named a `pnpm migration:country` script that `package.json` `scripts` lacks; removed, and the line now points at `pnpm migration {module} --type seed`.
+- CONTRADICTS: `docs/reference/database.md:<line>`: the example shape declared `isActive?: boolean | null`, which `.claude/rules/null-safety.md` (rule 2) forbids; repaired to `isActive: boolean`.
+- CONFLICT: `docs/authentication.md:<line>` says the public country list answers without an API key; `src/modules/country/controllers/country.public.controller.ts:<line>` carries `@ApiKeyProtected()`. Left unresolved.
 
 ## Files changed
 
 - `docs/reference/status-codes.md`
-- `docs/database.md`
+- `docs/reference/database.md`
 
 ## Rule files read
 
@@ -25,7 +25,7 @@ New names in this example, not in the checkout: `Country.isActive`, `CountryInac
 
 ## `pnpm lint:docs`
 
-Exit 0. No line names `docs/reference/status-codes.md` or `docs/database.md`; Vale ends `✖ 0 errors, <n> warnings and 0 suggestions in <n> files.`
+Exit 0. No line names `docs/reference/status-codes.md` or `docs/reference/database.md`; Vale ends `✖ 0 errors, <n> warnings and 0 suggestions in <n> files.`
 
 ## `pnpm spell`
 
@@ -39,10 +39,10 @@ Exit 0. No output.
 
 ## Humanizer spans touched
 
-- `docs/database.md`, `Country availability`: two sentences reworded.
-- `docs/reference/status-codes.md:196`: none.
+- `docs/reference/database.md`, `Country availability`: two sentences reworded.
+- `docs/reference/status-codes.md:<line>`: none.
 
-## Reader questions, `docs/database.md`, `Country availability`
+## Reader questions, `docs/reference/database.md`, `Country availability`
 
 1. Which field marks a country inactive?
 2. What value does a seeded country get?
@@ -53,7 +53,7 @@ Exit 0. No output.
 
 ## Noticed outside the scope
 
-- `docs/concepts/pagination.md:67`: the cursor token is described as AES-256-GCM over the last row's sort values and a query fingerprint; outside this scope, unchecked.
+- `docs/concepts/pagination.md:<line>`: the cursor token is described as AES-256-GCM over the last row's sort values and a query fingerprint; outside this scope, unchecked.
 ```
 
-Step 3 of `SKILL.md` sends the six reader questions to a fresh reader with `docs/database.md` alone; step 4 puts the CONFLICT to the owner.
+Step 3 of `SKILL.md` sends the six reader questions to a fresh reader with `docs/reference/database.md` alone; step 4 puts the CONFLICT to the owner.

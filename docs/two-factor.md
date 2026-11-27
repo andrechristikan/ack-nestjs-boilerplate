@@ -597,7 +597,7 @@ sequenceDiagram
 
 [ref-doc-authentication]: authentication.md
 [ref-doc-security-and-middleware]: concepts/security.md#rate-limiting
-[ref-doc-cache]: cache.md
+[ref-doc-cache]: concepts/cache.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-installation]: getting-started/installation.md
 [ref-doc-environment]: reference/configuration.md

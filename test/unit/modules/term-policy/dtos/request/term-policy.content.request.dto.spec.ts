@@ -4,7 +4,6 @@ import { TermPolicyContentRequestSchema } from '@modules/term-policy/dtos/reques
 describe('TermPolicyContentRequestSchema', () => {
     const payload = {
         language: EnumMessageLanguage.en,
-        size: 1024,
         key: 'term-policies/privacy/v1/en.hbs',
     };
 
@@ -18,6 +17,17 @@ describe('TermPolicyContentRequestSchema', () => {
         const result = TermPolicyContentRequestSchema.safeParse({
             ...payload,
             type: 'privacy',
+        });
+
+        expect(result.error?.issues).toEqual([
+            expect.objectContaining({ path: [], code: 'unrecognized_keys' }),
+        ]);
+    });
+
+    it('rejects a size the request states', () => {
+        const result = TermPolicyContentRequestSchema.safeParse({
+            ...payload,
+            size: 1024,
         });
 
         expect(result.error?.issues).toEqual([

@@ -25,7 +25,7 @@ This page explains how the Swagger and OpenAPI document is assembled, for a deve
 - [Pagination][ref-doc-pagination]: the list query schemas and the pagination error kit
 - [Status Codes][ref-doc-reference-status-codes]: the code behind each documented error
 - [Authorization][ref-doc-authorization]: the `*Protected` decorators and their guards
-- [File Upload][ref-doc-file-upload]: the multipart decorators
+- [File Upload Reference][ref-doc-reference-file-upload-decorators]: the multipart decorators
 
 ## Overview
 
@@ -120,4 +120,4 @@ A DTO is a zod schema plus the type inferred from it, and [zod-openapi][ref-zod-
 [ref-doc-pagination]: pagination.md
 [ref-doc-reference-status-codes]: ../reference/status-codes.md
 [ref-doc-authorization]: ../authorization.md
-[ref-doc-file-upload]: ../file-upload.md
+[ref-doc-reference-file-upload-decorators]: ../reference/file-upload.md#decorators

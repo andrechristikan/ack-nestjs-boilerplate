@@ -25,7 +25,7 @@ This page explains how a request is validated and how a validation failure becom
 - [I18n][ref-doc-i18n]: the message files the mapping reads
 - [API Documentation][ref-doc-api-documentation]: the OpenAPI document built from the same schemas
 - [Pagination][ref-doc-pagination]: the list query schemas
-- [File Upload][ref-doc-file-upload]: the pipes that validate an upload and a CSV import
+- [File Upload][ref-doc-concept-file-upload]: the pipes that validate an upload and a CSV import
 
 ## Overview
 
@@ -117,7 +117,7 @@ The language is the request language ([I18n][ref-doc-i18n-resolution]). The mess
 
 Those entries are an excerpt of the `error` object in that file, which also holds one entry per remaining zod issue code and the nested `email` group.
 
-A file import returns the same entries per row. `AppValidationImportFilter` catches `FileImportException` and calls `setValidationImportMessage`, which maps each row's issues the same way and answers `{ row, errors }` entries ([File Upload][ref-doc-file-upload]).
+A file import returns the same entries per row. `AppValidationImportFilter` catches `FileImportException` and calls `setValidationImportMessage`, which maps each row's issues the same way and answers `{ row, errors }` entries ([CSV pipe chain][ref-doc-concept-file-upload-csv]).
 
 <!-- REFERENCES -->
 
@@ -133,4 +133,5 @@ A file import returns the same entries per row. `AppValidationImportFilter` catc
 [ref-doc-i18n-resolution]: i18n.md#language-resolution
 [ref-doc-api-documentation]: api-documentation.md
 [ref-doc-pagination]: pagination.md
-[ref-doc-file-upload]: ../file-upload.md
+[ref-doc-concept-file-upload]: file-upload.md
+[ref-doc-concept-file-upload-csv]: file-upload.md#csv-pipe-chain

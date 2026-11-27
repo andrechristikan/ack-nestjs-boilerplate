@@ -330,6 +330,6 @@ See [Cache Documentation][ref-doc-cache] for cache system details.
 
 <!-- REFERENCES -->
 
-[ref-doc-cache]: cache.md
+[ref-doc-cache]: concepts/cache.md#readthrough-and-ttls
 [ref-doc-authorization]: authorization.md
 [ref-doc-environment]: reference/configuration.md

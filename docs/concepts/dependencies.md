@@ -23,8 +23,8 @@ This page explains how the application treats the services it depends on, for a 
 - [Production][ref-doc-production]: hosted MongoDB and Redis, TLS between hosts, and cloud setup
 - [Hosted Dependencies][ref-doc-guide-hosted-dependencies]: running the host application against hosted MongoDB and Redis
 - [Status Codes][ref-doc-status-codes]: the numeric code of each exception named here
-- [Cache][ref-doc-cache]: the cache Redis client and its entries
-- [Queue][ref-doc-queue]: the queue Redis client, the outbox, and BullBoard
+- [Cache][ref-doc-concept-cache]: the cache Redis client and its entries
+- [Queue][ref-doc-concept-queue]: the queue Redis client, the outbox, and BullBoard
 
 ## Overview
 
@@ -104,5 +104,5 @@ Four system routes, each behind a system API key, report the state of the depend
 [ref-doc-production]: ../production.md
 [ref-doc-guide-hosted-dependencies]: ../guides/hosted-dependencies.md
 [ref-doc-status-codes]: ../reference/status-codes.md
-[ref-doc-cache]: ../cache.md
-[ref-doc-queue]: ../queue.md
+[ref-doc-concept-cache]: cache.md
+[ref-doc-concept-queue]: queue.md

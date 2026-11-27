@@ -308,6 +308,7 @@ describe('UserProfileService', () => {
             await expect(
                 service.checkPhotoProfile(authContext, { key: aws.key })
             ).resolves.toEqual({
+                isSizeAllowed: true,
                 isContentValid: false,
                 photo: aws,
             });
@@ -347,7 +348,11 @@ describe('UserProfileService', () => {
 
             await expect(
                 service.checkPhotoProfile(authContext, { key: aws.key })
-            ).resolves.toEqual({ isContentValid: true, photo: aws });
+            ).resolves.toEqual({
+                isSizeAllowed: true,
+                isContentValid: true,
+                photo: aws,
+            });
             expect(awsS3Service.checkItem).toHaveBeenCalledWith(aws.key, {
                 access: EnumAwsS3Accessibility.public,
             });
@@ -355,18 +360,21 @@ describe('UserProfileService', () => {
             expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
-        it('caps the size of the headed object, not a client size', async () => {
-            awsS3Service.checkItem.mockResolvedValue({
+        it('returns the size verdict of the headed object, not a client size, without throwing', async () => {
+            const oversize: IAwsS3 = {
                 ...aws,
                 size: photoMaxSizeInBytes + 1,
-            });
+            };
+            awsS3Service.checkItem.mockResolvedValue(oversize);
 
             await expect(
                 service.checkPhotoProfile(authContext, { key: aws.key })
-            ).rejects.toMatchObject({
-                module: 'user',
-                statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+            ).resolves.toEqual({
+                isSizeAllowed: false,
+                isContentValid: true,
+                photo: oversize,
             });
+            expect(outboxService.addInTx).not.toHaveBeenCalled();
         });
 
         it('reads the head bytes while the object check is still pending', async () => {
@@ -468,6 +476,7 @@ describe('UserProfileService', () => {
         it('throws UserPhotoContentInvalidException for invalid content', () => {
             expect(() =>
                 service.assertPhotoContentValid({
+                    isSizeAllowed: true,
                     isContentValid: false,
                     photo: aws,
                 })
@@ -482,11 +491,81 @@ describe('UserProfileService', () => {
         it('returns for valid content', () => {
             expect(() =>
                 service.assertPhotoContentValid({
+                    isSizeAllowed: true,
                     isContentValid: true,
                     photo: aws,
                 })
             ).not.toThrow();
         });
+    });
+
+    describe('assertPhotoSizeAllowed', () => {
+        const aws: IAwsS3 = {
+            bucket: 'bucket',
+            key: 'photo-profile/user-persimmon/random.png',
+            cdnUrl: null,
+            completedUrl: 'https://cdn.example.com/random.png',
+            mime: 'image/png',
+            extension: 'png',
+            access: EnumAwsS3Accessibility.public,
+            size: 2048,
+        };
+
+        it('throws UserPhotoSizeExceededException for an oversize object', () => {
+            expect(() =>
+                service.assertPhotoSizeAllowed({
+                    isSizeAllowed: false,
+                    isContentValid: true,
+                    photo: aws,
+                })
+            ).toThrowError(
+                expect.objectContaining({
+                    module: 'user',
+                    statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+                })
+            );
+        });
+
+        it('returns for an object within the cap', () => {
+            expect(() =>
+                service.assertPhotoSizeAllowed({
+                    isSizeAllowed: true,
+                    isContentValid: true,
+                    photo: aws,
+                })
+            ).not.toThrow();
+        });
+    });
+
+    describe('isPhotoProfileRejected', () => {
+        const aws: IAwsS3 = {
+            bucket: 'bucket',
+            key: 'photo-profile/user-persimmon/random.png',
+            cdnUrl: null,
+            completedUrl: 'https://cdn.example.com/random.png',
+            mime: 'image/png',
+            extension: 'png',
+            access: EnumAwsS3Accessibility.public,
+            size: 2048,
+        };
+
+        it.each([
+            [true, true, false],
+            [false, true, true],
+            [true, false, true],
+            [false, false, true],
+        ])(
+            'answers for isSizeAllowed %s and isContentValid %s that the photo is rejected: %s',
+            (isSizeAllowed, isContentValid, expected) => {
+                expect(
+                    service.isPhotoProfileRejected({
+                        isSizeAllowed,
+                        isContentValid,
+                        photo: aws,
+                    })
+                ).toBe(expected);
+            }
+        );
     });
 
     describe('deleteRejectedPhotoInTx', () => {

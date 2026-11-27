@@ -655,10 +655,10 @@ A failing seed wraps its cause in `AppUnknownException`. The command logs one `f
 
 <!-- REFERENCES -->
 
-[ref-doc-database]: database.md
+[ref-doc-database]: reference/database.md#seeded-rows
 [ref-doc-authorization]: authorization.md
 [ref-doc-authentication]: authentication.md
-[ref-doc-file-upload]: file-upload.md#presign-upload
+[ref-doc-file-upload]: concepts/file-upload.md#presigned-upload
 [ref-doc-analytic]: analytic.md
 [ref-doc-email]: email.md
 [ref-doc-notification]: notification.md#term-policy-publication-email

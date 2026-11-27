@@ -1672,7 +1672,7 @@ sequenceDiagram
 [ref-google-console]: https://console.cloud.google.com/
 [ref-google-client-secret]: https://developers.google.com/identity/protocols/oauth2
 [ref-doc-installation]: getting-started/installation.md
-[ref-doc-cache]: cache.md
+[ref-doc-cache]: concepts/cache.md#session-login-entry
 [ref-doc-configuration]: reference/configuration.md
 [ref-doc-environment]: reference/configuration.md
 [ref-doc-device]: device.md
@@ -1683,4 +1683,4 @@ sequenceDiagram
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-status-codes]: reference/status-codes.md
 [ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store
-[ref-doc-file-upload]: file-upload.md
+[ref-doc-file-upload]: concepts/file-upload.md#replaced-object-cleanup

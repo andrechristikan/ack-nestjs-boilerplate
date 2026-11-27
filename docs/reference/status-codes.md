@@ -290,7 +290,7 @@ The `module` field is `termPolicy`.
 | `contentInvalid` | `51509` | `TermPolicyContentInvalidException` | 500 (`INTERNAL_SERVER_ERROR`) | `termPolicy.error.contentInvalid` | Term policy content is invalid. |
 | `requiredNotPublished` | `51510` | `TermPolicyRequiredNotPublishedException` | 500 (`INTERNAL_SERVER_ERROR`) | `termPolicy.error.requiredNotPublished` | A required term policy is not published yet. |
 | `contentSizeExceeded` | `51511` | `TermPolicyContentSizeExceededException` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentSizeExceeded` | Term policy content is larger than the allowed size. |
-| `contentKeyInvalid` | `51512` | `TermPolicyContentKeyInvalidException` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentKeyInvalid` | Term policy content key is outside the policy storage path. |
+| `contentKeyInvalid` | `51512` | `TermPolicyContentKeyInvalidException` | 400 (`BAD_REQUEST`) | `termPolicy.error.contentKeyInvalid` | Term policy content key is outside the policy storage path or has no uploaded object. |
 | `contentTypeInvalid` | `51513` | `TermPolicyContentTypeInvalidException` | 415 (`UNSUPPORTED_MEDIA_TYPE`) | `termPolicy.error.contentTypeInvalid` | Term policy content must be a text template. |
 
 ### `workspace`

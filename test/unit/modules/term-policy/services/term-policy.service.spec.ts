@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import type { IAwsS3 } from '@common/aws/interfaces/aws.interface';
+import { EnumAppStatusCodeError } from '@app/enums/app.status-code.enum';
 import { EnumAwsStatusCodeError } from '@common/aws/enums/aws.status-code.enum';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
@@ -55,6 +56,7 @@ import {
 } from '@modules/term-policy/enums/term-policy.enum';
 import type {
     ITermPolicyContent,
+    ITermPolicyContentCheck,
     ITermPolicyContentUpload,
     ITermPolicyCreate,
     ITermPolicyDeleteContentEffect,
@@ -62,7 +64,6 @@ import type {
     ITermPolicyPublishPrepared,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
-import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
@@ -372,16 +373,21 @@ describe('TermPolicyService', () => {
             contents: [
                 {
                     language: EnumMessageLanguage.en,
-                    size: 1024,
                     key: 'term-policies/privacy/1/en.hbs',
                 },
             ],
+        };
+        const check: ITermPolicyContentCheck = {
+            isSizeAllowed: true,
+            isContentValid: true,
+            content: { ...contentEn, size: 2048 },
         };
 
         beforeEach(() => {
             termPolicyRepository.existsByVersionAndType.mockResolvedValue(
                 false
             );
+            termPolicyContentService.checkContent.mockResolvedValue(check);
         });
 
         it('throws TermPolicyExistException when the version and type already exist', async () => {
@@ -404,7 +410,6 @@ describe('TermPolicyService', () => {
                         ...create.contents,
                         {
                             language: EnumMessageLanguage.en,
-                            size: 1024,
                             key: 'b.hbs',
                         },
                     ],
@@ -422,7 +427,6 @@ describe('TermPolicyService', () => {
                 contents: [
                     {
                         language: EnumMessageLanguage.en,
-                        size: 1024,
                         key: 'other/path/en.hbs',
                     },
                 ],
@@ -433,26 +437,9 @@ describe('TermPolicyService', () => {
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
             });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
-        });
-
-        it('throws TermPolicyContentSizeExceededException when a content size exceeds the configured max', async () => {
-            const promise = service.prepareCreateByAdmin({
-                ...create,
-                contents: [
-                    {
-                        language: EnumMessageLanguage.en,
-                        size: 999999,
-                        key: 'term-policies/privacy/1/b.hbs',
-                    },
-                ],
-            });
-
-            await expect(promise).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
-            });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(
+                termPolicyContentService.checkContent
+            ).not.toHaveBeenCalled();
         });
 
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
@@ -465,39 +452,44 @@ describe('TermPolicyService', () => {
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
-        });
-
-        it('throws the content text exception when a content is not a text template', async () => {
-            termPolicyContentService.assertContentText.mockRejectedValueOnce(
-                new TermPolicyContentTypeInvalidException()
-            );
-
-            await expect(
-                service.prepareCreateByAdmin(create)
-            ).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.contentTypeInvalid,
-            });
             expect(
-                termPolicyContentService.assertContentText
-            ).toHaveBeenCalledExactlyOnceWith('term-policies/privacy/1/en.hbs');
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+                termPolicyContentService.checkContent
+            ).not.toHaveBeenCalled();
         });
 
-        it('returns the contents presigned as private', async () => {
-            const mapped: IAwsS3 = { ...contentEn };
-            awsS3Service.mapPresign.mockReturnValue(mapped);
+        it('returns the exception checkContent rejects with as the read failure and no check', async () => {
+            const failure = new TermPolicyContentKeyInvalidException();
+            termPolicyContentService.checkContent.mockRejectedValueOnce(
+                failure
+            );
 
             const result = await service.prepareCreateByAdmin(create);
 
-            expect(result).toEqual({
-                contents: [{ language: EnumMessageLanguage.en, ...mapped }],
+            expect(result).toEqual({ checks: [], readFailure: failure });
+        });
+
+        it('returns an AppUnknownException as the read failure when checkContent rejects with a non-app error', async () => {
+            const cause = new Error('socket hang up');
+            termPolicyContentService.checkContent.mockRejectedValueOnce(cause);
+
+            const result = await service.prepareCreateByAdmin(create);
+
+            expect(result.checks).toEqual([]);
+            expect(result.readFailure).toMatchObject({
+                module: 'app',
+                statusCode: EnumAppStatusCodeError.unknown,
+                rawError: cause,
             });
-            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
-                { key: 'term-policies/privacy/1/en.hbs', size: 1024 },
-                { access: EnumAwsS3Accessibility.private }
+        });
+
+        it('returns the checks carrying the size S3 reports and no read failure', async () => {
+            const result = await service.prepareCreateByAdmin(create);
+
+            expect(result).toEqual({ checks: [check], readFailure: null });
+            expect(termPolicyContentService.checkContent).toHaveBeenCalledWith(
+                create.contents[0]
             );
+            expect(result.checks[0]?.content.size).toBe(2048);
         });
     });
 
@@ -508,7 +500,6 @@ describe('TermPolicyService', () => {
             contents: [
                 {
                     language: EnumMessageLanguage.en,
-                    size: 1024,
                     key: 'term-policies/privacy/1/en.hbs',
                 },
             ],
@@ -1001,7 +992,6 @@ describe('TermPolicyService', () => {
             const contents: TermPolicyContentRequestDto[] = [
                 {
                     language: EnumMessageLanguage.en,
-                    size: 1024,
                     key: 'term-policies/privacy/v1/en.hbs',
                 },
             ];
@@ -1012,12 +1002,10 @@ describe('TermPolicyService', () => {
             const contents: TermPolicyContentRequestDto[] = [
                 {
                     language: EnumMessageLanguage.en,
-                    size: 1024,
                     key: 'term-policies/privacy/v1/en.hbs',
                 },
                 {
                     language: EnumMessageLanguage.en,
-                    size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
                 },
             ];

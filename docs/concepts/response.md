@@ -25,7 +25,7 @@ This page explains how a handler's return value becomes the response, for a deve
 - [I18n][ref-doc-i18n]: how the message path becomes a sentence
 - [Pagination][ref-doc-pagination]: the list state behind a paginated response
 - [API Documentation][ref-doc-api-documentation]: the OpenAPI response each decorator publishes
-- [File Upload][ref-doc-file-upload]: the upload side of the file kit
+- [File Upload][ref-doc-concept-file-upload]: the upload side of the file kit
 
 ## Overview
 
@@ -131,4 +131,4 @@ return {
 [ref-doc-i18n]: i18n.md
 [ref-doc-pagination]: pagination.md
 [ref-doc-api-documentation]: api-documentation.md
-[ref-doc-file-upload]: ../file-upload.md
+[ref-doc-concept-file-upload]: file-upload.md

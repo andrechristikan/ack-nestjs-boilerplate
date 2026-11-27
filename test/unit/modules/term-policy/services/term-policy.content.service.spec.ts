@@ -20,7 +20,7 @@ import type {
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { FileSniffSizeInBytes } from '@common/file/constants/file.constant';
 import { FileService } from '@common/file/services/file.service';
-import { NoSuchKey } from '@aws-sdk/client-s3';
+import { NoSuchKey, NotFound } from '@aws-sdk/client-s3';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { HelperStringService } from '@common/helper/services/helper.string.service';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -50,14 +50,17 @@ import { TermPolicyContentExistException } from '@modules/term-policy/exceptions
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
+import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentNotFoundException } from '@modules/term-policy/exceptions/term-policy.content-not-found.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
 import type {
     ITermPolicyContent,
+    ITermPolicyContentCheck,
+    ITermPolicyContentConfirm,
     ITermPolicyContentPrepared,
-    ITermPolicyContentUpload,
+    ITermPolicyContentUploadPrepared,
     ITermPolicyDeleteContentEffect,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
@@ -130,6 +133,17 @@ describe('TermPolicyContentService', () => {
         size: 1024,
     };
 
+    const uploadedItem: IAwsS3 = {
+        bucket: 'sample-bucket',
+        key: 'term-policies/privacy/v1/en-2.hbs',
+        cdnUrl: null,
+        completedUrl: 'https://cdn.example.com/en-2.hbs',
+        mime: 'text/plain',
+        extension: 'hbs',
+        access: EnumAwsS3Accessibility.private,
+        size: 2048,
+    };
+
     const draftTermPolicy: TermPolicy = {
         id: 'term-policy-1',
         type: EnumTermPolicyType.privacy,
@@ -191,6 +205,7 @@ describe('TermPolicyContentService', () => {
     beforeEach(async () => {
         awsS3Service.isInitialized.mockReturnValue(true);
         awsS3Service.getItemBytes.mockResolvedValue(head);
+        awsS3Service.checkItem.mockResolvedValue(uploadedItem);
         fileService.isContentOfExtension.mockResolvedValue(true);
         activityLogQueue.recordEffect.mockReturnValue(entryEffect);
         termPolicyQueue.deleteContentEffect.mockReturnValue(deleteEffect);
@@ -233,19 +248,25 @@ describe('TermPolicyContentService', () => {
         helperStringService = module.get(HelperStringService);
     });
 
-    describe('assertContentText', () => {
-        it('throws TermPolicyContentTypeInvalidException when the head is not a text template', async () => {
-            fileService.isContentOfExtension.mockResolvedValue(false);
+    describe('checkContent', () => {
+        const confirm: ITermPolicyContentConfirm = {
+            language: EnumMessageLanguage.en,
+            key: uploadedItem.key,
+        };
 
-            const promise = service.assertContentText(existingContent.key);
+        it('returns the verdicts and the content carrying the size S3 reports', async () => {
+            const result = await service.checkContent(confirm);
 
-            await expect(promise).rejects.toMatchObject({
-                constructor: TermPolicyContentTypeInvalidException,
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.contentTypeInvalid,
+            expect(result).toEqual({
+                isSizeAllowed: true,
+                isContentValid: true,
+                content: { language: EnumMessageLanguage.en, ...uploadedItem },
+            });
+            expect(awsS3Service.checkItem).toHaveBeenCalledWith(confirm.key, {
+                access: EnumAwsS3Accessibility.private,
             });
             expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
-                existingContent.key,
+                confirm.key,
                 FileSniffSizeInBytes,
                 { access: EnumAwsS3Accessibility.private }
             );
@@ -255,12 +276,40 @@ describe('TermPolicyContentService', () => {
             );
         });
 
-        it('throws AwsS3NotConfiguredException when S3 answers null', async () => {
+        it('returns isSizeAllowed false when the object is over the configured maximum', async () => {
+            awsS3Service.checkItem.mockResolvedValue({
+                ...uploadedItem,
+                size: contentMaxSizeInBytes + 1,
+            });
+
+            const result = await service.checkContent(confirm);
+
+            expect(result.isSizeAllowed).toBe(false);
+            expect(result.content.size).toBe(contentMaxSizeInBytes + 1);
+        });
+
+        it('returns isContentValid false when the head is not a text template', async () => {
+            fileService.isContentOfExtension.mockResolvedValue(false);
+
+            const result = await service.checkContent(confirm);
+
+            expect(result.isContentValid).toBe(false);
+        });
+
+        it('throws AwsS3NotConfiguredException when checkItem answers null', async () => {
+            awsS3Service.checkItem.mockResolvedValue(null);
+
+            await expect(service.checkContent(confirm)).rejects.toMatchObject({
+                module: 'aws',
+                statusCode: EnumAwsStatusCodeError.s3NotConfigured,
+            });
+            expect(fileService.isContentOfExtension).not.toHaveBeenCalled();
+        });
+
+        it('throws AwsS3NotConfiguredException when getItemBytes answers null', async () => {
             awsS3Service.getItemBytes.mockResolvedValue(null);
 
-            await expect(
-                service.assertContentText(existingContent.key)
-            ).rejects.toMatchObject({
+            await expect(service.checkContent(confirm)).rejects.toMatchObject({
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
@@ -272,9 +321,18 @@ describe('TermPolicyContentService', () => {
                 new NoSuchKey({ message: 'missing', $metadata: {} })
             );
 
-            await expect(
-                service.assertContentText(existingContent.key)
-            ).rejects.toMatchObject({
+            await expect(service.checkContent(confirm)).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
+            });
+        });
+
+        it('throws TermPolicyContentKeyInvalidException when the head request finds no object', async () => {
+            awsS3Service.checkItem.mockRejectedValue(
+                new NotFound({ message: 'missing', $metadata: {} })
+            );
+
+            await expect(service.checkContent(confirm)).rejects.toMatchObject({
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
             });
@@ -282,28 +340,113 @@ describe('TermPolicyContentService', () => {
 
         it('passes an AppBaseException through', async () => {
             const error = new AwsS3NotConfiguredException();
-            awsS3Service.getItemBytes.mockRejectedValue(error);
+            awsS3Service.checkItem.mockRejectedValue(error);
 
-            await expect(
-                service.assertContentText(existingContent.key)
-            ).rejects.toBe(error);
+            await expect(service.checkContent(confirm)).rejects.toBe(error);
         });
 
         it('wraps any other error in AppUnknownException', async () => {
-            awsS3Service.getItemBytes.mockRejectedValue(new Error('boom'));
+            awsS3Service.checkItem.mockRejectedValue(new Error('boom'));
 
-            await expect(
-                service.assertContentText(existingContent.key)
-            ).rejects.toMatchObject({
+            await expect(service.checkContent(confirm)).rejects.toMatchObject({
                 module: 'app',
                 statusCode: EnumAppStatusCodeError.unknown,
             });
         });
+    });
 
-        it('resolves when the head is a text template', async () => {
-            await expect(
-                service.assertContentText(existingContent.key)
-            ).resolves.toBeUndefined();
+    describe('assertContentSizeAllowed', () => {
+        const accepted: ITermPolicyContentCheck = {
+            isSizeAllowed: true,
+            isContentValid: true,
+            content: existingContent,
+        };
+
+        it('throws TermPolicyContentSizeExceededException when one object is over the size', () => {
+            expect(() =>
+                service.assertContentSizeAllowed([
+                    accepted,
+                    { ...accepted, isSizeAllowed: false },
+                ])
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: TermPolicyContentSizeExceededException,
+                    module: 'termPolicy',
+                    statusCode:
+                        EnumTermPolicyStatusCodeError.contentSizeExceeded,
+                })
+            );
+        });
+
+        it('returns when every object is within the size', () => {
+            expect(() =>
+                service.assertContentSizeAllowed([accepted])
+            ).not.toThrow();
+        });
+    });
+
+    describe('assertContentTypeValid', () => {
+        const accepted: ITermPolicyContentCheck = {
+            isSizeAllowed: true,
+            isContentValid: true,
+            content: existingContent,
+        };
+
+        it('throws TermPolicyContentTypeInvalidException when one object is not a text template', () => {
+            expect(() =>
+                service.assertContentTypeValid([
+                    accepted,
+                    { ...accepted, isContentValid: false },
+                ])
+            ).toThrow(
+                expect.objectContaining({
+                    constructor: TermPolicyContentTypeInvalidException,
+                    module: 'termPolicy',
+                    statusCode:
+                        EnumTermPolicyStatusCodeError.contentTypeInvalid,
+                })
+            );
+        });
+
+        it('returns when every object is a text template', () => {
+            expect(() =>
+                service.assertContentTypeValid([accepted])
+            ).not.toThrow();
+        });
+    });
+
+    describe('deleteRejectedContentInTx', () => {
+        it('adds one delete effect holding only the refused keys on the tx', async () => {
+            const accepted: ITermPolicyContentCheck = {
+                isSizeAllowed: true,
+                isContentValid: true,
+                content: { ...existingContent, key: 'term-policies/a.hbs' },
+            };
+            const oversize: ITermPolicyContentCheck = {
+                isSizeAllowed: false,
+                isContentValid: true,
+                content: { ...existingContent, key: 'term-policies/b.hbs' },
+            };
+            const refusedContent: ITermPolicyContentCheck = {
+                isSizeAllowed: true,
+                isContentValid: false,
+                content: { ...existingContent, key: 'term-policies/c.hbs' },
+            };
+
+            await service.deleteRejectedContentInTx(tx, [
+                accepted,
+                oversize,
+                refusedContent,
+            ]);
+
+            expect(termPolicyQueue.deleteContentEffect).toHaveBeenCalledWith([
+                'term-policies/b.hbs',
+                'term-policies/c.hbs',
+            ]);
+            expect(outboxService.addInTx).toHaveBeenCalledExactlyOnceWith(
+                tx,
+                deleteEffect
+            );
         });
     });
 
@@ -415,28 +558,13 @@ describe('TermPolicyContentService', () => {
     });
 
     describe('prepareUpdateContentByAdmin', () => {
-        const content: ITermPolicyContentUpload = {
+        const content: ITermPolicyContentConfirm = {
             language: EnumMessageLanguage.en,
-            size: 2048,
             key: 'term-policies/privacy/v1/en-2.hbs',
         };
 
         beforeEach(() => {
             termPolicyRepository.findOneById.mockResolvedValue(draftTermPolicy);
-        });
-
-        it('throws TermPolicyContentSizeExceededException when size exceeds the configured max', async () => {
-            const promise = service.prepareUpdateContentByAdmin(
-                'term-policy-1',
-                { ...content, size: contentMaxSizeInBytes + 1 }
-            );
-
-            await expect(promise).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
-            });
-            expect(termPolicyRepository.findOneById).not.toHaveBeenCalled();
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
@@ -476,7 +604,7 @@ describe('TermPolicyContentService', () => {
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
             });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(awsS3Service.checkItem).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyContentInvalidException when the stored contents are invalid', async () => {
@@ -505,7 +633,7 @@ describe('TermPolicyContentService', () => {
                 module: 'termPolicy',
                 statusCode: EnumTermPolicyStatusCodeError.contentNotFound,
             });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(awsS3Service.checkItem).not.toHaveBeenCalled();
         });
 
         it('throws AwsS3NotConfiguredException when S3 is not initialized', async () => {
@@ -518,30 +646,23 @@ describe('TermPolicyContentService', () => {
                 module: 'aws',
                 statusCode: EnumAwsStatusCodeError.s3NotConfigured,
             });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
+            expect(awsS3Service.checkItem).not.toHaveBeenCalled();
         });
 
-        it('throws TermPolicyContentTypeInvalidException when the head is not a text template', async () => {
-            fileService.isContentOfExtension.mockResolvedValue(false);
+        it('throws TermPolicyContentKeyInvalidException when the object is missing', async () => {
+            awsS3Service.checkItem.mockRejectedValue(
+                new NotFound({ message: 'missing', $metadata: {} })
+            );
 
             await expect(
                 service.prepareUpdateContentByAdmin('term-policy-1', content)
             ).rejects.toMatchObject({
                 module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.contentTypeInvalid,
+                statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
             });
-            expect(awsS3Service.getItemBytes).toHaveBeenCalledWith(
-                content.key,
-                FileSniffSizeInBytes,
-                { access: EnumAwsS3Accessibility.private }
-            );
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
         });
 
-        it('returns the draft, its contents, the existing content, and the presigned content', async () => {
-            const mapped: IAwsS3 = { ...existingContent, key: content.key };
-            awsS3Service.mapPresign.mockReturnValue(mapped);
-
+        it('returns the draft, its contents, the existing content, the content carrying the size S3 reports, and the verdicts', async () => {
             const result = await service.prepareUpdateContentByAdmin(
                 'term-policy-1',
                 content
@@ -551,31 +672,58 @@ describe('TermPolicyContentService', () => {
                 termPolicy: draftTermPolicy,
                 contents: [existingContent],
                 existingContent,
-                mappedContent: {
-                    language: EnumMessageLanguage.en,
-                    ...mapped,
-                },
+                checks: [
+                    {
+                        isSizeAllowed: true,
+                        isContentValid: true,
+                        content: {
+                            language: EnumMessageLanguage.en,
+                            ...uploadedItem,
+                        },
+                    },
+                ],
             });
-            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
-                { key: content.key, size: 2048 },
-                { access: EnumAwsS3Accessibility.private }
+            expect(result.checks[0].content.size).toBe(2048);
+        });
+
+        it('returns the refused verdicts for an oversize object without throwing', async () => {
+            awsS3Service.checkItem.mockResolvedValue({
+                ...uploadedItem,
+                size: contentMaxSizeInBytes + 1,
+            });
+
+            const result = await service.prepareUpdateContentByAdmin(
+                'term-policy-1',
+                content
             );
+
+            expect(result.checks).toEqual([
+                expect.objectContaining({
+                    isSizeAllowed: false,
+                    isContentValid: true,
+                }),
+            ]);
         });
     });
 
     describe('updateContentByAdminInTx', () => {
-        const replacing: ITermPolicyContentPrepared<
-            ITermPolicyContent,
-            ITermPolicyContent
-        > = {
-            termPolicy: draftTermPolicy,
-            contents: [existingContent],
-            existingContent,
-            mappedContent: {
-                ...existingContent,
-                key: 'term-policies/privacy/v1/en-2.hbs',
-            },
+        const replacingContent: ITermPolicyContent = {
+            ...existingContent,
+            key: 'term-policies/privacy/v1/en-2.hbs',
         };
+        const replacing: ITermPolicyContentUploadPrepared<ITermPolicyContent> =
+            {
+                termPolicy: draftTermPolicy,
+                contents: [existingContent],
+                existingContent,
+                checks: [
+                    {
+                        isSizeAllowed: true,
+                        isContentValid: true,
+                        content: replacingContent,
+                    },
+                ],
+            };
 
         beforeEach(() => {
             termPolicyRepository.updateContentInTx.mockResolvedValue(
@@ -596,7 +744,7 @@ describe('TermPolicyContentService', () => {
                 tx,
                 'term-policy-1',
                 [existingContent],
-                replacing.mappedContent,
+                replacingContent,
                 draftTermPolicy.updatedAt
             );
         });
@@ -630,7 +778,16 @@ describe('TermPolicyContentService', () => {
                 requestContext,
                 apiKeyContext,
                 authContext,
-                { ...replacing, mappedContent: existingContent }
+                {
+                    ...replacing,
+                    checks: [
+                        {
+                            isSizeAllowed: true,
+                            isContentValid: true,
+                            content: existingContent,
+                        },
+                    ],
+                }
             );
 
             expect(outboxService.addManyInTx).toHaveBeenCalledTimes(1);
@@ -682,9 +839,8 @@ describe('TermPolicyContentService', () => {
     });
 
     describe('prepareAddContentByAdmin', () => {
-        const content: ITermPolicyContentUpload = {
+        const content: ITermPolicyContentConfirm = {
             language: EnumMessageLanguage.en,
-            size: 2048,
             key: 'term-policies/privacy/v1/en-2.hbs',
         };
 
@@ -692,19 +848,6 @@ describe('TermPolicyContentService', () => {
             termPolicyRepository.findOneById.mockResolvedValue(
                 emptyDraftTermPolicy
             );
-        });
-
-        it('throws TermPolicyContentSizeExceededException when size exceeds the configured max', async () => {
-            await expect(
-                service.prepareAddContentByAdmin('term-policy-1', {
-                    ...content,
-                    size: contentMaxSizeInBytes + 1,
-                })
-            ).rejects.toMatchObject({
-                module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
-            });
-            expect(termPolicyRepository.findOneById).not.toHaveBeenCalled();
         });
 
         it('throws TermPolicyNotFoundException when the term policy does not exist', async () => {
@@ -770,22 +913,36 @@ describe('TermPolicyContentService', () => {
             });
         });
 
-        it('throws TermPolicyContentTypeInvalidException when the head is not a text template', async () => {
-            fileService.isContentOfExtension.mockResolvedValue(false);
+        it('throws TermPolicyContentKeyInvalidException when the object is missing', async () => {
+            awsS3Service.checkItem.mockRejectedValue(
+                new NotFound({ message: 'missing', $metadata: {} })
+            );
 
             await expect(
                 service.prepareAddContentByAdmin('term-policy-1', content)
             ).rejects.toMatchObject({
                 module: 'termPolicy',
-                statusCode: EnumTermPolicyStatusCodeError.contentTypeInvalid,
+                statusCode: EnumTermPolicyStatusCodeError.contentKeyInvalid,
             });
-            expect(awsS3Service.mapPresign).not.toHaveBeenCalled();
         });
 
-        it('returns the draft, its contents, a null existing content, and the presigned content', async () => {
-            const mapped: IAwsS3 = { ...existingContent, key: content.key };
-            awsS3Service.mapPresign.mockReturnValue(mapped);
+        it('returns the refused verdicts for content that is not a text template without throwing', async () => {
+            fileService.isContentOfExtension.mockResolvedValue(false);
 
+            const result = await service.prepareAddContentByAdmin(
+                'term-policy-1',
+                content
+            );
+
+            expect(result.checks).toEqual([
+                expect.objectContaining({
+                    isSizeAllowed: true,
+                    isContentValid: false,
+                }),
+            ]);
+        });
+
+        it('returns the draft, its contents, a null existing content, the content carrying the size S3 reports, and the verdicts', async () => {
             const result = await service.prepareAddContentByAdmin(
                 'term-policy-1',
                 content
@@ -795,27 +952,37 @@ describe('TermPolicyContentService', () => {
                 termPolicy: emptyDraftTermPolicy,
                 contents: [],
                 existingContent: null,
-                mappedContent: {
-                    language: EnumMessageLanguage.en,
-                    ...mapped,
-                },
+                checks: [
+                    {
+                        isSizeAllowed: true,
+                        isContentValid: true,
+                        content: {
+                            language: EnumMessageLanguage.en,
+                            ...uploadedItem,
+                        },
+                    },
+                ],
             });
-            expect(awsS3Service.mapPresign).toHaveBeenCalledWith(
-                { key: content.key, size: 2048 },
-                { access: EnumAwsS3Accessibility.private }
-            );
+            expect(result.checks[0].content.size).toBe(2048);
         });
     });
 
     describe('addContentByAdminInTx', () => {
-        const adding: ITermPolicyContentPrepared<null, ITermPolicyContent> = {
+        const addingContent: ITermPolicyContent = {
+            ...existingContent,
+            key: 'term-policies/privacy/v1/en-2.hbs',
+        };
+        const adding: ITermPolicyContentUploadPrepared<null> = {
             termPolicy: emptyDraftTermPolicy,
             contents: [],
             existingContent: null,
-            mappedContent: {
-                ...existingContent,
-                key: 'term-policies/privacy/v1/en-2.hbs',
-            },
+            checks: [
+                {
+                    isSizeAllowed: true,
+                    isContentValid: true,
+                    content: addingContent,
+                },
+            ],
         };
 
         beforeEach(() => {
@@ -836,7 +1003,7 @@ describe('TermPolicyContentService', () => {
             expect(termPolicyRepository.addContentInTx).toHaveBeenCalledWith(
                 tx,
                 'term-policy-1',
-                adding.mappedContent
+                addingContent
             );
         });
 
@@ -953,7 +1120,7 @@ describe('TermPolicyContentService', () => {
             });
         });
 
-        it('returns the draft, its contents, the existing content, and a null mapped content', async () => {
+        it('returns the draft, its contents, and the existing content', async () => {
             const result = await service.prepareRemoveContentByAdmin(
                 'term-policy-1',
                 EnumMessageLanguage.en
@@ -963,17 +1130,15 @@ describe('TermPolicyContentService', () => {
                 termPolicy: draftTermPolicy,
                 contents: [existingContent],
                 existingContent,
-                mappedContent: null,
             });
         });
     });
 
     describe('removeContentByAdminInTx', () => {
-        const removing: ITermPolicyContentPrepared<ITermPolicyContent, null> = {
+        const removing: ITermPolicyContentPrepared<ITermPolicyContent> = {
             termPolicy: editedDraftTermPolicy,
             contents: [existingContent],
             existingContent,
-            mappedContent: null,
         };
 
         beforeEach(() => {

@@ -2,6 +2,7 @@ import type { ArgumentMetadata, PipeTransform, Type } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { EnumFileStatusCodeError } from '@common/file/enums/file.status-code.enum';
 import { FileRequiredPipe } from '@common/file/pipes/file.required.pipe';
+import { FileUtil } from '@common/file/utils/file.util';
 import type { IFile, IFileInput } from '@common/file/interfaces/file.interface';
 
 describe('FileRequiredPipe', () => {
@@ -12,7 +13,7 @@ describe('FileRequiredPipe', () => {
         const PipeClass: Type<PipeTransform<IFileInput, IFileInput>> =
             FileRequiredPipe();
         const module = await Test.createTestingModule({
-            providers: [PipeClass],
+            providers: [PipeClass, FileUtil],
         }).compile();
         pipe = module.get(PipeClass);
     });
@@ -92,26 +93,6 @@ describe('FileRequiredPipe', () => {
             const files = [{ originalname: 'a.csv' } as IFile];
 
             expect(pipe.transform(files, metadata)).toBe(files);
-        });
-    });
-
-    describe('isEmptyValue', () => {
-        it('treats a non-empty plain object as non-empty', () => {
-            const mixin = pipe as unknown as {
-                isEmptyValue(value: unknown): boolean;
-            };
-
-            expect(mixin['isEmptyValue']({ originalname: 'a.csv' })).toBe(
-                false
-            );
-        });
-
-        it('treats a truthy primitive as non-empty', () => {
-            const mixin = pipe as unknown as {
-                isEmptyValue(value: unknown): boolean;
-            };
-
-            expect(mixin['isEmptyValue']('a.csv')).toBe(false);
         });
     });
 });

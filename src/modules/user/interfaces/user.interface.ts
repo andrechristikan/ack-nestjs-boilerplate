@@ -291,6 +291,7 @@ export interface IUserUpdatePhotoProfile {
 }
 
 export interface IUserPhotoProfileCheck {
+    isSizeAllowed: boolean;
     isContentValid: boolean;
     photo: IAwsS3;
 }

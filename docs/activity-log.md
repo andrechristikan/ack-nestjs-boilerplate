@@ -432,4 +432,4 @@ The response returns `metadata` through `ActivityLogMetadataResponseSchema` (`dt
 [ref-doc-pagination]: concepts/pagination.md
 [ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store
 [ref-doc-analytic]: analytic.md
-[ref-doc-cache]: cache.md
+[ref-doc-cache]: concepts/cache.md#session-login-entry

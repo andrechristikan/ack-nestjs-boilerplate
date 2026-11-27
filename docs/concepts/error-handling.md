@@ -25,7 +25,8 @@ This page explains how the application turns a failure into a response or a proc
 - [I18n][ref-doc-i18n]: how an error's message path becomes a sentence
 - [Dependencies][ref-doc-dependencies]: the 503 and 501 answers of the kits and adapters
 - [Request Pipeline][ref-doc-request-pipeline]: where a filter sits on a request
-- [Logger][ref-doc-logger]: error logging and Sentry
+- [Logging][ref-doc-concept-logging]: error logging
+- [Sentry][ref-doc-concept-sentry]: which errors reach Sentry
 
 ## Overview
 
@@ -129,7 +130,7 @@ An error with no request to answer ends in a log, a Sentry report, or a process 
 - A decorator argument error, such as `RequestEnvProtected()` with no environment, throws when the decorator is evaluated, so the boot fails. A missing or misordered guard is the opposite case: that stack boots and fails per request.
 - Both entry points, `src/main.ts` for HTTP and `src/migration.ts` for seeds, end a failed start the same way through `bootstrapFailed` (`src/bootstrap.ts`): it logs one `fatal` line carrying the error, sends the error to Sentry and waits up to `AppBootstrapSentryFlushTimeoutInMs` (2000 ms) for the flush, and exits the process with code 1.
 - A seed that fails reaches that handler through nest-commander's `serviceErrorHandler`, which rethrows an `AppBaseException` and wraps any other error in `AppUnknownException`.
-- A job error in a processor is logged once. A `QueueException`, an `AppBaseException`, and BullMQ's `UnrecoverableError` rethrow as they are, and any other error becomes a `QueueException` with `isFatal` set to `true`. A `QueueUnrecoverableException` or a `HelperDecryptFailedException` becomes an `UnrecoverableError`, which stops the retries ([Queue][ref-doc-queue]).
+- A job error in a processor is logged once. A `QueueException`, an `AppBaseException`, and BullMQ's `UnrecoverableError` rethrow as they are, and any other error becomes a `QueueException` with `isFatal` set to `true`. A `QueueUnrecoverableException` or a `HelperDecryptFailedException` becomes an `UnrecoverableError`, which stops the retries ([Queue][ref-doc-concept-queue-retries]).
 - A failed job reports to Sentry once, on its last attempt or on an `UnrecoverableError`, unless the error or its cause is a `QueueException` whose `isFatal` is `false`. `isFatal` defaults to `false` on `QueueException` and to `true` on `QueueUnrecoverableException`, so an unrecoverable failure reports.
 - The rate limiter fails open on a reply it cannot read: it logs a `RequestThrottleResponseInvalidException` as a warning and lets the request through. The exception never reaches a filter.
 
@@ -143,5 +144,6 @@ An error with no request to answer ends in a log, a Sentry report, or a process 
 [ref-doc-i18n]: i18n.md
 [ref-doc-dependencies]: dependencies.md
 [ref-doc-request-pipeline]: request-pipeline.md
-[ref-doc-logger]: ../logger.md
-[ref-doc-queue]: ../queue.md
+[ref-doc-concept-logging]: logging.md
+[ref-doc-concept-sentry]: sentry.md
+[ref-doc-concept-queue-retries]: queue.md#retries-and-unrecoverable-failure

@@ -408,6 +408,8 @@ export class MigrationUserSeed
                     await tx.activityLog.deleteMany({});
                     await tx.termPolicyUserAcceptance.deleteMany({});
                     await tx.featureFlagTarget.deleteMany({});
+                    await tx.userSocial.deleteMany({});
+                    await tx.mfaPasskey.deleteMany({});
                     await tx.user.deleteMany({});
                 },
                 { timeout: this.seedTransactionTimeoutInMs }

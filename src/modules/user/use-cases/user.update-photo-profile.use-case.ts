@@ -40,7 +40,9 @@ export class UserUpdatePhotoProfileUseCase implements IAppUseCase<
         );
 
         try {
-            if (!check.isContentValid) {
+            const isRejected =
+                this.userProfileService.isPhotoProfileRejected(check);
+            if (isRejected) {
                 await this.databaseService.withTransaction(async tx =>
                     this.userProfileService.deleteRejectedPhotoInTx(
                         tx,
@@ -49,6 +51,7 @@ export class UserUpdatePhotoProfileUseCase implements IAppUseCase<
                     )
                 );
             }
+            this.userProfileService.assertPhotoSizeAllowed(check);
             this.userProfileService.assertPhotoContentValid(check);
 
             await this.databaseService.withTransaction(async tx =>

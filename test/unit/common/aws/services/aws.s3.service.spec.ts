@@ -192,6 +192,7 @@ describe('AwsS3Service', () => {
                 },
                 region: 'us-east-1',
                 maxAttempts: 3,
+                requestChecksumCalculation: 'WHEN_REQUIRED',
                 requestHandler: { requestTimeout: 5000 },
             });
         });
@@ -959,6 +960,50 @@ describe('AwsS3Service', () => {
 
             expect(result?.size).toBe(0);
         });
+
+        it('stores the object with the key mime as ContentType', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({});
+
+            await service.putItem(
+                { key: 'users/avatar.jpg', size: file.length, file },
+                { access: EnumAwsS3Accessibility.public, forceUpdate: true }
+            );
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        ContentType: 'image/jpeg',
+                    }),
+                })
+            );
+        });
+
+        it('declares SHA256 on the object upload', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({});
+
+            await service.putItem(
+                { key: 'users/avatar.jpg', size: file.length, file },
+                { access: EnumAwsS3Accessibility.public, forceUpdate: true }
+            );
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.objectContaining({
+                        ChecksumAlgorithm: 'SHA256',
+                    }),
+                })
+            );
+        });
     });
 
     describe('deleteItem', () => {
@@ -1244,6 +1289,29 @@ describe('AwsS3Service', () => {
             expect(result).toMatchObject({ uploadId: 'upload-1' });
         });
 
+        it('declares no checksum algorithm on the multipart upload', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({ UploadId: 'upload-1' });
+
+            await service.createMultiPart(
+                { key: 'users/video.mp4', size: 1000 },
+                10,
+                { access: EnumAwsS3Accessibility.public, forceUpdate: true }
+            );
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.not.objectContaining({
+                        ChecksumAlgorithm: expect.anything(),
+                    }),
+                })
+            );
+        });
+
         it('proceeds when the head check reports the key missing', async () => {
             const service = await createInitializedAwsS3Service(
                 configValues,
@@ -1374,6 +1442,30 @@ describe('AwsS3Service', () => {
                 { eTag: 'etag-1', partNumber: 1, size: 4 },
             ]);
             expect(result.lastPartNumber).toBe(1);
+        });
+
+        it('declares no checksum algorithm on the part upload', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+            send.mockResolvedValueOnce({ ETag: 'etag-1' });
+
+            await service.putItemMultiPart(
+                { ...multipart, parts: [] },
+                1,
+                Buffer.from('part'),
+                { access: EnumAwsS3Accessibility.public }
+            );
+
+            expect(send).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    input: expect.not.objectContaining({
+                        ChecksumAlgorithm: expect.anything(),
+                    }),
+                })
+            );
         });
     });
 
@@ -1616,6 +1708,61 @@ describe('AwsS3Service', () => {
                     access: EnumAwsS3Accessibility.public,
                 })
             ).resolves.toMatchObject({ key: dto.key });
+        });
+
+        it('signs no checksum algorithm', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+
+            await service.presignPutItem(dto, {
+                access: EnumAwsS3Accessibility.public,
+                forceUpdate: true,
+            });
+
+            expect(getSignedUrl).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    input: expect.not.objectContaining({
+                        ChecksumAlgorithm: expect.anything(),
+                    }),
+                }),
+                expect.anything()
+            );
+        });
+
+        it('signs no server-side encryption and no content-disposition header', async () => {
+            const service = await createInitializedAwsS3Service(
+                configValues,
+                {},
+                s3Doubles
+            );
+
+            await service.presignPutItem(dto, {
+                access: EnumAwsS3Accessibility.public,
+                forceUpdate: true,
+            });
+
+            expect(getSignedUrl).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    input: expect.not.objectContaining({
+                        ServerSideEncryption: expect.anything(),
+                    }),
+                }),
+                expect.anything()
+            );
+            expect(getSignedUrl).toHaveBeenCalledWith(
+                expect.anything(),
+                expect.objectContaining({
+                    input: expect.not.objectContaining({
+                        ContentDisposition: expect.anything(),
+                    }),
+                }),
+                expect.anything()
+            );
         });
 
         it('throws when the key already exists', async () => {

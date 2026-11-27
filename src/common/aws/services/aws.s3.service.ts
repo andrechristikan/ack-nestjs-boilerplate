@@ -413,6 +413,7 @@ export class AwsS3Service implements OnModuleInit {
             },
             region: this.region,
             maxAttempts: this.maxAttempts,
+            requestChecksumCalculation: 'WHEN_REQUIRED',
             requestHandler: {
                 requestTimeout: this.timeoutInMs,
             },
@@ -700,6 +701,7 @@ export class AwsS3Service implements OnModuleInit {
             Bucket: config.bucket,
             Key: file.key,
             Body: content,
+            ContentType: mime,
             ServerSideEncryption: 'AES256',
             ChecksumAlgorithm: 'SHA256',
         });
@@ -878,7 +880,6 @@ export class AwsS3Service implements OnModuleInit {
                 ContentType: mime,
                 ContentDisposition: 'inline',
                 ServerSideEncryption: 'AES256',
-                ChecksumAlgorithm: 'SHA256',
             });
 
         const response = await this.sendCommand<
@@ -1085,9 +1086,6 @@ export class AwsS3Service implements OnModuleInit {
             Key: key,
             ContentType: mime,
             ContentLength: size,
-            ServerSideEncryption: 'AES256',
-            ChecksumAlgorithm: 'SHA256',
-            ContentDisposition: 'inline',
         });
         const expiresIn =
             options.expiredInSeconds ?? this.presignExpiresInSeconds;

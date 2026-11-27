@@ -33,11 +33,23 @@ paths:
 
 ## S3 presign
 
-The browser PUTs straight to S3; the API signs and never proxies bytes. The presign DTOs (`src/common/aws/dtos/request/`) validate `key`, `size`, and for multipart `partNumber` / `uploadId`. `EnumAwsS3Accessibility` (`public` / `private`) is a required argument wherever an `AwsS3Service` method reaches a bucket (`copyItem` names `accessFrom` and `accessTo`); when in doubt, `private`. A presign signature is a credential (`security.md`): a presign a request returns travels in the response and nowhere else, with a short expiry. The export download link is encrypted in the notification payload (`effects.md`, Payloads), sent by email only, and valid for `user.export.presignExpiresInSeconds`. `presignPutItem` signs `content-type`: the client PUTs with exactly the returned `mime`. A service saving a presigned key reads the object's head through `AwsS3Service.getItemBytes` (`FileSniffSizeInBytes`, `src/common/file/constants/file.constant.ts`: the head `file-type` reads) and checks it with `FileService.isContentOfExtension` before any write; a refused public object is deleted (S3 deletes) before the module's 415 (`UserProfileService.updatePhotoProfile`).
+The browser PUTs straight to S3; the API signs and never proxies bytes.
+
+- The presign DTOs (`src/common/aws/dtos/request/`) validate `key`, `size`, and for multipart `partNumber` / `uploadId`.
+- `EnumAwsS3Accessibility` (`public` / `private`) is a required argument wherever an `AwsS3Service` method reaches a bucket (`copyItem` names `accessFrom` and `accessTo`); when in doubt, `private`.
+- A presign signature is a credential (`security.md`): a presign a request returns travels in the response and nowhere else, with a short expiry.
+- The export download link is encrypted in the notification payload (`effects.md`, Payloads), sent by email only, and valid for `user.export.presignExpiresInSeconds`.
+- `presignPutItem` signs `content-type`, `content-length`, and `host` and nothing else: the client PUTs with exactly the returned `mime`; encryption at rest is the bucket's default.
+- A multipart upload declares no checksum algorithm: S3 attaches its full-object `CRC64NVME` checksum, and a presigned part signs `host` only.
+- The S3 client computes a request checksum only where S3 requires one (`requestChecksumCalculation: 'WHEN_REQUIRED'`, `AwsS3Service.onModuleInit`), and a presign URL carries no checksum claim.
+- `putItem` and the bucket policy write name `SHA256`; every other command sends only the checksum S3 requires.
+- The use case that saves a presigned key reads the uploaded object's size (`AwsS3Service.checkItem`) and its first bytes (`getItemBytes`, `FileSniffSizeInBytes`, `src/common/file/constants/file.constant.ts`: the head `file-type` reads) before any business write, never a size the request states, and checks the head with `FileService.isContentOfExtension`.
+- An object refused for its size or its content, public or private, gets its delete row (S3 deletes), then the module's refusal throws (`UserProfileService.checkPhotoProfile`, then `deleteRejectedPhotoInTx` in `UserUpdatePhotoProfileUseCase`).
+- A confirm of several objects (`TermPolicyService.prepareCreateByAdmin` in `TermPolicyCreateByAdminUseCase`) reads every object before it throws, and deletes the refused objects only.
 
 ## S3 deletes
 
-An S3 object delete is a side effect: an outbox row of the module owning the object, added in the database write's transaction, or in one holding the add alone when no write happens (a presigned object refused for its content) (`effects.md`, Writing). A replaced or deleted term-policy content object and a user's previous profile photo, once a new one replaces it, are deleted this way. Saving a profile photo key outside the user's profile path (`UserProfileService.buildPhotoProfilePath`) is rejected with 400 (`UserPhotoKeyInvalidException`); the replace and the account self-delete add a photo delete only for a key `UserProfileService.isPhotoProfileKeyOwned` (`src/modules/user/services/user.profile.service.ts`) accepts.
+An S3 object delete is a side effect: an outbox row of the module owning the object, added in the database write's transaction, or in one holding the add alone when no write happens (a presigned object refused for its size or its content) (`effects.md`, Writing). A replaced or deleted term-policy content object and a user's previous profile photo, once a new one replaces it, are deleted this way. Saving a profile photo key outside the user's profile path (`UserProfileService.buildPhotoProfilePath`) is rejected with 400 (`UserPhotoKeyInvalidException`); the replace and the account self-delete add a photo delete only for a key `UserProfileService.isPhotoProfileKeyOwned` (`src/modules/user/services/user.profile.service.ts`) accepts.
 
 ## AWS without credentials
 

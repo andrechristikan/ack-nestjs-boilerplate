@@ -1,3 +1,5 @@
+import { AppBaseException } from '@app/exceptions/app.base.exception';
+import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
@@ -17,7 +19,6 @@ import type { IOutboxEffect } from '@common/outbox/interfaces/outbox.interface';
 import { OutboxService } from '@common/outbox/services/outbox.service';
 import type { IResponsePaginationReturn } from '@common/response/interfaces/response.interface';
 import { TermPolicyContentEmptyException } from '@modules/term-policy/exceptions/term-policy.content-empty.exception';
-import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
 import { TermPolicyContentKeyInvalidException } from '@modules/term-policy/exceptions/term-policy.content-key-invalid.exception';
 import { TermPolicyExistException } from '@modules/term-policy/exceptions/term-policy.exist.exception';
@@ -67,6 +68,20 @@ export class TermPolicyService {
         const languages = contents.map(content => content.language);
         const uniqueLanguages = this.helperArrayService.unique(languages);
         return uniqueLanguages.length === languages.length;
+    }
+
+    private toReadFailure(
+        rejected: PromiseRejectedResult | null
+    ): AppBaseException | null {
+        if (rejected === null) {
+            return null;
+        }
+
+        const reason: unknown = rejected.reason;
+
+        return reason instanceof AppBaseException
+            ? reason
+            : new AppUnknownException(reason);
     }
 
     private mapPublicContentKeys(
@@ -133,13 +148,7 @@ export class TermPolicyService {
             throw new TermPolicyLanguageDuplicateException();
         }
 
-        for (const { size, key } of contents) {
-            const isSizeAllowed =
-                this.termPolicyUtil.isContentSizeAllowed(size);
-            if (!isSizeAllowed) {
-                throw new TermPolicyContentSizeExceededException();
-            }
-
+        for (const { key } of contents) {
             const isInPath = this.termPolicyUtil.isContentKeyInPath(
                 type,
                 version,
@@ -155,29 +164,19 @@ export class TermPolicyService {
             throw new AwsS3NotConfiguredException();
         }
 
-        await Promise.all(
-            contents.map(({ key }) =>
-                this.termPolicyContentService.assertContentText(key)
+        const settled = await Promise.allSettled(
+            contents.map(content =>
+                this.termPolicyContentService.checkContent(content)
             )
         );
+        const checks = settled
+            .filter(result => result.status === 'fulfilled')
+            .map(({ value }) => value);
+        const rejected =
+            settled.find(result => result.status === 'rejected') ?? null;
+        const readFailure = this.toReadFailure(rejected);
 
-        const mappedContents: ITermPolicyContent[] = contents.map(
-            ({ language, key, size }: ITermPolicyContentUpload) => {
-                const presign = this.awsS3Service.mapPresign(
-                    {
-                        key,
-                        size,
-                    },
-                    {
-                        access: EnumAwsS3Accessibility.private,
-                    }
-                );
-
-                return { language, ...presign };
-            }
-        );
-
-        return { contents: mappedContents };
+        return { checks, readFailure };
     }
 
     async createByAdminInTx(

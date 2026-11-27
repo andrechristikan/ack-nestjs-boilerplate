@@ -416,7 +416,7 @@ Workspace activity volume:
 <!-- REFERENCES -->
 
 [ref-doc-authorization]: authorization.md
-[ref-doc-cache]: cache.md
+[ref-doc-cache]: concepts/cache.md
 [ref-doc-configuration]: reference/configuration.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-workspace]: workspace.md

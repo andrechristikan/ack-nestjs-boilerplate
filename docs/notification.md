@@ -914,7 +914,7 @@ The notification list is cursor-paginated:
 [ref-doc-device]: device.md
 [ref-doc-third-party]: concepts/dependencies.md
 [ref-doc-email]: email.md
-[ref-doc-queue]: queue.md
-[ref-doc-database]: database.md
+[ref-doc-queue]: concepts/queue.md
+[ref-doc-database]: concepts/database.md#transactions
 [ref-doc-configuration]: reference/configuration.md
 [ref-doc-environment]: reference/configuration.md

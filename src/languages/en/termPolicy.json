@@ -32,7 +32,7 @@
         "requiredNotPublished": "A required term policy is not published yet.",
         "statusInvalid": "Term policy status is invalid.",
         "contentSizeExceeded": "Term policy content is larger than the allowed size.",
-        "contentKeyInvalid": "Term policy content key is outside the policy storage path.",
+        "contentKeyInvalid": "Term policy content key is outside the policy storage path or has no uploaded object.",
         "contentTypeInvalid": "Term policy content must be a text template."
     }
 }

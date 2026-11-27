@@ -13,13 +13,18 @@ import {
 } from '@generated/prisma-client/client';
 import type { TermPolicy } from '@generated/prisma-client/client';
 import type { TermPolicyContentRequestDto } from '@modules/term-policy/dtos/request/term-policy.content.request.dto';
+import { EnumTermPolicyStatusCodeError } from '@modules/term-policy/enums/term-policy.status-code.enum';
+import { TermPolicyContentSizeExceededException } from '@modules/term-policy/exceptions/term-policy.content-size-exceeded.exception';
+import { TermPolicyContentTypeInvalidException } from '@modules/term-policy/exceptions/term-policy.content-type-invalid.exception';
 import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/term-policy.not-found.exception';
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
     ITermPolicyContent,
-    ITermPolicyContentPrepared,
+    ITermPolicyContentCheck,
+    ITermPolicyContentUploadPrepared,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyContentService } from '@modules/term-policy/services/term-policy.content.service';
+import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 import { TermPolicyAddContentByAdminUseCase } from '@modules/term-policy/use-cases/term-policy.add-content-by-admin.use-case';
 import { buildConfigService } from '@test/unit/helpers/test.unit.config.helper';
 import {
@@ -68,14 +73,18 @@ describe('TermPolicyAddContentByAdminUseCase', () => {
     const authContext = buildAuthJwtAccessContext('admin-1');
     const body: TermPolicyContentRequestDto = {
         language: EnumMessageLanguage.en,
-        size: 1024,
         key: 'term-policies/privacy/1/en.hbs',
     };
-    const prepared: ITermPolicyContentPrepared<null, ITermPolicyContent> = {
+    const accepted: ITermPolicyContentCheck = {
+        isSizeAllowed: true,
+        isContentValid: true,
+        content,
+    };
+    const prepared: ITermPolicyContentUploadPrepared<null> = {
         termPolicy,
         contents: [],
         existingContent: null,
-        mappedContent: content,
+        checks: [accepted],
     };
 
     let useCase: TermPolicyAddContentByAdminUseCase;
@@ -96,10 +105,19 @@ describe('TermPolicyAddContentByAdminUseCase', () => {
                     useValue: termPolicyContentService,
                 },
                 { provide: DatabaseService, useValue: databaseService },
+                TermPolicyUtil,
                 ...TestUnitKitProviders,
                 {
                     provide: ConfigService,
-                    useValue: buildConfigService(TestUnitKitConfigValues),
+                    useValue: buildConfigService({
+                        ...TestUnitKitConfigValues,
+                        'termPolicy.uploadContentPathPattern':
+                            'term-policies/{type}/v{version}',
+                        'termPolicy.contentPublicPathPattern':
+                            'public/term-policies/{type}/v{version}',
+                        'termPolicy.content.maxSizeInBytes': 4096,
+                        'termPolicy.contentKeyRandomLength': 20,
+                    }),
                 },
             ],
         }).compile();
@@ -124,6 +142,100 @@ describe('TermPolicyAddContentByAdminUseCase', () => {
                 )
             ).rejects.toBe(failure);
             expect(databaseService.withTransaction).not.toHaveBeenCalled();
+        });
+
+        it('opens one transaction holding deleteRejectedContentInTx then rejects with TermPolicyContentSizeExceededException for an oversize object, and the write is not called', async () => {
+            const oversize: ITermPolicyContentCheck = {
+                ...accepted,
+                isSizeAllowed: false,
+            };
+            termPolicyContentService.prepareAddContentByAdmin.mockResolvedValue(
+                { ...prepared, checks: [oversize] }
+            );
+            termPolicyContentService.assertContentSizeAllowed.mockImplementation(
+                () => {
+                    throw new TermPolicyContentSizeExceededException();
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1',
+                    body
+                )
+            ).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentSizeExceeded,
+            });
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                termPolicyContentService.deleteRejectedContentInTx
+            ).toHaveBeenCalledWith(tx, [oversize]);
+            expect(
+                termPolicyContentService.deleteRejectedContentInTx
+            ).toHaveBeenCalledBefore(
+                termPolicyContentService.assertContentSizeAllowed
+            );
+            expect(
+                termPolicyContentService.addContentByAdminInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('opens one transaction holding deleteRejectedContentInTx then rejects with TermPolicyContentTypeInvalidException for refused content, and the write is not called', async () => {
+            const refused: ITermPolicyContentCheck = {
+                ...accepted,
+                isContentValid: false,
+            };
+            termPolicyContentService.prepareAddContentByAdmin.mockResolvedValue(
+                { ...prepared, checks: [refused] }
+            );
+            termPolicyContentService.assertContentTypeValid.mockImplementation(
+                () => {
+                    throw new TermPolicyContentTypeInvalidException();
+                }
+            );
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    'term-policy-1',
+                    body
+                )
+            ).rejects.toMatchObject({
+                module: 'termPolicy',
+                statusCode: EnumTermPolicyStatusCodeError.contentTypeInvalid,
+            });
+
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                termPolicyContentService.deleteRejectedContentInTx
+            ).toHaveBeenCalledWith(tx, [refused]);
+            expect(
+                termPolicyContentService.addContentByAdminInTx
+            ).not.toHaveBeenCalled();
+        });
+
+        it('adds no delete row when no object is rejected', async () => {
+            termPolicyContentService.addContentByAdminInTx.mockResolvedValue();
+
+            await useCase.execute(
+                requestContext,
+                apiKeyContext,
+                authContext,
+                'term-policy-1',
+                body
+            );
+
+            expect(
+                termPolicyContentService.deleteRejectedContentInTx
+            ).not.toHaveBeenCalled();
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
         });
 
         it('prepares the change, writes it on the transaction, and returns an empty envelope', async () => {

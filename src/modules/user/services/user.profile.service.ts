@@ -180,7 +180,7 @@ export class UserProfileService {
         return aws;
     }
 
-    /** Reads the uploaded object and checks the key, the size, and the content bytes; writes nothing. */
+    /** Reads the uploaded object and returns the size and content verdicts; throws `UserPhotoKeyInvalidException` for a key outside the user's photo path or a missing object, and `AwsS3NotConfiguredException` while S3 is unset; writes nothing. */
     async checkPhotoProfile(
         authContext: IAuthJwtAccessContext,
         { key }: IUserUpdatePhotoProfile
@@ -205,21 +205,17 @@ export class UserProfileService {
                 throw new AwsS3NotConfiguredException();
             }
 
-            const isSizeAllowed = this.isPhotoSizeAllowed(aws.size);
-            if (!isSizeAllowed) {
-                throw new UserPhotoSizeExceededException();
-            }
-
             if (!head) {
                 throw new AwsS3NotConfiguredException();
             }
 
+            const isSizeAllowed = this.isPhotoSizeAllowed(aws.size);
             const isContentValid = await this.fileService.isContentOfExtension(
                 head,
                 aws.extension
             );
 
-            return { isContentValid, photo: aws };
+            return { isSizeAllowed, isContentValid, photo: aws };
         } catch (err: unknown) {
             if (err instanceof AppBaseException) {
                 throw err;
@@ -231,13 +227,26 @@ export class UserProfileService {
         }
     }
 
+    isPhotoProfileRejected({
+        isSizeAllowed,
+        isContentValid,
+    }: IUserPhotoProfileCheck): boolean {
+        return !isSizeAllowed || !isContentValid;
+    }
+
+    assertPhotoSizeAllowed({ isSizeAllowed }: IUserPhotoProfileCheck): void {
+        if (!isSizeAllowed) {
+            throw new UserPhotoSizeExceededException();
+        }
+    }
+
     assertPhotoContentValid({ isContentValid }: IUserPhotoProfileCheck): void {
         if (!isContentValid) {
             throw new UserPhotoContentInvalidException();
         }
     }
 
-    /** Adds the delete row of an uploaded photo whose content was rejected on the caller's transaction. */
+    /** Adds the delete row of an uploaded photo whose size or content was rejected on the caller's transaction. */
     async deleteRejectedPhotoInTx(
         tx: IDatabaseTransactionClient,
         userId: string,

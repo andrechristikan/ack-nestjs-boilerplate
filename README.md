@@ -217,7 +217,7 @@ Or via PayPal
 [ref-doc-features]: docs/features.md
 [ref-doc-installation]: docs/getting-started/installation.md
 [ref-doc-commands]: docs/reference/commands.md
-[ref-doc-database]: docs/database.md
+[ref-doc-database]: docs/concepts/database.md
 [ref-doc-dependencies]: docs/concepts/dependencies.md
 [ref-doc-integration-triggers]: docs/reference/configuration.md#integration-triggers
 [ref-doc-authorization]: docs/authorization.md#decorator-order

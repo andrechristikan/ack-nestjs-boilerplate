@@ -3,7 +3,11 @@ import { mock } from 'vitest-mock-extended';
 import type { MockProxy } from 'vitest-mock-extended';
 import { FileService } from '@common/file/services/file.service';
 import { EnumFileExtension } from '@common/file/enums/file.enum';
-import type { IFile, IFileInput } from '@common/file/interfaces/file.interface';
+import type {
+    IFile,
+    IFileFieldMap,
+    IFileInput,
+} from '@common/file/interfaces/file.interface';
 import {
     createFileExtensionPipe,
     expectFileExtensionInvalid,
@@ -11,7 +15,6 @@ import {
 
 type IPipeMixin = {
     extractFilesToValidate(value: IFileInput): IFile[];
-    isEmptyValue(value: unknown): boolean;
     validate(file: IFile): Promise<void>;
 };
 
@@ -47,7 +50,7 @@ describe('FileExtensionPipe', () => {
                 [EnumFileExtension.pdf],
                 fileService
             );
-            const value = {} as unknown as IFileInput;
+            const value: IFileFieldMap = {};
 
             const result = await pipe.transform(value, metadata);
 
@@ -182,22 +185,72 @@ describe('FileExtensionPipe', () => {
 
             await expectFileExtensionInvalid(promise);
         });
+
+        it('validates every file of every field of a field map and returns the map', async () => {
+            const pipe = await createFileExtensionPipe(
+                [EnumFileExtension.pdf],
+                fileService
+            );
+            fileService.extractExtensionFromFilename.mockReturnValue('pdf');
+            fileService.isContentOfExtension.mockResolvedValue(true);
+
+            const value: IFileFieldMap = {
+                cover: [{ ...baseFile, originalname: 'a.pdf' }],
+                attachments: [
+                    { ...baseFile, originalname: 'b.pdf' },
+                    { ...baseFile, originalname: 'c.pdf' },
+                ],
+            };
+            const result = await pipe.transform(value, metadata);
+
+            expect(result).toBe(value);
+            expect(fileService.isContentOfExtension).toHaveBeenCalledTimes(3);
+        });
+
+        it('rejects a field map holding one file with a disallowed extension', async () => {
+            const pipe = await createFileExtensionPipe(
+                [EnumFileExtension.pdf],
+                fileService
+            );
+            fileService.extractExtensionFromFilename
+                .mockReturnValueOnce('pdf')
+                .mockReturnValueOnce('png');
+            fileService.isContentOfExtension.mockResolvedValue(true);
+
+            const promise = pipe.transform(
+                {
+                    cover: [{ ...baseFile, originalname: 'a.pdf' }],
+                    attachments: [{ ...baseFile, originalname: 'b.png' }],
+                },
+                metadata
+            );
+
+            await expectFileExtensionInvalid(promise);
+        });
+
+        it('rejects a field map holding one file whose bytes mismatch the extension', async () => {
+            const pipe = await createFileExtensionPipe(
+                [EnumFileExtension.pdf],
+                fileService
+            );
+            fileService.extractExtensionFromFilename.mockReturnValue('pdf');
+            fileService.isContentOfExtension
+                .mockResolvedValueOnce(true)
+                .mockResolvedValueOnce(false);
+
+            const promise = pipe.transform(
+                {
+                    cover: [{ ...baseFile, originalname: 'a.pdf' }],
+                    attachments: [{ ...baseFile, originalname: 'b.pdf' }],
+                },
+                metadata
+            );
+
+            await expectFileExtensionInvalid(promise);
+        });
     });
 
     describe('extractFilesToValidate', () => {
-        it('returns an empty array for a falsy value', async () => {
-            const pipe = (await createFileExtensionPipe(
-                [EnumFileExtension.pdf],
-                fileService
-            )) as unknown as IPipeMixin;
-
-            expect(
-                pipe['extractFilesToValidate'](
-                    undefined as unknown as IFileInput
-                )
-            ).toEqual([]);
-        });
-
         it('wraps a single file into an array', async () => {
             const pipe = (await createFileExtensionPipe(
                 [EnumFileExtension.pdf],
@@ -219,28 +272,6 @@ describe('FileExtensionPipe', () => {
             ];
 
             expect(pipe['extractFilesToValidate'](values)).toBe(values);
-        });
-    });
-
-    describe('isEmptyValue', () => {
-        it('treats an empty array as empty', async () => {
-            const pipe = (await createFileExtensionPipe(
-                [EnumFileExtension.pdf],
-                fileService
-            )) as unknown as IPipeMixin;
-
-            expect(pipe['isEmptyValue']([])).toBe(true);
-        });
-
-        it('treats a non-empty file as non-empty', async () => {
-            const pipe = (await createFileExtensionPipe(
-                [EnumFileExtension.pdf],
-                fileService
-            )) as unknown as IPipeMixin;
-
-            expect(
-                pipe['isEmptyValue']({ ...baseFile, originalname: 'a.pdf' })
-            ).toBe(false);
         });
     });
 

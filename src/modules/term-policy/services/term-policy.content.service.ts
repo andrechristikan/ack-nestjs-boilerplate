@@ -3,12 +3,15 @@ import { AppUnknownException } from '@app/exceptions/app.unknown.exception';
 import type { IDatabaseTransactionClient } from '@common/database/interfaces/database.client.interface';
 import { EnumAwsS3Accessibility } from '@generated/prisma-client/client';
 import { AwsS3NotConfiguredException } from '@common/aws/exceptions/aws.s3-not-configured.exception';
-import type { IAwsS3Presign } from '@common/aws/interfaces/aws.interface';
+import type {
+    IAwsS3,
+    IAwsS3Presign,
+} from '@common/aws/interfaces/aws.interface';
 import { AwsS3Service } from '@common/aws/services/aws.s3.service';
 import { EnumFileExtensionTemplate } from '@common/file/enums/file.enum';
 import { FileSniffSizeInBytes } from '@common/file/constants/file.constant';
 import { FileService } from '@common/file/services/file.service';
-import { NoSuchKey } from '@aws-sdk/client-s3';
+import { NoSuchKey, NotFound } from '@aws-sdk/client-s3';
 import { HelperDateService } from '@common/helper/services/helper.date.service';
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import type { IRequestContext } from '@common/request/interfaces/request.interface';
@@ -25,9 +28,11 @@ import { TermPolicyNotFoundException } from '@modules/term-policy/exceptions/ter
 import { TermPolicyStatusInvalidException } from '@modules/term-policy/exceptions/term-policy.status-invalid.exception';
 import type {
     ITermPolicyContent,
+    ITermPolicyContentCheck,
+    ITermPolicyContentConfirm,
     ITermPolicyContentPrepared,
     ITermPolicyContentPresign,
-    ITermPolicyContentUpload,
+    ITermPolicyContentUploadPrepared,
 } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyQueue } from '@modules/term-policy/queues/term-policy.queue';
 import { TermPolicyRepository } from '@modules/term-policy/repositories/term-policy.repository';
@@ -84,35 +89,73 @@ export class TermPolicyContentService {
         return termPolicy;
     }
 
-    async assertContentText(key: string): Promise<void> {
-        let head: Buffer | null;
+    /** Reads the uploaded object's size and first bytes and returns the verdicts with the content carrying the size S3 reports; throws `TermPolicyContentKeyInvalidException` for a missing object and `AwsS3NotConfiguredException` while S3 is unset; writes nothing. */
+    async checkContent({
+        language,
+        key,
+    }: ITermPolicyContentConfirm): Promise<ITermPolicyContentCheck> {
         try {
-            head = await this.awsS3Service.getItemBytes(
-                key,
-                FileSniffSizeInBytes,
-                { access: EnumAwsS3Accessibility.private }
+            const [aws, head]: [IAwsS3 | null, Buffer | null] =
+                await Promise.all([
+                    this.awsS3Service.checkItem(key, {
+                        access: EnumAwsS3Accessibility.private,
+                    }),
+                    this.awsS3Service.getItemBytes(key, FileSniffSizeInBytes, {
+                        access: EnumAwsS3Accessibility.private,
+                    }),
+                ]);
+            if (!aws || !head) {
+                throw new AwsS3NotConfiguredException();
+            }
+
+            const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(
+                aws.size
             );
+            const isContentValid = await this.fileService.isContentOfExtension(
+                head,
+                EnumFileExtensionTemplate.hbs
+            );
+
+            return {
+                isSizeAllowed,
+                isContentValid,
+                content: { language, ...aws },
+            };
         } catch (err: unknown) {
-            if (err instanceof NoSuchKey) {
-                throw new TermPolicyContentKeyInvalidException();
-            } else if (err instanceof AppBaseException) {
+            if (err instanceof AppBaseException) {
                 throw err;
+            } else if (err instanceof NoSuchKey || err instanceof NotFound) {
+                throw new TermPolicyContentKeyInvalidException();
             }
 
             throw new AppUnknownException(err);
         }
+    }
 
-        if (!head) {
-            throw new AwsS3NotConfiguredException();
+    assertContentSizeAllowed(checks: ITermPolicyContentCheck[]): void {
+        const isOversize = checks.some(({ isSizeAllowed }) => !isSizeAllowed);
+        if (isOversize) {
+            throw new TermPolicyContentSizeExceededException();
         }
+    }
 
-        const isText = await this.fileService.isContentOfExtension(
-            head,
-            EnumFileExtensionTemplate.hbs
-        );
-        if (!isText) {
+    assertContentTypeValid(checks: ITermPolicyContentCheck[]): void {
+        const isInvalid = checks.some(({ isContentValid }) => !isContentValid);
+        if (isInvalid) {
             throw new TermPolicyContentTypeInvalidException();
         }
+    }
+
+    /** Adds one delete row holding the keys of the refused objects only on the caller's transaction. */
+    async deleteRejectedContentInTx(
+        tx: IDatabaseTransactionClient,
+        checks: ITermPolicyContentCheck[]
+    ): Promise<void> {
+        const keys = checks
+            .filter(check => this.termPolicyUtil.isContentRejected([check]))
+            .map(({ content }) => content.key);
+        const effect = this.termPolicyQueue.deleteContentEffect(keys);
+        await this.outboxService.addInTx(tx, effect);
     }
 
     async generateContentPresignByAdmin({
@@ -164,17 +207,11 @@ export class TermPolicyContentService {
         return aws;
     }
 
+    /** Returns the verdicts on the uploaded object beside the content; throws no size or content refusal, the caller deletes the refused object first. */
     async prepareUpdateContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload
-    ): Promise<
-        ITermPolicyContentPrepared<ITermPolicyContent, ITermPolicyContent>
-    > {
-        const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
-        if (!isSizeAllowed) {
-            throw new TermPolicyContentSizeExceededException();
-        }
-
+        { key, language }: ITermPolicyContentConfirm
+    ): Promise<ITermPolicyContentUploadPrepared<ITermPolicyContent>> {
         // Sequential by design: a cheap check before the expensive or external work it guards
         const termPolicy = await this.getDraftById(termPolicyId);
         this.assertKeyPath(termPolicy, key);
@@ -193,20 +230,13 @@ export class TermPolicyContentService {
             throw new AwsS3NotConfiguredException();
         }
 
-        await this.assertContentText(key);
-
-        const presign = this.awsS3Service.mapPresign(
-            { key, size },
-            {
-                access: EnumAwsS3Accessibility.private,
-            }
-        );
+        const check = await this.checkContent({ language, key });
 
         return {
             termPolicy,
             contents,
             existingContent,
-            mappedContent: { language, ...presign },
+            checks: [check],
         };
     }
 
@@ -219,19 +249,19 @@ export class TermPolicyContentService {
             termPolicy,
             contents,
             existingContent,
-            mappedContent,
-        }: ITermPolicyContentPrepared<ITermPolicyContent, ITermPolicyContent>
+            checks: [{ content }],
+        }: ITermPolicyContentUploadPrepared<ITermPolicyContent>
     ): Promise<void> {
         const updated = await this.termPolicyRepository.updateContentInTx(
             tx,
             termPolicy.id,
             contents,
-            mappedContent,
+            content,
             termPolicy.updatedAt
         );
 
         const effects: IOutboxEffect[] = [];
-        if (existingContent.key !== mappedContent.key) {
+        if (existingContent.key !== content.key) {
             const deleteEffect = this.termPolicyQueue.deleteContentEffect([
                 existingContent.key,
             ]);
@@ -257,15 +287,11 @@ export class TermPolicyContentService {
         await this.outboxService.addManyInTx(tx, effects);
     }
 
+    /** Returns the verdicts on the uploaded object beside the content; throws no size or content refusal, the caller deletes the refused object first. */
     async prepareAddContentByAdmin(
         termPolicyId: string,
-        { key, size, language }: ITermPolicyContentUpload
-    ): Promise<ITermPolicyContentPrepared<null, ITermPolicyContent>> {
-        const isSizeAllowed = this.termPolicyUtil.isContentSizeAllowed(size);
-        if (!isSizeAllowed) {
-            throw new TermPolicyContentSizeExceededException();
-        }
-
+        { key, language }: ITermPolicyContentConfirm
+    ): Promise<ITermPolicyContentUploadPrepared<null>> {
         // Sequential by design: a cheap check before the expensive or external work it guards
         const termPolicy = await this.getDraftById(termPolicyId);
         this.assertKeyPath(termPolicy, key);
@@ -284,20 +310,13 @@ export class TermPolicyContentService {
             throw new AwsS3NotConfiguredException();
         }
 
-        await this.assertContentText(key);
-
-        const presign = this.awsS3Service.mapPresign(
-            { key, size },
-            {
-                access: EnumAwsS3Accessibility.private,
-            }
-        );
+        const check = await this.checkContent({ language, key });
 
         return {
             termPolicy,
             contents,
             existingContent: null,
-            mappedContent: { language, ...presign },
+            checks: [check],
         };
     }
 
@@ -308,13 +327,13 @@ export class TermPolicyContentService {
         authContext: IAuthJwtAccessContext,
         {
             termPolicy,
-            mappedContent,
-        }: ITermPolicyContentPrepared<null, ITermPolicyContent>
+            checks: [{ content }],
+        }: ITermPolicyContentUploadPrepared<null>
     ): Promise<void> {
         const added = await this.termPolicyRepository.addContentInTx(
             tx,
             termPolicy.id,
-            mappedContent
+            content
         );
 
         const timestamp = this.helperDateService.now();
@@ -338,7 +357,7 @@ export class TermPolicyContentService {
     async prepareRemoveContentByAdmin(
         termPolicyId: string,
         language: EnumMessageLanguage
-    ): Promise<ITermPolicyContentPrepared<ITermPolicyContent, null>> {
+    ): Promise<ITermPolicyContentPrepared<ITermPolicyContent>> {
         const termPolicy = await this.getDraftById(termPolicyId);
         const contents = this.termPolicyUtil.toContents(termPolicy.contents);
         if (contents instanceof TermPolicyContentInvalidException) {
@@ -350,7 +369,7 @@ export class TermPolicyContentService {
             throw new TermPolicyContentNotFoundException();
         }
 
-        return { termPolicy, contents, existingContent, mappedContent: null };
+        return { termPolicy, contents, existingContent };
     }
 
     async removeContentByAdminInTx(
@@ -362,7 +381,7 @@ export class TermPolicyContentService {
             termPolicy,
             contents,
             existingContent,
-        }: ITermPolicyContentPrepared<ITermPolicyContent, null>
+        }: ITermPolicyContentPrepared<ITermPolicyContent>
     ): Promise<void> {
         const removed = await this.termPolicyRepository.removeContentInTx(
             tx,

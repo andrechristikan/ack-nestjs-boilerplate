@@ -6,7 +6,6 @@ import { TermPolicyContentPresignRequestSchema } from '@modules/term-policy/dtos
 export const TermPolicyContentRequestSchema =
     TermPolicyContentPresignRequestSchema.pick({
         language: true,
-        size: true,
     }).extend({
         key: AwsS3PresignRequestSchema.shape.key.meta({
             description: 'Key of the term document in storage',

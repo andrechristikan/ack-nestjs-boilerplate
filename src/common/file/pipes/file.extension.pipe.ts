@@ -1,8 +1,13 @@
 import { Injectable, mixin } from '@nestjs/common';
 import type { PipeTransform, Type } from '@nestjs/common';
-import type { IFile, IFileInput } from '@common/file/interfaces/file.interface';
+import type {
+    IFile,
+    IFileFieldMap,
+    IFileInput,
+} from '@common/file/interfaces/file.interface';
 import { EnumFileExtension } from '@common/file/enums/file.enum';
 import { FileService } from '@common/file/services/file.service';
+import { FileUtil } from '@common/file/utils/file.util';
 import { FileExtensionInvalidException } from '@common/file/exceptions/file.extension-invalid.exception';
 
 export function FileExtensionPipe(
@@ -14,25 +19,28 @@ export function FileExtensionPipe(
             allowedExtensions
         );
 
-        constructor(private readonly fileService: FileService) {}
+        constructor(
+            private readonly fileService: FileService,
+            private readonly fileUtil: FileUtil
+        ) {}
 
         private extractFilesToValidate(value: IFileInput): IFile[] {
-            const isEmpty = this.isEmptyValue(value);
+            const isEmpty = this.fileUtil.isEmptyInput(value);
             if (isEmpty) {
                 return [];
             }
 
-            return Array.isArray(value) ? value : [value];
+            if (Array.isArray(value)) {
+                return value;
+            }
+
+            const isFile = this.isFile(value);
+
+            return isFile ? [value] : Object.values(value).flat();
         }
 
-        private isEmptyValue(value: unknown): boolean {
-            return (
-                !value ||
-                (typeof value === 'object' &&
-                    !Array.isArray(value) &&
-                    Object.keys(value).length === 0) ||
-                (Array.isArray(value) && value.length === 0)
-            );
+        private isFile(value: IFile | IFileFieldMap): value is IFile {
+            return 'originalname' in value;
         }
 
         private async validate(file: IFile): Promise<void> {

@@ -11,6 +11,7 @@ import { DatabaseService } from '@common/database/services/database.service';
 import { EnumUserStatusCodeError } from '@modules/user/enums/user.status-code.enum';
 import { UserPhotoContentInvalidException } from '@modules/user/exceptions/user.photo-content-invalid.exception';
 import { UserPhotoKeyInvalidException } from '@modules/user/exceptions/user.photo-key-invalid.exception';
+import { UserPhotoSizeExceededException } from '@modules/user/exceptions/user.photo-size-exceeded.exception';
 import type { IUserPhotoProfileCheck } from '@modules/user/interfaces/user.interface';
 import { UserProfileService } from '@modules/user/services/user.profile.service';
 import type { UserUpdateProfilePhotoRequestDto } from '@modules/user/dtos/request/user.update-profile-photo.request.dto';
@@ -79,10 +80,12 @@ describe('UserUpdatePhotoProfileUseCase', () => {
     describe('execute', () => {
         it('opens one transaction holding deleteRejectedPhotoInTx then rejects with UserPhotoContentInvalidException for invalid content', async () => {
             const check: IUserPhotoProfileCheck = {
+                isSizeAllowed: true,
                 isContentValid: false,
                 photo,
             };
             userProfileService.checkPhotoProfile.mockResolvedValue(check);
+            userProfileService.isPhotoProfileRejected.mockReturnValue(true);
             userProfileService.assertPhotoContentValid.mockImplementation(
                 () => {
                     throw new UserPhotoContentInvalidException();
@@ -123,12 +126,60 @@ describe('UserUpdatePhotoProfileUseCase', () => {
             ).not.toHaveBeenCalled();
         });
 
+        it('opens one transaction holding deleteRejectedPhotoInTx then rejects with UserPhotoSizeExceededException for an oversize object, and replacePhotoProfileInTx is not called', async () => {
+            const check: IUserPhotoProfileCheck = {
+                isSizeAllowed: false,
+                isContentValid: false,
+                photo,
+            };
+            userProfileService.checkPhotoProfile.mockResolvedValue(check);
+            userProfileService.isPhotoProfileRejected.mockReturnValue(true);
+            userProfileService.assertPhotoSizeAllowed.mockImplementation(() => {
+                throw new UserPhotoSizeExceededException();
+            });
+
+            await expect(
+                useCase.execute(
+                    requestContext,
+                    apiKeyContext,
+                    authContext,
+                    userContext,
+                    dto
+                )
+            ).rejects.toMatchObject({
+                module: 'user',
+                statusCode: EnumUserStatusCodeError.photoSizeExceeded,
+            });
+
+            expect(
+                userProfileService.isPhotoProfileRejected
+            ).toHaveBeenCalledWith(check);
+            expect(databaseService.withTransaction).toHaveBeenCalledTimes(1);
+            expect(
+                userProfileService.deleteRejectedPhotoInTx
+            ).toHaveBeenCalledWith(tx, authContext.userId, photo);
+            expect(
+                userProfileService.assertPhotoSizeAllowed
+            ).toHaveBeenCalledWith(check);
+            expect(
+                userProfileService.deleteRejectedPhotoInTx
+            ).toHaveBeenCalledBefore(userProfileService.assertPhotoSizeAllowed);
+            expect(
+                userProfileService.assertPhotoContentValid
+            ).not.toHaveBeenCalled();
+            expect(
+                userProfileService.replacePhotoProfileInTx
+            ).not.toHaveBeenCalled();
+        });
+
         it('passes userContext.user.photo to replacePhotoProfileInTx for valid content', async () => {
             const check: IUserPhotoProfileCheck = {
+                isSizeAllowed: true,
                 isContentValid: true,
                 photo,
             };
             userProfileService.checkPhotoProfile.mockResolvedValue(check);
+            userProfileService.isPhotoProfileRejected.mockReturnValue(false);
 
             await expect(
                 useCase.execute(
@@ -179,9 +230,11 @@ describe('UserUpdatePhotoProfileUseCase', () => {
 
         it('wraps an unknown error raised in the transaction', async () => {
             userProfileService.checkPhotoProfile.mockResolvedValue({
+                isSizeAllowed: true,
                 isContentValid: true,
                 photo,
             });
+            userProfileService.isPhotoProfileRejected.mockReturnValue(false);
             userProfileService.replacePhotoProfileInTx.mockRejectedValue(
                 new Error('boom')
             );

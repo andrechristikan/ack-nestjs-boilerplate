@@ -12,6 +12,7 @@ import type {
 import { FileCsvValidationPipe } from '@common/file/pipes/file.csv-validation.pipe';
 import { FileExtensionPipe } from '@common/file/pipes/file.extension.pipe';
 import { FileService } from '@common/file/services/file.service';
+import { FileUtil } from '@common/file/utils/file.util';
 import { HelperArrayService } from '@common/helper/services/helper.array.service';
 
 export async function createFileExtensionPipe(
@@ -21,7 +22,11 @@ export async function createFileExtensionPipe(
     const PipeClass: Type<PipeTransform<IFileInput, Promise<IFileInput>>> =
         FileExtensionPipe(allowedExtensions);
     const module = await Test.createTestingModule({
-        providers: [PipeClass, { provide: FileService, useValue: fileService }],
+        providers: [
+            PipeClass,
+            FileUtil,
+            { provide: FileService, useValue: fileService },
+        ],
     }).compile();
 
     return module.get(PipeClass);

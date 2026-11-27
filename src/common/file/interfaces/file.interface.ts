@@ -18,7 +18,9 @@ export type IFileUploadMultipleFieldOptions = Pick<
     'fileSize'
 >;
 
-export type IFileInput = IFile | IFile[];
+export type IFileFieldMap = Record<string, IFile[]>;
+
+export type IFileInput = IFile | IFile[] | IFileFieldMap;
 
 export interface IFileRandomFilenameOptions {
     path?: string;

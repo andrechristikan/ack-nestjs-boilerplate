@@ -5,7 +5,6 @@ describe('TermPolicyContentsRequestSchema', () => {
     const contents = [
         {
             language: EnumMessageLanguage.en,
-            size: 1024,
             key: 'term-policies/privacy/v1/en.hbs',
         },
     ];
@@ -32,7 +31,6 @@ describe('TermPolicyContentsRequestSchema', () => {
                 ...contents,
                 {
                     language: EnumMessageLanguage.en,
-                    size: 2048,
                     key: 'term-policies/privacy/v1/en-2.hbs',
                 },
             ],

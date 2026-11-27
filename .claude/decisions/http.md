@@ -155,6 +155,27 @@ Rule: `file.md`, S3 presign.
 
 - A multipart upload through the API, then a server-side put: the bytes would cross the API, holding its memory and request time for every upload.
 
+### A presigned PUT signs content-type, content-length, and host only; encryption at rest is the bucket default
+
+Rule: `file.md`, S3 presign.
+
+- `ServerSideEncryption: 'AES256'` and `ContentDisposition: 'inline'` on the presign command: each becomes a signed header the client must send, and the presign response does not name them, so a PUT with `content-type` alone answers 403.
+- `AES256` hoisted into the query string through `hoistableHeaders`: S3 applying server-side encryption from a query parameter is unproven, and the bucket default already encrypts every object.
+
+### A multipart upload takes S3's default full-object checksum
+
+Rule: `file.md`, S3 presign.
+
+- A SHA-256 composite checksum per part: the browser hashes each part and the API presigns with that hash, a round trip per part, for a family no feature calls.
+- A full-object CRC from the client: the browser needs a CRC library, where S3 computes the same check itself.
+
+### The S3 client sends a request checksum only where S3 requires one
+
+Rule: `file.md`, S3 presign.
+
+- The SDK default `WHEN_SUPPORTED`: a presign hashes an empty body into the URL.
+- A second `S3Client` for presigning: a second mutable client field on `AwsS3Service`, which `injectable.md` does not allow, and a second client configuration to keep in step.
+
 ### Admin import and export are jobs
 
 Rule: `login.md`; `file.md`, CSV and PDF export.
@@ -188,6 +209,25 @@ Rule: `file.md`, CSV import; `http.md`.
 
 - `DocErrors` on the import route's controller method: a controller calls no `DocErrors`.
 - An import option on `FileUploadSingle`: a knob on the upload decorator for one route kind.
+
+### Every presigned upload deletes the object it refuses
+
+Rule: `file.md`, S3 deletes.
+
+- No delete row for a size refusal, trusting the presign cap and the signed ContentLength: every presigned upload cleans up what it refuses the same way, and an object that lands through a path no cap guards would stay in the bucket.
+
+### A confirm request carries the key, never the size
+
+Rule: `file.md`, S3 presign.
+
+- `size` kept in the create, update-content, and add-content bodies and ignored: a field the client sends and the server never reads is dead wire surface, and the photo confirm already takes `{ key }` alone.
+
+### A failed confirm of several objects reads every object, then deletes the refused ones only
+
+Rule: `file.md`, S3 presign; `concurrency.md`.
+
+- Every object of the failed request deleted: an accepted object lets the admin retry the create with its key, with no re-upload.
+- The reads under `Promise.all`, failing on the first rejection: a missing key would skip the refused objects' delete rows and leave them in the bucket.
 
 ### No antivirus scanner
 

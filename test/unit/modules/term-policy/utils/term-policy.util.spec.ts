@@ -6,6 +6,7 @@ import { HelperStringService } from '@common/helper/services/helper.string.servi
 import { EnumMessageLanguage } from '@common/message/enums/message.enum';
 import { EnumTermPolicyType } from '@generated/prisma-client/client';
 import { TermPolicyContentInvalidException } from '@modules/term-policy/exceptions/term-policy.content-invalid.exception';
+import type { ITermPolicyContentCheck } from '@modules/term-policy/interfaces/term-policy.interface';
 import { TermPolicyUtil } from '@modules/term-policy/utils/term-policy.util';
 
 describe('TermPolicyUtil', () => {
@@ -28,6 +29,47 @@ describe('TermPolicyUtil', () => {
 
         it('returns false above the configured maximum', () => {
             expect(util.isContentSizeAllowed(4097)).toBe(false);
+        });
+    });
+
+    describe('isContentRejected', () => {
+        const accepted: ITermPolicyContentCheck = {
+            isSizeAllowed: true,
+            isContentValid: true,
+            content: {
+                language: EnumMessageLanguage.en,
+                bucket: 'bucket',
+                key: 'term-policies/privacy/1/en.hbs',
+                cdnUrl: null,
+                completedUrl: 'https://bucket/term-policies/privacy/1/en.hbs',
+                mime: 'text/plain',
+                extension: 'hbs',
+                access: EnumAwsS3Accessibility.private,
+                size: 10,
+            },
+        };
+
+        it('returns false when every check passes', () => {
+            expect(util.isContentRejected([accepted, accepted])).toBe(false);
+        });
+
+        it('returns false for no check', () => {
+            expect(util.isContentRejected([])).toBe(false);
+        });
+
+        it('returns true when one object is over the size', () => {
+            expect(
+                util.isContentRejected([
+                    accepted,
+                    { ...accepted, isSizeAllowed: false },
+                ])
+            ).toBe(true);
+        });
+
+        it('returns true when one object is not a text template', () => {
+            expect(
+                util.isContentRejected([{ ...accepted, isContentValid: false }])
+            ).toBe(true);
         });
     });
 

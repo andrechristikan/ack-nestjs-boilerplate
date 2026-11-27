@@ -65,11 +65,10 @@ describe('TermPolicyRemoveContentByAdminUseCase', () => {
     const requestContext = buildRequestContext();
     const apiKeyContext = buildApiKeyContext();
     const authContext = buildAuthJwtAccessContext('admin-1');
-    const prepared: ITermPolicyContentPrepared<ITermPolicyContent, null> = {
+    const prepared: ITermPolicyContentPrepared<ITermPolicyContent> = {
         termPolicy,
         contents: [],
         existingContent: content,
-        mappedContent: null,
     };
 
     let useCase: TermPolicyRemoveContentByAdminUseCase;

@@ -715,9 +715,9 @@ Full catalog: [Status Codes][ref-doc-status-codes].
 [ref-doc-authorization]: authorization.md
 [ref-doc-security-and-middleware]: concepts/request-pipeline.md#request-store
 [ref-doc-feature-flag]: feature-flag.md
-[ref-doc-queue]: queue.md
+[ref-doc-queue]: concepts/queue.md
 [ref-doc-status-codes]: reference/status-codes.md
-[ref-doc-database-generated-unique-values]: database.md#generated-unique-values
+[ref-doc-database-generated-unique-values]: concepts/database.md#generated-unique-values
 [ref-doc-notification]: notification.md
 [ref-doc-activity-log]: activity-log.md
 [ref-doc-term-policy]: term-policy.md
