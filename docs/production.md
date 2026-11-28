@@ -78,7 +78,7 @@ flowchart TB
 - `ci/docker-compose.yml` serves each environment from one host: the `deps` profile runs MongoDB, both Redis instances, the JWKS server, and BullBoard, and the `apis` profile runs `migrate` and `apis`.
 - More `apis` instances on that host are containers of the same image that join the Compose network `app-network`, as the container `release.yml` starts does.
 - An instance on another host reaches MongoDB, both Redis instances, and the JWKS server only when the deployment publishes them: the Compose services publish no database, Redis, or JWKS port, and the replica set advertises `mongo:27017`. What the deployment adds is in [TLS between hosts](#tls-between-hosts).
-- `apis` publishes `127.0.0.1:3000` and BullBoard publishes `127.0.0.1:3010`. TLS ends at a proxy in front of the host, and the Compose files hold no proxy service and no bind-address variable.
+- `apis` publishes `127.0.0.1:3000` and BullBoard publishes `127.0.0.1:3010`. TLS ends at a proxy on the same host that forwards to that loopback port, and a load balancer for several hosts reaches each host's proxy. The Compose files hold no proxy service and no bind-address variable.
 
 ## Keys and secrets
 
@@ -105,7 +105,7 @@ One script writes the first three. Run it once per environment before the first 
         ```
 
 2. Move the results to where they run: `.env` to each application host, the JWKS files to the JWKS host, and for a Compose host all of them into its checkout.
-3. On a Compose host, `DOCKER_APIS_UID` and `DOCKER_APIS_GID` in `.env.docker` hold the user and group id of the account that owns `.env`. `.env` stays at mode 600, and `apis` and `migrate` run as that user: [Path 2](#path-2-docker-compose-host).
+3. On a Compose host, `DOCKER_APIS_UID` and `DOCKER_APIS_GID` in `.env.docker` hold the user and group id of the account that owns `.env`, which `stat -c '%u %g' .env` prints on Linux. `.env` stays at mode 600, and `apis` and `migrate` run as that user: [Path 2](#path-2-docker-compose-host).
 
 ## Variables set by hand
 
@@ -129,7 +129,7 @@ Where the application reads its settings:
 - It reads the process environment and `.env` once at boot. The process environment wins, and no `.env.<APP_ENV>` file is loaded.
 - A variable in the container environment satisfies validation, so a deployment that sets every variable needs no mounted file. The image creates an empty `.env`, and a mounted file replaces it.
 - A container with neither a mounted `.env` nor the variables fails validation at boot and exits with code 1.
-- A mounted `.env` must be readable by the container user, so the containers run with `--user` set to the owner of the file.
+- A mounted `.env` must be readable by the container user, so the containers run as the owner of the file: `--user` in the release and in Path 1, `DOCKER_APIS_UID:DOCKER_APIS_GID` in Compose.
 
 Passkeys on mobile clients need two files served from the RP id domain:
 
@@ -146,13 +146,16 @@ docker build -f ci/dockerfile -t ack-nestjs-boilerplate-api .
 
 `ci/dockerfile` has three stages:
 
-- `builder` installs dependencies with `--frozen-lockfile`, runs `pnpm generate`, then `pnpm build`, whose closing `pnpm typecheck` is the only type check.
+- `builder` installs dependencies with `--frozen-lockfile`, runs `pnpm generate`, then `pnpm build`, whose closing `pnpm typecheck` is the only type check. It then runs `chmod -R a+rX dist prisma package.json`, so `apis` and `migrate`, which run as the host owner of `.env`, read every file whatever mode the checkout gave it.
 - `migrate` extends `builder` and runs `prisma db push --skip-generate` through `node`, with no data-loss flag. Build it with `--target migrate`.
-- `main` starts from the `node:26.13.0-alpine` base, sets `NODE_ENV=production`, installs production dependencies only, and copies `dist/` and `package.json`.
+- `main` starts from the Node 26.13.x+ alpine base, sets `NODE_ENV=production`, installs production dependencies only, copies `dist/` and `package.json`, creates the user `ec2-user`, and starts as it.
 
 Facts about the image:
 
-- It runs as a non-root user and starts with `node dist/main.js`. No `pnpm` or init wrapper runs.
+- It starts as `ec2-user`, a non-root user, with `node dist/main.js`. No `pnpm` or init wrapper runs.
+- `/app` is root-owned, and what the application reads there (`dist/`, `prisma/`, `package.json`, `node_modules/`) is world-readable. `ci/docker-compose.yml` and `release.yml` start the container as the host owner of `.env`, which replaces the `ec2-user` default.
+- Both `pnpm install` steps keep the pnpm store and cache in BuildKit cache mounts, out of the image.
+- The workflows run Node `lts/*`, the root `dockerfile` floats on `node:lts-alpine`, and `ci/dockerfile` names one exact Node alpine tag from the 26.13.x+ line, which Dependabot bumps within the major. CI follows the LTS line, so CI reaches the next LTS before the `ci/` image does.
 - It exposes port 3000, and its health check calls `http://127.0.0.1:3000/api/public/hello`.
 - It carries no `keys/`. The build creates an empty `.env`.
 - It lacks the Prisma CLI and the Nest CLI, so the schema push runs from the `migrate` image or from a checkout.
@@ -225,7 +228,7 @@ Steps:
       ack-nestjs-boilerplate-api
     ```
 
-    Without a container, on a machine with Node.js and pnpm:
+    Without a container, on a machine with Node.js 26.13.x+ and pnpm 12.5.x+:
 
     ```bash
     pnpm install --frozen-lockfile
@@ -251,7 +254,7 @@ Steps:
 
 1. Clone the repository on the host and stay in its root.
 2. Generate the keys and `.env`: [Keys and secrets](#keys-and-secrets).
-3. Write `.env.docker` with the eleven required variables: [Compose variables][ref-doc-reference-configuration-compose]. `DOCKER_APIS_UID` and `DOCKER_APIS_GID` hold the user and group id of the account that owns `.env`.
+3. Write `.env.docker` with the eleven required variables: [Compose variables][ref-doc-reference-configuration-compose]. `DOCKER_APIS_UID` and `DOCKER_APIS_GID` hold the user and group id of the account that owns `.env`, which `stat -c '%u %g' .env` prints on Linux.
 4. Set the variables of [Variables set by hand](#variables-set-by-hand), with the URLs pointing at the Compose services and the credentials that `.env.docker` sets. The application account is the `DOCKER_MONGO_APP_*` user:
 
     ```bash
@@ -285,7 +288,7 @@ Steps:
       -e PATH=/tmp/bin:/usr/local/bin:/usr/bin:/bin \
       -v "$PWD":/app -w /app \
       node:26.13.0-alpine \
-      sh -c 'mkdir -p /tmp/bin && corepack enable --install-directory /tmp/bin && pnpm install --frozen-lockfile --ignore-scripts && pnpm generate && pnpm migration:build && pnpm migration:seed'
+      sh -c 'npm install -g --prefix /tmp corepack && corepack enable --install-directory /tmp/bin && pnpm install --frozen-lockfile --ignore-scripts && pnpm generate && pnpm migration:build && pnpm migration:seed'
     ```
 
 8. Check the deployment on `127.0.0.1:3000`: [Check the deployment](#check-the-deployment). `docker compose ... ps` shows `apis` as `healthy`.
@@ -323,12 +326,15 @@ flowchart TB
 - `resolve` maps `main` to `production` and keeps `staging` and `development`. Any other branch deploys nothing.
 - Each later job declares `environment:` and reads the variables and secrets of that GitHub environment by the plain names in the table below, so `production`, `staging`, and `development` each hold their own values under the same names.
 - `build_image` assumes an AWS role through OIDC, builds `ci/dockerfile`, and pushes the application image tagged `sha-<short sha>` and `<environment>`, plus `latest` for `production`. It also pushes the `migrate` target tagged `migrate-sha-<short sha>`. Both carry provenance and an SBOM.
+- Neither `docker/build-push-action` step sets `platforms:`, so the images build for the `ubuntu-latest` runner, x86_64, and the EC2 instance runs x86_64.
+- An arm64 (Graviton) instance needs `platforms: linux/arm64` on both `docker/build-push-action` steps, built through QEMU (`docker/setup-qemu-action`) or on an arm64 runner.
 - `deploy` runs one shell script on the instance with `aws ssm send-command`, one deploy at a time per environment:
     1. Log in to ECR and pull both images.
     2. Run the `migrate` image once on `app-network`. A failed push stops the release before the application is replaced.
-    3. Remove the old container and start the new one on `app-network`, with a read-only root, a `/tmp` tmpfs, every capability dropped, `no-new-privileges`, 1 GB, 1 CPU, `127.0.0.1:<port>:3000` published, and `.env` mounted read-only.
-    4. Probe `/api/public/hello` every 2 seconds, 30 times.
-    5. Prune images older than 24 hours.
+    3. Remove the old container.
+    4. Start the new container on `app-network` as the owner of `.env` (read through `stat`), with a read-only root, a `/tmp` tmpfs, every capability dropped, `no-new-privileges`, 1 GB, 1 CPU, `127.0.0.1:<DOCKER_HOST_PORT>:3000` published, and `.env` mounted read-only.
+    5. Probe `/api/public/hello` every 2 seconds, 30 times. A probe that gets no answer fails the job with the old container already removed.
+    6. Prune images older than 24 hours.
 - The job waits for the SSM invocation and fails unless it ends in `Success`.
 - The workflow deploys to one instance per environment: `EC2_INSTANCE_ID` names it, and the job polls that one invocation. Releasing a second instance is the deployment's change to the `deploy` job, which sends the same command list to each instance. Each instance holds its own `.env` and `app-network`.
 
@@ -350,12 +356,12 @@ Each GitHub environment holds these values:
 1. Create the ECR repository the images go to.
 2. Create an IAM OIDC identity provider for GitHub and the deploy role the workflow assumes. The role trusts the repository's GitHub environments and allows the ECR login and image push, `ssm:SendCommand` on the instance with the `AWS-RunShellScript` document, and `ssm:GetCommandInvocation`.
 3. Create the GitHub environments `development`, `staging`, and `production`, then set the five variables and the `EC2_INSTANCE_ID` secret in each.
-4. Prepare the instance: Docker, the AWS CLI, and the SSM agent installed, and an instance role that pulls from ECR.
-5. On the instance, run steps 1 to 5 of [Path 2](#path-2-docker-compose-host): the checkout, the keys, `.env.docker`, `.env`, and the `deps` profile only, because the release runs `migrate` and the application. The `deps` stack creates `app-network`.
-6. Copy `.env` to `/home/ec2-user/<DOCKER_CONTAINER_NAME>/.env`, owned by the account the container runs as, with mode 600. Its URLs name the services the instance runs, as in Path 2.
-7. Seed the database once: [Schema push and seed](#schema-push-and-seed).
-8. In GitHub Actions, run the `Release` workflow on `main`, `staging`, or `development`. `ci.yml` runs first, then the images build and the instance updates.
-9. Check the deployment on the instance at `127.0.0.1:<DOCKER_HOST_PORT>`: [Check the deployment](#check-the-deployment).
+4. Prepare the instance: Docker, the AWS CLI, and the SSM agent installed, an instance role that pulls from ECR, and the `/home/ec2-user` home, under which the deploy reads `<DOCKER_CONTAINER_NAME>/.env`.
+5. On the instance, run steps 1 to 5 of [Path 2](#path-2-docker-compose-host): the checkout, the keys, `.env.docker`, `.env`, and the `deps` profile only, because the release runs `migrate` and the application. `.env.docker` holds all eleven required keys, `DOCKER_APIS_UID` and `DOCKER_APIS_GID` included, because Compose reads the whole file even for the `deps` profile. The `deps` stack creates `app-network`.
+6. Copy `.env` to `/home/ec2-user/<DOCKER_CONTAINER_NAME>/.env` at mode 600. The release starts the container as the owner of that file, read through `stat`. Its URLs name the services the instance runs, as in Path 2.
+7. In GitHub Actions, run the `Release` workflow on `main`, `staging`, or `development`. `ci.yml` runs first, then the images build, the schema is pushed, and the instance updates.
+8. Check the deployment on the instance at `127.0.0.1:<DOCKER_HOST_PORT>`: [Check the deployment](#check-the-deployment).
+9. Seed the database once, after the first release has pushed the schema, with the one-off container of step 7 of [Path 2](#path-2-docker-compose-host) run from the instance checkout on `app-network`, because the Compose services publish no port: [Schema push and seed](#schema-push-and-seed).
 
 ### Version release
 
@@ -386,8 +392,8 @@ Another CI system needs these steps:
     - `tls=true` in `DATABASE_URL`, added to the existing query string after the replica set parameters (`...&replicaSet=<name>&tls=true`).
     - `https://` in the two JWKS URIs.
 - The certificates are the deployment's.
-- Client traffic ends TLS at the proxy or load balancer in front of the host.
-- The Compose files ship static service credentials, an optional Vault profile, and logs on standard output. Short-lived credentials, a mandatory secret manager, and log shipping are the deployment's.
+- Client traffic ends TLS at a proxy on each `apis` host that forwards to its loopback port. A load balancer in front of several hosts reaches each host's proxy.
+- The Compose files ship static service credentials, an optional Vault profile, and logs on standard output. Short-lived credentials, a mandatory secret manager, log shipping, and log rotation are the deployment's.
 
 ## Vault as a network service
 
@@ -435,7 +441,7 @@ IAM permissions follow the calls the application makes:
 
 ## Check the deployment
 
-Call the liveness route on the address the path published. Path 1 and Path 2 publish `127.0.0.1:3000`, and Path 3 publishes `127.0.0.1:<DOCKER_HOST_PORT>` on the instance:
+Call the liveness route on the address the path published. Path 1 in a container and Path 2 publish `127.0.0.1:3000`, Path 1 without a container listens on `APP_HTTP_HOST` and `APP_HTTP_PORT`, and Path 3 publishes `127.0.0.1:<DOCKER_HOST_PORT>` on the instance:
 
 ```bash
 curl -i http://127.0.0.1:3000/api/public/hello

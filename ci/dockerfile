@@ -8,12 +8,16 @@ WORKDIR /app
 # Stage to install all dependencies and build the app
 FROM base AS builder
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN set -x && pnpm install --frozen-lockfile --ignore-scripts
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    --mount=type=cache,id=pnpm-cache,target=/root/.cache/pnpm \
+    set -x && pnpm install --frozen-lockfile --ignore-scripts
 
 COPY . .
 
 RUN pnpm generate
 RUN pnpm build
+# apis and migrate run as the host owner of .env, so every file they read is world-readable whatever mode the checkout gave it.
+RUN chmod -R a+rX dist prisma package.json
 
 # Migrate stage: pushes the schema. Calls the Prisma CLI through node because the corepack pnpm shim needs a writable home, which a host uid has not.
 FROM builder AS migrate
@@ -23,18 +27,18 @@ CMD ["node", "node_modules/prisma/build/index.js", "db", "push", "--skip-generat
 FROM base AS main
 ENV NODE_ENV=production
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN set -x && pnpm install --frozen-lockfile --prod --ignore-scripts
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    --mount=type=cache,id=pnpm-cache,target=/root/.cache/pnpm \
+    set -x && pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Copy only necessary files from previous stages
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package.json ./package.json
 
 # Create non-root user for security
-RUN addgroup -S ec2-user && adduser -S ec2-user -G ec2-user && \
-    chown -R ec2-user:ec2-user /app
+RUN addgroup -S ec2-user && adduser -S ec2-user -G ec2-user && touch .env
 USER ec2-user
 
-RUN touch .env
 EXPOSE 3000
 
 # Add healthcheck

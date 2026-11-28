@@ -49,6 +49,13 @@ Rule: `docker-production.md`.
 
 - A shell-form `CMD` or a package script as the start: with the exec form `node` is PID 1, receives `SIGTERM` directly, and runs no typecheck.
 
+### CI and the local stack run the Node LTS line, the `ci/` image pins an exact version
+
+Rule: `docker-image.md`, Every image; `workflows.md`.
+
+- CI pinned to the `ci/` image's version: a break on the next LTS surfaces only when the image moves to it.
+- The `ci/` image on `node:lts-alpine`: a rebuild changes the runtime with no reviewed change.
+
 ### Compose variables live in `.env.docker`
 
 Rule: `docker.md`, Credentials and variables.
@@ -101,12 +108,13 @@ Rule: `security.md`, Cryptography.
 
 - A previous-key fallback on decrypt: keeping an earlier root alive is each deployment's choice, and the boilerplate ships no mechanism for it.
 
-### Short-lived service credentials, a secret manager, and log shipping belong to the deployment
+### Short-lived service credentials, a secret manager, log shipping, and log rotation belong to the deployment
 
 Rule: `docker-production.md`.
 
 - Forcing Vault: every user of the boilerplate would have to run it.
 - A log shipper in the compose file: the platform that runs the containers collects stdout.
+- A `json-file` log cap in the compose files and the release's `docker run`: the host's Docker daemon sets the log driver and its rotation for every container it runs, so one host setting covers the compose services and the release's container alike.
 
 ### The deployed environments seed their users with a random password printed once
 

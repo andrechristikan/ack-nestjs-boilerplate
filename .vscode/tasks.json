@@ -133,14 +133,14 @@
         {
             "label": "Docker Compose Up",
             "type": "shell",
-            "command": "docker compose --env-file .env.docker up -d",
+            "command": "docker compose --env-file .env.docker --profile deps up -d",
             "group": "none",
             "problemMatcher": []
         },
         {
             "label": "Docker Compose Down",
             "type": "shell",
-            "command": "docker compose --env-file .env.docker down",
+            "command": "docker compose --env-file .env.docker --profile deps --profile apis down",
             "group": "none",
             "problemMatcher": []
         },
