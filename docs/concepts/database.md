@@ -32,15 +32,15 @@ This page explains how the application reads and writes MongoDB, for a developer
 
 ## Overview
 
+The diagram shows the layers a statement passes from a use case to MongoDB.
+
 ```mermaid
-flowchart LR
+flowchart TB
     UC["Use case<br/>opens the transaction"] --> SV["Service"]
     SV --> RP["Repository"]
     RP --> DS["DatabaseService"]
-    DS --> CL["Prisma client"]
-    CL --> AU["Audit extension<br/>stamps createdBy, updatedBy"]
-    AU --> UN["Unavailable extension<br/>outage becomes 503"]
-    UN --> DB[("MongoDB replica set")]
+    DS --> CL["Extended Prisma client<br/>audit extension stamps createdBy, updatedBy<br/>unavailable extension turns an outage into 503"]
+    CL --> DB[("MongoDB replica set")]
 ```
 
 - MongoDB is the source of truth, and Prisma is the only way the application reaches it. `prisma/schema.prisma` declares the models, and `pnpm db:generate` writes the client into `src/generated/prisma-client`, which code imports from `@generated/prisma-client/client`.

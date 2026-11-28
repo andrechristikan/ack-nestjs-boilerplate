@@ -32,8 +32,10 @@ This page explains the path every HTTP request takes and where each kit componen
 
 ## Overview
 
+The diagram shows the stages a request passes in order and the exception filters every stage hands a failure to.
+
 ```mermaid
-flowchart LR
+flowchart TB
     REQ["Request"] --> MW["Middleware chain<br/>RequestMiddlewareModule"]
     MW --> GUARD["Guards<br/>throttle, then route guards"]
     GUARD --> IN["Interceptors, entering<br/>RequestTimeoutInterceptor"]

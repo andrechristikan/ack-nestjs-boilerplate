@@ -29,14 +29,15 @@ This page explains how the Swagger and OpenAPI document is assembled, for a deve
 
 ## Overview
 
+The diagram shows how route decorators and zod schemas become the OpenAPI document and where the document is served.
+
 ```mermaid
-flowchart LR
+flowchart TB
     ROUTE["Route decorators<br/>Doc, Response, Protected, FileUpload"] --> META["Swagger metadata"]
     ROUTE --> ENTRIES["DocErrors entries<br/>success and error envelopes"]
-    ENTRIES --> CS["zod-openapi<br/>createSchema"]
-    SCHEMA["zod schemas<br/>@Body, @Query, @Param"] --> ZO["zod-openapi<br/>standardSchemaConverter"]
-    META --> DOC["SwaggerModule.createDocument"]
-    CS --> DOC
+    SCHEMA["zod schemas<br/>@Body, @Query, @Param"] --> ZO["zod-openapi"]
+    ENTRIES --> ZO
+    META --> DOC["SwaggerModule<br/>src/swagger.ts"]
     ZO --> DOC
     DOC --> UI["Swagger UI<br/>/docs"]
     DOC --> JSON["JSON<br/>/docs/json"]

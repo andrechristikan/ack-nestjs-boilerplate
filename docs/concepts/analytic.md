@@ -30,14 +30,18 @@ This page explains the `analytic` module, for a developer who adds a metric, cha
 
 ## Overview
 
+The diagram shows how a metric reaches a route: the area services answer it live from the read-only repositories, read it through the cache, or the `AnalyticQueue` refresh job has `AnalyticProcessRefreshSnapshotUseCase` collect each generated signal from the area services into a snapshot.
+
 ```mermaid
-flowchart LR
-    ML["Owner-module data<br/>and activity-log rows"] --> LV["Live statements<br/>one per metric"]
-    LV -->|summaries, counts, groups| CH["AnalyticCache<br/>cache Redis"]
+flowchart TB
+    ML["Owner-module data<br/>and activity-log rows"] --> RP["Analytic repositories<br/>one statement per metric"]
+    QS["AnalyticQueue<br/>refresh scheduler"] --> PR["AnalyticProcessRefreshSnapshotUseCase"]
+    RP --> SV["Analytic area services"]
+    PR -->|each signal| SV
+    SV -->|summaries, counts, groups| CH["AnalyticCache<br/>cache Redis"]
+    SV -->|snapshot write| SN[("Snapshot header<br/>and items")]
     CH --> RT["Admin and workspace routes"]
-    LV -->|other paged lists| RT
-    ML --> RJ["Refresh job<br/>analytic queue"]
-    RJ --> SN[("Snapshot header<br/>and items")]
+    SV -->|other paged lists| RT
     SN --> RT
 ```
 

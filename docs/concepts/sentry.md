@@ -27,14 +27,21 @@ This page explains how the application reports errors and logs to Sentry, for a 
 
 ## Overview
 
+The diagram shows what reaches Sentry and the scrubbing hook each path passes.
+
 ```mermaid
-flowchart LR
-    ER["Error or message"] --> SS["SentryService"]
+flowchart TB
+    ER["Exception reporters<br/>HTTP filters, QueueProcessorBase,<br/>MfaTotpService"] --> SS["SentryService<br/>captureException"]
+    BF["bootstrapFailed<br/>Sentry.captureException"]
     LG["Pino log line"] --> PI["Pino integration"]
+    TR["Sampled trace"]
     SS --> BS["beforeSend<br/>drop and scrub"]
+    BF --> BS
     PI --> BL["beforeSendLog<br/>scrub"]
+    TR --> BT["beforeSendTransaction<br/>scrub"]
     BS --> SE[("Sentry")]
     BL --> SE
+    BT --> SE
 ```
 
 - Sentry is an optional integration. `SENTRY_DSN` turns it on, and with no DSN the application never calls `Sentry.init`, so every `SentryService` call sends nothing.

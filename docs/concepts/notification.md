@@ -34,17 +34,21 @@ This page explains the `notification` module, including the email channel, for a
 
 ## Overview
 
+The diagram shows how a `notify` row becomes a notification and its channel jobs.
+
 ```mermaid
-flowchart LR
-    UC["Use case transaction<br/>write + notify row"] -->|commit| NQ["notification queue<br/>NotificationProcessor"]
-    NQ --> PU["NotificationProcessUseCase<br/>recipient, Notification row"]
-    PU -->|channel rows| EQ["notificationEmail<br/>SES"]
-    PU -->|channel rows| PQ["notificationPush<br/>FCM"]
-    PU -->|channel rows| SQ["notificationSms<br/>stub adapter"]
-    PU -.->|inApp and silent| DB[("Notification and<br/>NotificationDelivery")]
+flowchart TB
+    UC["Use case transaction<br/>write + notify row"] -->|commit| NQ["notification queue"]
+    NQ --> NP["NotificationProcessor"]
+    NP --> PU["NotificationProcessUseCase<br/>recipient, channels"]
+    PU -->|one transaction| DB[("Notification, NotificationDelivery,<br/>channel outbox rows")]
+    PU -->|after the commit| CQ["Channel queues<br/>notificationEmail, notificationPush,<br/>notificationSms"]
+    CQ --> CP["Channel processors<br/>and send use cases"]
+    CP --> DS["Delivery services<br/>SES, Firebase, SMS stub"]
 ```
 
 - A notification is an outbox row added in the transaction of the write that causes it: `NotificationQueue.notify(kind, context)`. A request never sends inline ([Queue][ref-doc-concept-queue-outbox]).
+- `NotificationProcessor` takes the `notify` job from the `notification` queue and hands it, with the outbox row id and the payload, to `NotificationProcessUseCase`.
 - The context holds the subject's ids and the values a template needs. It never holds a plain recipient, address, or token: the three snapshot kinds carry the address and the tokens sealed in `context.snapshot` ([Recipient and snapshot](#recipient-and-snapshot)).
 - Three channels send through a job: email through SES, push through Firebase, and SMS through a stub adapter with no provider wired. The `inApp` and `silent` channels are delivered at creation: they only record a delivery row.
 - `NotificationKindContract` holds one row of data per `EnumNotificationKind`: the type, the `priority`, whether the kind is mandatory, the title and body message paths, the channels, the `queuePriority`, the secret fields, the job key pattern, and the field lists a template, a push text, and a date format read. No service or use case exists per kind.
@@ -114,7 +118,7 @@ A push token belongs to a device ownership ([Device][ref-doc-concept-device]). `
 
 1. When Firebase is unset it returns a message, stamps nothing, and sends nothing, and the job completes. The push delivery row keeps no timestamp.
 2. Unless `updateProcessAt` is recorded, it stamps `processedAt` on the push delivery row. The step is recorded on the outbox row with the send's outcome.
-3. It builds the title and body from the kind's message paths with the metadata as properties and calls `FirebaseService.sendMulticast`. The service splits the tokens into batches of `FirebaseMaxSendPushBatchSize` (500) and takes no batch size from the caller.
+3. It builds the title and body from the kind's message paths with the metadata as properties and calls `NotificationPushDeliveryService.sendMulticast`, which calls `FirebaseService.sendMulticast`. `FirebaseService` splits the tokens into batches of `FirebaseMaxSendPushBatchSize` (500) and takes no batch size from the caller.
 4. A token Firebase rejects as invalid is a failure token. A token that failed for a retryable code, with no code, or in a rejected batch is a pending token, one a push retry sends to again. Both stay encrypted in the row as `encryptedFailureTokens` and `encryptedPendingTokens`.
 5. A pending token fails the `sendMulticast` step with a retrying `QueueException`, and the retry sends only to the pending tokens.
 6. When none is pending, one transaction stamps `sentAt` and `failureTokenCount`, the number of invalid tokens, on the delivery row and clears the invalid tokens from the user's devices.

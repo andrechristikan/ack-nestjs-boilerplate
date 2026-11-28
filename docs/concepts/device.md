@@ -28,19 +28,20 @@ This page explains devices and device ownership, for a developer who changes a l
 
 ## Overview
 
+The diagram shows the two flows that write devices: a login upserts the device and its ownership, and removing an ownership revokes its sessions.
+
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant A as API
     participant DB as MongoDB
-    participant Q as session queue
-    participant R as Cache Redis
 
+    C->>A: Log in with a device fingerprint
+    A->>DB: One transaction: upsert the Device and the user's DeviceOwnership, revoke the other users' live sessions on the device, create the session
+    A-->>C: Access token and refresh token
     C->>A: Remove a device ownership, with a re-authentication
-    A->>DB: One transaction: revoke the ownership's sessions, revoke the ownership, clear its push token, add the purge row
+    A->>DB: One transaction: revoke the ownership's sessions, mark the ownership revoked, clear its push token
     A-->>C: 200
-    DB->>Q: After the commit, the outbox enqueues purgeLogins
-    Q->>R: Delete the login entries of the revoked sessions
 ```
 
 - A `Device` is a client, identified by a fingerprint the client generates. A `DeviceOwnership` joins a user to a device and carries that user's sessions and push token.

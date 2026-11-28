@@ -53,20 +53,23 @@ This page shows how to deploy the application and lists the values a deployed en
 
 ## Topology
 
+The diagram shows a proxy in front of interchangeable `apis` instances that share one set of dependencies.
+
 ```mermaid
-flowchart LR
-    LB["Load balancer<br/>TLS ends here"] --> A1["apis instance 1"]
-    LB --> A2["apis instance N"]
-    A1 --> MONGO["MongoDB<br/>replica set"]
-    A1 --> RC["Redis cache"]
-    A1 --> RQ["Redis queue"]
-    A1 --> JWKS["JWKS host"]
-    A2 --> MONGO
-    A2 --> RC
-    A2 --> RQ
-    A2 --> JWKS
-    VAULT["Vault"] -.->|"env file over TLS"| A1
-    VAULT -.-> A2
+flowchart TB
+    LB["Proxy or load balancer<br/>TLS ends here"]
+    subgraph APIS["Interchangeable apis instances"]
+        A1["apis instance 1"]
+        A2["apis instance N"]
+    end
+    subgraph SHARED["Shared by every instance"]
+        MONGO["MongoDB<br/>replica set"]
+        RC["Redis cache"]
+        RQ["Redis queue"]
+        JWKS["JWKS host"]
+    end
+    LB --> APIS
+    APIS --> SHARED
 ```
 
 - The application runs as several interchangeable `apis` instances, on one host or on several.
@@ -159,7 +162,7 @@ Facts about the image:
 ## Schema push and seed
 
 - The schema is pushed by `prisma db push` and never with a data-loss flag. `migrate` does it in Path 2 and in the release. In Path 1 an operator runs `pnpm db:migrate` from a checkout.
-- The seeds run from a checkout on a machine whose `.env` reaches MongoDB and both Redis instances. The seed process builds the same `CommonModule` as the API, validates the whole `.env`, and opens the same connections.
+- The seeds run from a checkout on a machine whose `.env` reaches MongoDB and both Redis instances. The seed process builds the same `CommonModule` as the API, validates the whole `.env`, and opens the same connections. These commands install, build, and run them:
 
     ```bash
     pnpm install --frozen-lockfile
@@ -306,8 +309,10 @@ Two workflows release the application. Both run `ci.yml` first, and both start o
 - `release.yml` builds the image, pushes it to Amazon ECR, and replaces the container on one EC2 instance through AWS Systems Manager.
 - `release-version.yml` creates a GitHub release from `main`.
 
+The diagram shows the jobs of `release.yml` in order.
+
 ```mermaid
-flowchart LR
+flowchart TB
     CI["ci"] --> RESOLVE["resolve<br/>branch to environment"]
     RESOLVE --> BUILD["build_image<br/>app and migrate images to ECR"]
     BUILD --> DEPLOY["deploy<br/>SSM command on the instance"]

@@ -33,21 +33,20 @@ This page explains the `activity-log` module, for a developer who records an act
 
 ## Overview
 
+The diagram shows how an entry travels from the audited write to the stored row.
+
 ```mermaid
 sequenceDiagram
     participant UC as Use case or service
     participant AQ as ActivityLogQueue
-    participant OB as Outbox
-    participant BQ as activityLog queue
     participant PR as ActivityLogProcessor
     participant DB as MongoDB
 
-    UC->>AQ: recordEffect(contexts, action)
-    AQ-->>UC: createMany effect, validated against the contract
-    UC->>OB: one transaction: the audited write and the outbox row
-    OB->>BQ: after the commit, enqueue createMany
-    BQ->>PR: createMany job
-    PR->>DB: insert the rows whose id is absent
+    UC->>AQ: ask for the entry effect with the request contexts
+    AQ-->>UC: the effect, built and validated against the contract
+    UC->>DB: one transaction commits the audited write and the entry's outbox row
+    AQ->>PR: after the commit, the outbox enqueues the createMany job on the activityLog queue
+    PR->>DB: through its use case, insert the rows whose id is absent
 ```
 
 - An entry is an outbox row added in the transaction of the write it records. The action and its entry commit together or not at all, and a worker writes the row afterward ([Queue][ref-doc-concept-queue-outbox]).

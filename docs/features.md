@@ -25,44 +25,15 @@ This page summarizes every feature and points to its pages, for a reader who dec
 
 ## Overview
 
+The diagram shows the four domain groups, each built on the kit.
+
 ```mermaid
 flowchart TB
-    subgraph IDENTITY["Identity and auth"]
-        I1["Password and JWT"]
-        I2["Social sign-in"]
-        I3["Sessions"]
-        I4["API keys"]
-        I5["MFA"]
-        I6["Devices"]
-        I7["Users"]
-    end
-    subgraph ACCESS["Access control"]
-        A1["Roles and policies"]
-        A2["Term policy"]
-        A3["Feature flags"]
-    end
-    subgraph WORKSPACE["Workspace and project"]
-        W1["Workspaces"]
-        W2["Projects"]
-    end
-    subgraph PLATFORM["Platform"]
-        P1["Notifications and email"]
-        P2["File upload"]
-        P3["Activity log"]
-        P4["Analytic"]
-        P5["i18n"]
-        P6["Health"]
-    end
-    subgraph KIT["Kit"]
-        K1["Database"]
-        K2["Cache"]
-        K3["Queue and outbox"]
-        K4["Request and response"]
-        K5["Errors"]
-        K6["Logging and Sentry"]
-        K7["Pagination"]
-        K8["API docs"]
-    end
+    IDENTITY["Identity and auth<br/>password and JWT, social sign-in, sessions,<br/>API keys, MFA, devices, users"]
+    ACCESS["Access control<br/>roles and policies, term policy,<br/>feature flags"]
+    WORKSPACE["Workspace and project<br/>workspaces, projects"]
+    PLATFORM["Platform<br/>notifications and email, file upload,<br/>activity log, analytic, i18n, health, country data"]
+    KIT["Kit<br/>database, cache, queue and outbox,<br/>request and response, errors,<br/>logging and Sentry, pagination, API docs"]
     IDENTITY --> KIT
     ACCESS --> KIT
     WORKSPACE --> KIT
@@ -70,7 +41,7 @@ flowchart TB
 ```
 
 - The features sit in four domain groups: identity and auth, access control, workspace and project, and platform. Each group is built on the kit, which holds the shared infrastructure.
-- Every feature follows one shape: Controller or Processor, Use case, Service, Repository.
+- Every feature follows one shape: Controller or Processor, Use case, Service, and a Repository where it stores data.
 - Each entry below ends with the pages that cover the feature.
 
 ## Identity and auth
@@ -189,9 +160,17 @@ i18n:
 
 Health:
 
-- Four system routes report MongoDB, Redis, the queue, S3, SES, Firebase, Google, Apple, the JWKS endpoints, and the instance itself.
+- Four system routes report MongoDB, Redis, the queue, S3, SES, Firebase, Sentry, Google, Apple, the JWKS endpoints, and the instance itself.
 - Needed when an operator checks that the dependencies and the instance are healthy.
 - Pages: [Health checks][ref-doc-dependencies-health].
+
+Country data:
+
+- A seeded country table serves one public route behind the default API key. It returns countries by cursor, ordered by creation time, name, or alpha-2 code, each with its id, name, alpha-2 and alpha-3 codes, continent, timezone, and phone codes.
+- Sign-up, social sign-in, profile, and mobile number flows check that the country id the client sends names a stored country. A mobile number's phone code belongs to the list of the country the request names.
+- A user import reads the `user.default.country` alpha-2 code, resolves it to a country id, and stores that country on every imported user.
+- Needed when a client offers a country or phone code picker, or a flow stores a user's country.
+- Pages: [Architecture: modules and their domains][ref-doc-architecture-modules].
 
 ## Kit
 
@@ -247,6 +226,7 @@ API docs:
 
 [ref-doc-readme]: readme.md
 [ref-doc-architecture]: concepts/architecture.md
+[ref-doc-architecture-modules]: concepts/architecture.md#modules-and-their-domains
 [ref-doc-installation]: getting-started/installation.md
 [ref-doc-concept-authentication]: concepts/authentication.md
 [ref-doc-concept-session]: concepts/session.md

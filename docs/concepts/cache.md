@@ -27,16 +27,16 @@ This page explains how the application caches reads in Redis, for a developer wh
 
 ## Overview
 
+The diagram shows the components that read, store, and invalidate a cache entry.
+
 ```mermaid
-flowchart LR
-    SV["Service"] --> CC["Cache class<br/>key and TTL"]
-    SV --> CS["CacheService"]
-    CS --> RD[("Cache Redis")]
-    CS -->|miss| LD["Loader"]
+flowchart TB
+    SV["Service"] -->|"builds key, reads TTL"| CC["Cache class<br/>key patterns and TTLs"]
+    SV -->|"readThrough with key, TTL, loader"| CS["CacheService"]
+    CS -->|"entries with a TTL"| RD[("Cache Redis")]
+    CS -->|"on a miss"| LD["Loader<br/>repository read or private service method"]
     LD --> DB[("MongoDB")]
-    WR["Use case write"] -->|outbox row| QU["cache queue"]
-    QU --> CP["CacheProcessor"]
-    CP --> CS
+    CP["CacheProcessor<br/>invalidate job, see Queue"] --> CS
 ```
 
 - MongoDB is the source of truth and the cache is a side resource. Every entry has a TTL and is never the only copy of a value.

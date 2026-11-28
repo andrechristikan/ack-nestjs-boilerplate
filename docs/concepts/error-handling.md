@@ -30,6 +30,8 @@ This page explains how the application turns a failure into a response or a proc
 
 ## Overview
 
+The diagram shows which filter claims an exception and how every filter ends in the one error envelope.
+
 ```mermaid
 flowchart TB
     THROW["Exception thrown"] --> MATCH{"Most specific filter first"}
@@ -63,7 +65,7 @@ flowchart TB
 
 Every filter resolves the message in the request language ([I18n][ref-doc-i18n]). Beyond that, the filters differ:
 
-- A refused request leaves one `warn`, `A request was refused`, with the `statusCode`, `statusCodeKey`, and `httpStatus`. `AppGeneralFilter` and `AppHttpFilter` write it when the answered status is 401, 403, 413, 415, 422, or 429 (`AppRefusalLogStatuses`), and `AppValidationFilter` writes it for every validation failure. `AppValidationImportFilter` writes none. The line does not depend on the access log setting and never reaches Sentry.
+- A refused request leaves one `warn`, `A request was refused`, carrying the `statusCodeKey` and `httpStatus`, and the `statusCode` as well from `AppGeneralFilter` and `AppValidationFilter`; `AppHttpFilter` omits it. `AppGeneralFilter` and `AppHttpFilter` write it when the answered status is 401, 403, 413, 415, 422, or 429 (`AppRefusalLogStatuses`), and `AppValidationFilter` writes it for every validation failure. `AppValidationImportFilter` writes none. The line does not depend on the access log setting and never reaches Sentry.
 - A status of 500 or above logs the error and sends it to Sentry through `SentryService.captureException`, in `AppGeneralFilter` and `AppHttpFilter` only. The report carries the `rawError` when the exception holds one, and an `AppUnknownException` that carries a `description` is reported as itself. The two validation filters never report.
 - An exception's own `metadata` option adds keys beneath the standard metadata, and the standard keys win. Only `AppGeneralFilter` merges it.
 

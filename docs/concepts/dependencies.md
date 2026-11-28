@@ -28,15 +28,21 @@ This page explains how the application treats the services it depends on, for a 
 
 ## Overview
 
+The diagram shows what each caller reaches and how an outage or an unset credential answers.
+
 ```mermaid
-flowchart LR
-    CALL["Service or use case"] --> KIT["Kit client<br/>database, cache, aws, firebase"]
-    CALL --> AUTH["Auth module<br/>JWKS, Google, Apple fetch"]
-    CALL --> QUEUE["Queue class<br/>enqueue after commit"]
-    KIT -->|configured and reachable| PROVIDER["MongoDB, cache Redis,<br/>S3, SES, Firebase"]
+flowchart TB
+    SVC["Service or use case"] --> KIT["Required kit client<br/>database, cache"]
+    SVC --> ADAPT["Optional adapter<br/>aws, firebase"]
+    SVC --> QUEUE["Queue class<br/>enqueue after commit"]
+    GUARD["Auth guards and JWT strategies"] --> AUTH["Auth module<br/>JWKS, Google, Apple fetch"]
+    KIT -->|reachable| PROVIDER["MongoDB, cache Redis,<br/>S3, SES, Firebase"]
+    ADAPT -->|reachable| PROVIDER
     KIT -->|unreachable| OUTAGE["Unavailable exception<br/>HTTP 503"]
+    ADAPT -->|unreachable| OUTAGE
     AUTH -->|unreachable| OUTAGE
-    KIT -->|credentials unset| UNSET["No-op, or HTTP 501<br/>on a route that needs it"]
+    ADAPT -->|credentials unset| UNSET["No-op, or HTTP 501<br/>on a route that needs it"]
+    AUTH -->|credentials unset| UNSET
     QUEUE -->|queue Redis unreachable| PENDING["Outbox row stays pending<br/>request answers normally"]
 ```
 

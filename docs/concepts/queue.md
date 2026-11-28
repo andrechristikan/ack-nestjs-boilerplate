@@ -31,16 +31,19 @@ This page explains how the application runs background work through the outbox a
 
 ## Overview
 
+The diagram shows how a committed outbox row reaches its processor, and where the row is stamped on the way.
+
 ```mermaid
-flowchart LR
-    UC["Use case transaction<br/>writes + outbox row"] -->|commit| QC["Queue class"]
+flowchart TB
+    UC["Use case transaction<br/>writes + outbox row"] -->|commit| OS["OutboxService"]
+    OS -->|dispatch| QC["Queue class"]
     QC --> BQ["BullMQ queue<br/>queue Redis"]
     BQ --> PR["Processor"]
     PR --> PU["Use case"]
     PU --> SV["Services"]
-    SW["Outbox sweep"] -.->|pending or lost row| QC
-    UC -.->|outbox row| DB[("MongoDB")]
-    PR -.->|stamp completed or failed| DB
+    SW["OutboxQueue scheduler<br/>OutboxProcessor"] -.->|sweep re-dispatches| OS
+    OS -.->|"row written in the transaction,<br/>stamped enqueued"| DB[("MongoDB")]
+    PR -.->|"load row, stamp<br/>completed or failed"| DB
 ```
 
 - A MongoDB write and a Redis enqueue cannot commit together, so the effect rides the transaction as a row, and the enqueue waits for the commit. A job never runs against a write that is uncommitted or rolled back.

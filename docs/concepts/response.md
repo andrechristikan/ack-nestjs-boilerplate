@@ -29,9 +29,11 @@ This page explains how a handler's return value becomes the response, for a deve
 
 ## Overview
 
+The diagram shows how an interceptor turns a use case result into an envelope or a file.
+
 ```mermaid
-flowchart LR
-    UC["Use case result<br/>IResponseReturn"] --> INT["ResponseInterceptor<br/>ResponsePaginationInterceptor"]
+flowchart TB
+    UC["Use case result<br/>IResponseReturn,<br/>IResponsePaginationReturn,<br/>IResponseFileReturn"] --> INT["ResponseInterceptor<br/>ResponsePaginationInterceptor"]
     UC --> FileNode["ResponseFileInterceptor"]
     INT --> SCHEMA["Route response schema<br/>validate and strip"]
     SCHEMA -->|issues| ERR["ResponseSerializationException<br/>500"]
@@ -43,7 +45,7 @@ flowchart LR
     FileNode --> META
 ```
 
-- A controller returns what its use case returns. The use case wraps its payload in `IResponseReturn`, and a route's decorator turns that into the response.
+- A controller returns what its use case returns. The use case wraps its payload in `IResponseReturn`, a page in `IResponsePaginationReturn`, and a file in `IResponseFileReturn`, and a route's decorator turns that into the response.
 - Three decorators select the interceptor: `@Response` for one payload, `@ResponsePagination` for a page of items, and `@ResponseFile` for a CSV or PDF download. The first two answer the envelope, and the file interceptor answers the file bytes.
 - The route's schema decides which fields leave the API, the route's message path decides the sentence, and `ResponseMetadataService` supplies the metadata and the headers.
 - Every JSON response, success or error, carries the same metadata block. Every response, a file download included, carries the same metadata headers ([HTTP Contract][ref-doc-http-contract]).

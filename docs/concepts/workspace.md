@@ -39,20 +39,24 @@ This page explains the `workspace` module, for a developer who changes how a req
 
 ## Overview
 
+A request that names a workspace passes the middleware and the guard, then the controller hands it to a use case, which opens the one transaction. The services write the rows, and the use case and the services add the outbox rows.
+
 ```mermaid
-flowchart LR
+flowchart TB
     RQ["Request<br/>x-workspace-id header"] --> MW["WorkspaceIdMiddleware<br/>request store"]
     MW --> GD["WorkspaceGuard<br/>workspace and member"]
-    GD --> UC["Use case<br/>one transaction"]
+    GD --> CT["Workspace controllers"]
+    CT --> UC["Use case<br/>one transaction"]
     UC --> SV["Workspace services<br/>and repositories"]
     SV --> DB[("MongoDB")]
     UC -.->|outbox rows| QU["Queue classes<br/>notification, activity log, workspace"]
+    SV -.->|outbox rows| QU
 ```
 
 - A workspace is the tenancy boundary. Every user belongs to at least one, because a sign-up writes a personal workspace or joins the invited one.
 - A workspace-scoped `/user` or `/shared` route names its workspace in the `x-workspace-id` header, never in the path.
 - The module owns four models: `Workspace`, `WorkspaceMember`, `WorkspaceInvite`, and `WorkspaceJoinRequest`. The fields are in `prisma/schema.prisma`.
-- A flow runs controller, use case, service, repository. The use case opens the one transaction, and each notification and activity entry is an outbox row added in it ([Queue][ref-doc-concept-queue-outbox]).
+- A flow runs controller, use case, service, repository. The use case opens the one transaction, and each notification and activity entry is an outbox row added in it, by the use case or by a service that injects the queue class ([Queue][ref-doc-concept-queue-outbox]).
 - The `workspace` flag gates every user and public route of the module. An `/admin` route carries no flag and no workspace guard: it is behind `@RoleProtected()` for a platform admin and a `workspace` policy, and takes the workspace id from the path. Admin routes list and read workspaces and their members, and transfer ownership.
 
 ## Active workspace selection

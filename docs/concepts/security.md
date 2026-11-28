@@ -34,18 +34,23 @@ This page explains the protections the request kit applies to every route and th
 
 ## Overview
 
+The diagram shows the order of the request-hardening steps and where the throttle guards count and reject.
+
 ```mermaid
-flowchart LR
-    REQ["Request"] --> DEFAULT["Default limiter<br/>per client IP, every route"]
-    DEFAULT --> ROUTE["Route limiter<br/>strict, moderate, relaxed"]
-    ROUTE --> USER["User limiter<br/>per authenticated user"]
+flowchart TB
+    REQ["Request"] --> MW["Middleware chain<br/>Helmet headers, CORS"]
+    MW --> DEFAULT["RequestThrottleDefaultGuard<br/>per client IP, every route"]
+    DEFAULT --> ROUTE["RequestThrottleRouteGuard<br/>strict, moderate, relaxed"]
+    ROUTE --> RG["Route guards<br/>RequestThrottleUserGuard per authenticated user, after the JWT guard<br/>RequestEnvGuard where the route names environments"]
+    RG --> TI["RequestTimeoutInterceptor<br/>408 past request.timeoutInMs"]
+    TI --> HD["Handler"]
     DEFAULT --> STORE["RequestThrottleStorageService"]
     ROUTE --> STORE
-    USER --> STORE
+    RG --> STORE
     STORE --> REDIS[("Cache Redis<br/>sliding window counters")]
     DEFAULT -.->|limit breached| BLOCK["429 with Retry-After"]
     ROUTE -.->|limit breached| BLOCK
-    USER -.->|limit breached| BLOCK
+    RG -.->|limit breached| BLOCK
 ```
 
 - Every API response carries the security headers, and every route sits behind the per-IP rate limit. The Swagger documentation routes carry two headers and no rate limit. A route adds a stricter tier or a per-user limit by decorator.

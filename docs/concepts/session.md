@@ -29,16 +29,18 @@ This page explains what a session is and how the application ends one, for a dev
 
 ## Overview
 
+The diagram shows how a login, a refresh, and a revoke write the session row and how the access guard reads the login entry.
+
 ```mermaid
-flowchart LR
+flowchart TB
     LG["Login"] -->|creates| DB[("MongoDB<br/>Session row")]
-    RQ["Request"] --> GD["Access guard"]
-    GD --> CE[("Cache Redis<br/>login entry")]
-    CE -->|miss| DB
     RF["Refresh"] -->|rotates the digest| DB
     RV["Revoke"] -->|marks revoked, adds an outbox row| DB
     DB --> QU["session queue"]
-    QU -->|purgeLogins job| CE
+    QU -->|purgeLogins job| CE[("Cache Redis<br/>login entry")]
+    RQ["Request"] --> GD["Access guard"]
+    GD --> CE
+    CE -->|miss| DB
 ```
 
 - A session is one sign-in of one user on one device. Its row in MongoDB is the source of truth.

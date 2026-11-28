@@ -28,17 +28,21 @@ This page explains how the list routes page their results, for a developer who b
 
 ## Overview
 
+The diagram shows how a list query becomes a page and the metadata that describes it.
+
 ```mermaid
-flowchart LR
+flowchart TB
     QUERY["List query<br/>page or cursor, perPage, search, orderBy, filters"] --> SCHEMA["Strict list schema<br/>RequestSchemaValidationPipe"]
     SCHEMA --> UC["List use case"]
-    UC --> QueryUtil["PaginationQueryUtil<br/>and PaginationFilterUtil"]
-    QueryUtil -->|params| REPO["Service and repository"]
+    UC -->|query| QueryUtil["PaginationQueryUtil<br/>and PaginationFilterUtil"]
+    QueryUtil -->|params and storePatch| UC
+    UC -->|params| REPO["Service and repository"]
     REPO --> PageService["PaginationService"]
     PageService --> DB[("MongoDB")]
+    PageService -->|page| REPO
     UC -->|merges storePatch| STORE["Request store"]
-    PageService -->|page| INTERCEPTOR["ResponsePaginationInterceptor"]
-    STORE --> INTERCEPTOR
+    UC -->|page| INTERCEPTOR["ResponsePaginationInterceptor"]
+    STORE -->|list state| INTERCEPTOR
     INTERCEPTOR --> META["Page metadata"]
 ```
 

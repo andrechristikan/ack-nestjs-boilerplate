@@ -36,6 +36,8 @@ This page explains the account lifecycle of the `user` module, for a developer w
 
 ## Overview
 
+The diagram shows the account statuses and the events that move a user between them.
+
 ```mermaid
 stateDiagram-v2
     state "soft-deleted, status inactive" as softDeleted
@@ -85,7 +87,7 @@ Social sign-up writes the same rows without a password, a password history row, 
 - A verified email sets `isVerified`, adds the `verifiedEmail` notification, and writes the `userEmailVerified` entry in one transaction.
 - Resending the email answers 200 in every account state and sends only to an active, unverified account outside `verification.resendInMinutes`. The answer says nothing about whether an account exists. A credential login that matches an unverified account sends the same email and answers `UserEmailNotVerifiedException` (403, `51015`) whether or not the email went out.
 - An admin-created or imported user is verified at create. A social login verifies an unverified account in place.
-- A mobile number is added after a re-authentication. Its phone code must belong to the user's country list, and the number must be unused. Verification sends a code of `verification.otpLength` digits, and a send inside the resend window (`verification.resendInMinutes`) answers 200 and sends nothing. A wrong, expired, or used code answers `UserTokenInvalidException` (400, `51016`), a verified number `UserMobileNumberAlreadyVerifiedException` (400, `51032`), and an unknown number `UserMobileNumberNotFoundException` (404, `51004`). Updating the number or its phone code clears the verification and marks its unused codes used.
+- A mobile number is added after a re-authentication. Its phone code belongs to the phone codes of the country the request names, and the number is unused. Verification sends a code of `verification.otpLength` digits, and a send inside the resend window (`verification.resendInMinutes`) answers 200 and sends nothing. A wrong, expired, or used code answers `UserTokenInvalidException` (400, `51016`), a verified number `UserMobileNumberAlreadyVerifiedException` (400, `51032`), and an unknown number `UserMobileNumberNotFoundException` (404, `51004`). Updating the number or its phone code clears the verification and marks its unused codes used.
 
 ## Profile
 

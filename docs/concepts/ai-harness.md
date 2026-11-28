@@ -33,16 +33,18 @@ This page explains how the AI harness works, for a contributor who runs Claude C
 
 ## Overview
 
+The diagram shows the commands a feature runs through, in order, and what each hands the next.
+
 ```mermaid
-flowchart LR
-    R[Request] --> D["/ack-design"]
-    D -->|spec.md| P["/ack-plan"]
-    P -->|tickets and plan.md| H["/ack-harness"]
-    P -->|no harness change| B["/ack-build"]
+flowchart TB
+    R["Feature request"] --> D["/ack-design"]
+    D -->|approved spec.md| P["/ack-plan"]
+    P -->|approved plan.md, harness changes| H["/ack-harness"]
+    P -->|approved plan.md, no harness change| B["/ack-build"]
     H -->|rules and decisions| B
     B -->|working tree and review.md| V["/ack-review"]
-    V -->|settled findings and fixes| DOC["/ack-doc"]
-    DOC --> C[Owner commits]
+    V -->|approved fix list, applied| DOC["/ack-doc"]
+    DOC -->|proposed commit subject| C["Owner's commit"]
     C --> PR["/ack-pr"]
 ```
 

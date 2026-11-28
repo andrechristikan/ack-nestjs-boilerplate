@@ -32,6 +32,8 @@ This page explains the term-policy module, for a developer who publishes a legal
 
 ## Overview
 
+The diagram shows the lifecycle of a term policy version.
+
 ```mermaid
 stateDiagram-v2
     [*] --> draft: admin creates a version

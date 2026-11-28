@@ -30,23 +30,17 @@ This page explains how the `feature-flag` module gates routes and code paths, fo
 
 ## Overview
 
+A route reaches `FeatureFlagService` through `FeatureFlagGuard`, and the module that owns a behavior reaches it for a sub-key. The service reads the flag through the cache and falls back to MongoDB on a miss. The decisions it makes are in [Evaluation](#evaluation).
+
 ```mermaid
-flowchart TD
-    A["Request reaches FeatureFlagGuard"] --> B{"Flag row exists?"}
-    B -->|no| X1["500 notConfigured"]
-    B -->|yes| C{"isEnable?"}
-    C -->|no| X2["404 disabled"]
-    C -->|yes| D{"Signed-in caller?"}
-    D -->|yes| E{"In targetUserIds?"}
-    E -->|yes| OK["Pass"]
-    E -->|no| F{"userId in the rollout bucket?"}
-    F -->|yes| OK
-    F -->|no| X2
-    D -->|no| G{"rolloutPercent is 100?"}
-    G -->|yes| OK
-    G -->|no| H{"Valid x-anonymous-id in the bucket?"}
-    H -->|yes| OK
-    H -->|no| X2
+flowchart TB
+    RQ["Request"] --> GD["FeatureFlagGuard<br/>@FeatureFlagProtected(key)"]
+    OM["Owning module's service<br/>sub-key reads"] --> FS
+    GD --> FS["FeatureFlagService<br/>switch, targeting, rollout"]
+    FS --> CS["CacheService<br/>read-through, FeatureFlagCache<br/>keys and lease"]
+    CS --> RD[("Cache Redis")]
+    CS -.->|miss| RP["FeatureFlagRepository"]
+    RP --> DB[("MongoDB<br/>FeatureFlag, FeatureFlagTarget")]
 ```
 
 - A flag is a row with a `key`, an `isEnable` switch, a `rolloutPercent` from 0 to 100, an allow-list of user ids (`targetUserIds`), and flat `metadata` of typed sub-keys.
@@ -68,7 +62,7 @@ The decorator sits above `@AuthJwtAccessProtected()`, so the API key guard runs 
 4. An anonymous caller passes at `rolloutPercent` 100 without an identifier, and below that falls to the bucket of the `x-anonymous-id` header.
 5. Every refusal is the same `FeatureFlagDisabledException`, so a gated feature answers as if it does not exist.
 
-The guard reads the header only for an anonymous caller. A value is valid when it is 1 to `featureFlag.anonymous.idMaxLength` characters of ASCII letters, digits, `-`, and `_` (`FeatureFlagAnonymousIdRegex`). An absent or invalid value is treated as no identifier and never reaches the hash, a log, or a cache key. An anonymous caller below 100 with no valid identifier is refused.
+The guard reads and validates the header on every request, and the service uses it only for an anonymous caller. A value is valid when it is 1 to `featureFlag.anonymous.idMaxLength` characters of ASCII letters, digits, `-`, and `_` (`FeatureFlagAnonymousIdRegex`). An absent or invalid value is treated as no identifier and never reaches the hash, a log, or a cache key. An anonymous caller below 100 with no valid identifier is refused.
 
 **Sub-keys.** The decorator never reads `metadata`. The module that owns a behavior reads its sub-key where the behavior runs, ignoring rollout and targeting:
 

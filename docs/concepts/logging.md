@@ -27,8 +27,10 @@ This page explains how the application writes logs, for a developer who adds a l
 
 ## Overview
 
+The diagram shows how a log line reaches the console and the file.
+
 ```mermaid
-flowchart LR
+flowchart TB
     SRC["Application code<br/>Nest Logger"] --> PN["Pino<br/>nestjs-pino"]
     HTTP["Request<br/>pino-http completion line"] --> PN
     ST["Request store<br/>ids and actor"] -.->|mixin| PN

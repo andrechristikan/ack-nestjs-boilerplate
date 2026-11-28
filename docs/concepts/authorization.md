@@ -35,12 +35,19 @@ This page explains how a route decides whether the caller may use it, for a deve
 
 ## Overview
 
+The diagram shows the guards after the JWT guard: a workspace route takes the workspace branch, an admin route the role branch, and every other route goes straight on, so all of them end at the term-policy guard.
+
 ```mermaid
-flowchart LR
-    RQ["Authenticated request"] --> UG["UserGuard<br/>loads user, role, policies"]
-    UG --> RG["RoleGuard<br/>role type check"]
+flowchart TB
+    RQ["Request past the API key, JWT, throttle, and feature flag guards"] --> UG["UserGuard<br/>loads user, role, policies"]
+    UG -->|workspace route| WG["WorkspaceGuard<br/>workspace and member"]
+    WG -->|project route| PJ["ProjectGuard<br/>project and project member"]
+    UG -->|admin route| RG["RoleGuard<br/>role type check"]
     RG -->|stores the policies of the role| PG["PolicyGuard<br/>CASL ability check"]
-    PG --> TG["TermPolicyGuard<br/>acceptance check"]
+    UG -->|other routes| TG["TermPolicyGuard<br/>acceptance check"]
+    WG --> TG
+    PJ --> TG
+    PG --> TG
     TG --> HD["Handler"]
 ```
 
@@ -57,7 +64,7 @@ Nest runs the guards of a method bottom-up, so the decorator nearest the method 
 2. The per-user throttle, mounted directly above the JWT decorator so it runs after it. It counts by the actor id the JWT guard writes and runs before every guard that reads the database.
 3. The feature flag guard. It reads only the actor id, so its decorator sits above the JWT decorator and a disabled feature answers before the user read.
 4. The user guard, then the workspace guard and the project guard on a workspace route.
-5. The role guard, then the policy guard, on an admin route and on the one `/user` route that limits by role type.
+5. The role guard, then the policy guard, on an admin route. The one `/user` route that limits by role type, account self-deletion, carries the role guard alone.
 6. The term-policy guard.
 
 - A guard reads what a guard that ran before it wrote to the request store and never loads it a second time. `UserGuard` writes the user, `RoleGuard` writes the policies, and the later guards read them.

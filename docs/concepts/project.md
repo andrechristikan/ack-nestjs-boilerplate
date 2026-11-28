@@ -32,19 +32,23 @@ This page explains the `project` module, for a developer who changes project acc
 
 ## Overview
 
+A project route passes the workspace guard and then the project guard before the use case opens the one transaction. The project services and repositories write the rows, and the use case and the services add the activity outbox rows.
+
 ```mermaid
-flowchart LR
+flowchart TB
     RQ["Request<br/>x-workspace-id and :projectId"] --> WG["WorkspaceGuard<br/>workspace and member"]
     WG --> PG["ProjectGuard<br/>project and member"]
     PG --> UC["Use case<br/>one transaction"]
-    UC --> DB[("MongoDB")]
+    UC --> SV["Project services<br/>and repositories"]
+    SV --> DB[("MongoDB")]
     UC -.->|outbox rows| AQ["Activity log queue"]
+    SV -.->|outbox rows| AQ
 ```
 
 - A project is a unit of work inside one workspace. A project route is reached through its workspace: the caller names the workspace in the `x-workspace-id` header and the project in the `:projectId` path parameter. There is no project header.
 - A project has its own members and its own roles, `admin`, `member`, and `viewer` (`EnumProjectMemberRole`), independent of the workspace role.
 - The module owns `Project` and `ProjectMember`. The fields are in `prisma/schema.prisma`.
-- A flow runs controller, use case, service, repository, and the use case opens the one transaction. Each activity entry is an outbox row added in it ([Queue][ref-doc-concept-queue-outbox]).
+- A flow runs controller, use case, service, repository, and the use case opens the one transaction. Each activity entry is an outbox row added in it, by the use case or by a service that injects the queue class ([Queue][ref-doc-concept-queue-outbox]).
 
 ## Projects inside a workspace
 

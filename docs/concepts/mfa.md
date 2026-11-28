@@ -32,6 +32,8 @@ This page explains multi-factor authentication, for a developer who changes a fa
 
 ## Overview
 
+The diagram shows a login that stops at an MFA challenge and a sensitive action that needs a fresh proof.
+
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -44,6 +46,9 @@ sequenceDiagram
     C->>A: Verify with a TOTP code, a passkey assertion, or a backup code
     A->>DB: One transaction: claim the challenge, complete the check, create the session
     A-->>C: Access token and refresh token
+    C->>A: Sensitive action with a fresh proof: password, TOTP code, passkey assertion, backup code, or email code
+    A->>DB: One transaction: complete the proof, run the action
+    A-->>C: Response
 ```
 
 - Two factors exist: TOTP, one per user, and passkeys, up to the `passkeyMaxPerUser` metadata of the `mfa` flag. A biometric such as Face ID or a fingerprint is a passkey. SMS is not a factor.

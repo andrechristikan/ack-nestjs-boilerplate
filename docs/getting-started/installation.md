@@ -80,13 +80,23 @@ Result: `keys/` holds the PEM files, `access-jwks.json`, `refresh-jwks.json`, `e
 
 ## 4 Start the dependencies
 
+The diagram shows the API on the host and the services of the `deps` profile it connects to.
+
 ```mermaid
-flowchart LR
-    API["API on the host<br/>pnpm start:dev"] --> MONGO["MongoDB<br/>replica set, 27017"]
-    API --> RC["Redis cache<br/>6380"]
-    API --> RQ["Redis queue<br/>6379"]
-    API --> JWKS["JWKS server<br/>3011"]
-    BB["BullBoard<br/>3010"] --> RQ
+flowchart TB
+    API["API on the host<br/>pnpm start:dev"]
+    subgraph DEPS["Compose deps profile"]
+        BB["BullBoard<br/>3010"]
+        MONGO["MongoDB<br/>replica set, 27017"]
+        RC["Redis cache<br/>6380"]
+        RQ["Redis queue<br/>6379"]
+        JWKS["JWKS server<br/>3011"]
+    end
+    API --> MONGO
+    API --> RC
+    API --> RQ
+    API --> JWKS
+    BB --> RQ
 ```
 
 Start the `deps` profile of the local Compose file:
@@ -116,6 +126,8 @@ pnpm migration:seed
 Result: `pnpm db:migrate` reports the schema applied, and each seed logs its rows. A seed that throws exits with code 1 after one `FATAL [Bootstrap]` line.
 
 ## 6 Run the API
+
+Start the API in watch mode:
 
 ```bash
 pnpm start:dev

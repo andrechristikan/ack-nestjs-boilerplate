@@ -24,10 +24,12 @@ This page explains how the bundled HashiCorp Vault setup works, for a developer 
 
 ## Overview
 
+The diagram shows how an env file moves into Vault and back out to the application.
+
 ```mermaid
-flowchart LR
-    FILE["Env file"] -->|"pnpm vault:push"| KV["kv-v2 mount<br/>one path per environment"]
-    BOOT["vault-bootstrap<br/>mount, policies, AppRoles"] --> KV
+flowchart TB
+    BOOT["vault-bootstrap<br/>mount, policies, AppRoles"] --> KV["Vault service<br/>kv-v2 mount, one path per environment"]
+    FILE["Env file"] -->|"pnpm vault:push"| KV
     KV -->|"pnpm vault:pull"| ENV[".env"]
     ENV --> APIS["apis instance"]
 ```

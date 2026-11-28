@@ -29,8 +29,10 @@ This page explains how a request is validated and how a validation failure becom
 
 ## Overview
 
+The diagram shows how the pipe validates a request shape and how a failure becomes a 422 envelope.
+
 ```mermaid
-flowchart LR
+flowchart TB
     REQ["Request body, path param, query"] --> PIPE["RequestSchemaValidationPipe"]
     PIPE --> ZOD["zod schema bound on the parameter"]
     ZOD -->|valid| HANDLER["Controller receives the parsed value"]
@@ -115,7 +117,7 @@ The language is the request language ([I18n][ref-doc-i18n-resolution]). The mess
 }
 ```
 
-Those entries are an excerpt of the `error` object in that file, which also holds one entry per remaining zod issue code and the nested `email` group.
+Those entries are an excerpt of the `error` object in that file, which also holds one entry per remaining zod issue code, the keys of the request exceptions (`validation`, `schemaMissing`, `contextMissing`, `payloadTooLarge`, `unsupportedMediaType`), the named rule keys (`isAfterNow` and the `*OtherProperty` comparisons), and the nested `email` group.
 
 A file import returns the same entries per row. `AppValidationImportFilter` catches `FileImportException` and calls `setValidationImportMessage`, which maps each row's issues the same way and answers `{ row, errors }` entries ([CSV pipe chain][ref-doc-concept-file-upload-csv]).
 

@@ -29,8 +29,10 @@ This page explains how the API identifies the application that calls it, for a d
 
 ## Overview
 
+The diagram shows how the two API key guards resolve a key from the cache and the database.
+
 ```mermaid
-flowchart LR
+flowchart TB
     RQ["Request<br/>x-api-key header"] --> KG["ApiKeyXApiKeyGuard"]
     KG --> CE[("Cache Redis<br/>key entry")]
     CE -->|miss, under a lease| DB[("MongoDB<br/>ApiKey row")]

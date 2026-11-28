@@ -36,19 +36,22 @@ This page explains how the application identifies a signed-in caller, for a deve
 
 ## Overview
 
+The diagram shows the three exchanges between a client and the API: sign-in, a request verified against the JWKS endpoint, and a refresh.
+
 ```mermaid
 sequenceDiagram
     participant C as Client
     participant A as API
+    participant J as JWKS server
     participant DB as MongoDB
-    participant R as Cache Redis
 
     C->>A: Sign in with a password, a passkey, or a social ID token
     A->>DB: Check the credential and write the session row
     A-->>C: Access token and refresh token
     C->>A: Request with the access token
-    A->>R: Read the login entry of the session
-    R-->>A: Digest of the token jti, read through from MongoDB on a miss
+    A->>J: Fetch the public keys of the token kind, cached
+    J-->>A: Public keys
+    A->>A: Verify signature, audience, issuer, and expiry, then check the session
     A-->>C: Response
     C->>A: Refresh with the refresh token
     A->>DB: Rotate the jti of the session row

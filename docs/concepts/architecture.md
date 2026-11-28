@@ -30,6 +30,8 @@ This page explains how the application is organized, for a developer who reads t
 
 ## Overview
 
+The diagram shows the layers one flow passes through and the import levels, lowest first.
+
 ```mermaid
 flowchart TB
     subgraph PATH["One flow"]
@@ -40,10 +42,11 @@ flowchart TB
         R --> D["DatabaseService"]
     end
     subgraph LEVELS["Import levels, lowest first"]
-        L1["1 Kit: src/common, src/app"] --> L2["2 Global feature modules"]
-        L2 --> L3["3 Other feature modules"]
-        L3 --> L4["4 Use cases, controllers, processors"]
+        L1["1 Kit: src/common, src/app"] --- L2["2 Global feature modules"]
+        L2 --- L3["3 Other feature modules"]
+        L3 --- L4["4 Use cases, controllers, processors"]
     end
+    PATH ~~~ LEVELS
 ```
 
 - A request travels Controller, Use case, Service, Repository, `DatabaseService`. A feature job travels Processor, Use case, then the same chain. A kit processor (`CacheProcessor`, `OutboxProcessor`) awaits its kit service. Each layer has one job, so a change to transport, orchestration, domain logic, or storage touches one layer.
@@ -81,7 +84,7 @@ src
 A feature module under `src/modules/<name>/` keeps only the folders its feature needs:
 
 - Always: `controllers`, `dtos`, `interfaces`, `services`, `use-cases`, and almost always `constants`, `enums`, `exceptions`, `repositories`, `utils`.
-- Where the feature needs them: `caches`, `contracts`, `decorators`, `factories`, `guards`, `indicators`, `processors`, `queues`, `templates`, `validations`.
+- Where the feature needs them: `caches`, `contracts`, `decorators`, `factories`, `guards`, `indicators`, `middlewares`, `processors`, `queues`, `templates`, `validations`.
 - Two Nest module files sit at the root of the folder, and only a file with something to provide exists:
     - `<name>.module.ts` provides the services, repositories, utils, caches, queue classes, and factories. It exports its services, utils, and queue classes, never a cache or a repository.
     - `<name>.use-case.module.ts` provides and exports the use cases. Only `src/router/` imports it.
@@ -157,7 +160,7 @@ The platform has four domain groups. A module belongs to one.
 - `/system`: routes for operators, such as the health checks, behind a system API key.
 - `/admin`: routes for platform administrators across every module.
 - `/user`: routes of the signed-in user, where a workspace-scoped route selects the active workspace with the `x-workspace-id` header.
-- `/shared`: the signed-in user's own account data: profile, sessions, devices, MFA, notifications, activity log, and password history.
+- `/shared`: the signed-in user's own account data: profile, sessions, devices, MFA, notifications, activity log, password history, and term-policy acceptance.
 
 - Routes sit under the global prefix `/api` and the version segment `/v1`. The health and hello controllers are version neutral, so the liveness route is `/api/public/hello`.
 - A scope module declares its controllers and imports the `<Module>UseCaseModule` of each feature whose use cases they inject.

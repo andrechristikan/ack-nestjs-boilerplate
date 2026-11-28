@@ -29,24 +29,24 @@ This page explains how a file reaches the application, for a developer who adds 
 
 ## Overview
 
+The diagram shows the two ways a file arrives: through the API as a multipart upload, or straight to S3 with a presigned URL.
+
 ```mermaid
-sequenceDiagram
-    participant C as Client
-    participant A as API
-    participant S as S3 bucket
-    C->>A: ask for a presign with extension and size
-    A->>C: key and presigned PUT URL
-    C->>S: PUT the bytes
-    C->>A: confirm the key
-    A->>S: read the object's size and first bytes
-    A->>A: check key, size, and content
-    A->>A: store the key and add the delete row of the old object
+flowchart TB
+    CL["Client"] -->|multipart| UP["Upload decorators<br/>multer, FileUploadErrorInterceptor"]
+    CL -->|presign, then confirm the key| UC["Feature use case<br/>and service"]
+    CL -->|PUT with the presigned URL| S3[("S3 bucket")]
+    UP --> PI["File pipes<br/>required, extension,<br/>CSV parse, CSV validation"]
+    PI --> UC
+    PI --> FS["FileService<br/>signature sniff, CSV parse"]
+    UC --> FS
+    UC --> AS["AwsS3Service<br/>put, presign, metadata,<br/>first bytes"]
+    AS --> S3
 ```
 
 - The kit has three parts: `FileService`, the decorators and pipes under `src/common/file/`, and `AwsS3Service` under `src/common/aws/`. A feature uses them and never builds an S3 client of its own.
 - A file reaches the application one of two ways. A multipart upload sends the bytes through the API, which validates them and a feature stores them in S3 through `AwsS3Service.putItem`. A presigned upload sends the bytes from the client straight to S3, and the API only signs the request and checks the result.
 - A CSV import is a multipart upload whose parsed rows go through a validation pipe. It parses the file and stores nothing.
-- The diagram shows the presigned upload, the longer flow.
 
 ## Multipart transport
 

@@ -27,12 +27,19 @@ This page explains how configuration works, for a developer who adds a setting o
 
 ## Overview
 
+The diagram shows how the environment reaches the code: the schema validates it at boot, and the factories read it.
+
 ```mermaid
-flowchart LR
-    ENV[".env and process environment"] --> SCHEMA["AppEnvSchema"]
-    SCHEMA --> FACTORY["Config factories<br/>src/configs"]
-    FACTORY --> SERVICE["ConfigService"]
-    SERVICE --> CONSUMER["Services, modules, bootstrap"]
+flowchart TB
+    ENV["Environment<br/>.env and process environment"]
+    SCHEMA["AppEnvSchema<br/>validated at boot"]
+    FACTORY["Config factories<br/>src/configs, read process.env"]
+    SERVICE["ConfigService"]
+    CONSUMER["Services, modules, bootstrap"]
+    ENV --> SCHEMA
+    ENV --> FACTORY
+    FACTORY --> SERVICE
+    SERVICE --> CONSUMER
 ```
 
 - The environment holds secrets and values that differ between deployments. `AppEnvSchema` validates every key before a Nest provider resolves a config value. The one exception is `src/instrument.ts`, which runs before Nest and calls the `app`, `logger`, and `sentry` factories on the raw environment: [Reading config](#reading-config).
